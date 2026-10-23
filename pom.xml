@@ -49,13 +49,14 @@
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
     <!--
-      Upstream (mysql-sakila-persistence) compiles its main sources at release 17 and its tests at 25; 17 is
-      therefore the floor for anything compiled against its entities. Both halves here are 25, as the oracle sibling.
+      As upstream (mysql-sakila-persistence): main sources at release 17, tests at 25. 17 is upstream's floor, and
+      Boot 4's baseline, so a consumer on 17 can use this jar as it can upstream's. The tests are not published, so
+      they take the current LTS.
       -->
-    <maven.compiler.source>25</maven.compiler.source>
+    <maven.compiler.source>17</maven.compiler.source>
     <maven.compiler.target>${maven.compiler.source}</maven.compiler.target>
     <maven.compiler.release>${maven.compiler.target}</maven.compiler.release>
-    <maven.compiler.testSource>${maven.compiler.source}</maven.compiler.testSource>
+    <maven.compiler.testSource>25</maven.compiler.testSource>
     <maven.compiler.testTarget>${maven.compiler.testSource}</maven.compiler.testTarget>
     <maven.compiler.testRelease>${maven.compiler.testSource}</maven.compiler.testRelease>
     <!--
@@ -69,7 +70,7 @@
       (upstream: persistence.version 3.2, jakarta.jakartaee-bom 11.0.0). Boot 3.x manages 3.1. Do not downgrade.
       -->
     <!-- https://docs.spring.io/spring-boot/appendix/dependency-versions/coordinates.html -->
-    <version.org.springframework.boot>4.1.1</version.org.springframework.boot>
+    <version.org.springframework.boot>4.1.2</version.org.springframework.boot>
 
     <!-- Local SNAPSHOT only: `./mvnw -DskipTests install` the sibling checkout to pick up a change there. -->
     <version.mysql-sakila-persistence>0.0.1-SNAPSHOT</version.mysql-sakila-persistence>
@@ -86,7 +87,7 @@
     <version.org.projectlombok>1.18.48</version.org.projectlombok>
     <!-- https://dev.mysql.com/downloads/connector/j/ -->
     <!-- https://central.sonatype.com/artifact/com.mysql/mysql-connector-j/versions -->
-    <version.com.mysql>26.7.0</version.com.mysql>
+    <version.com.mysql>26.10.0</version.com.mysql>
     <!-- https://central.sonatype.com/artifact/com.h2database/h2/versions -->
     <version.com.h2database>2.5.252</version.com.h2database>
 
@@ -98,6 +99,29 @@
     <version.org.mybatis.spring.boot>4.1.0</version.org.mybatis.spring.boot>
     <!-- https://central.sonatype.com/artifact/org.mybatis/mybatis-spring/versions -->
     <version.org.mybatis.mybatis-spring>4.1.0</version.org.mybatis.mybatis-spring>
+
+    <!-- As upstream (version.org.geolatte there). -->
+    <!-- https://github.com/GeoLatte/geolatte-geom -->
+    <!-- https://central.sonatype.com/artifact/org.geolatte/geolatte-geom/versions -->
+    <version.org.geolatte>1.12</version.org.geolatte>
+    <!-- https://github.com/locationtech/jts -->
+    <!-- https://central.sonatype.com/artifact/org.locationtech.jts/jts-core/versions -->
+    <version.org.locationtech.jts>1.20.0</version.org.locationtech.jts>
+
+    <!--
+      Versions Boot manages too, pinned to the ones every other project is on (PROJECTS_VERSIONS.asciidoc at the book's
+      root): JUnit and Mockito by importing their BOMs before Boot's, Logback and AssertJ by direct entries.
+      -->
+    <!-- https://central.sonatype.com/artifact/org.junit/junit-bom/versions -->
+    <version.org.junit>6.1.3</version.org.junit>
+    <!-- https://central.sonatype.com/artifact/org.mockito/mockito-bom/versions -->
+    <version.org.mockito>5.24.0</version.org.mockito>
+    <!-- https://central.sonatype.com/artifact/ch.qos.logback/logback-classic/versions -->
+    <version.ch.qos.logback>1.6.5</version.ch.qos.logback>
+    <!-- https://central.sonatype.com/artifact/org.assertj/assertj-core/versions -->
+    <version.org.assertj>4.0.0-M1</version.org.assertj>
+    <!-- https://central.sonatype.com/artifact/io.github.jinahya/jinahya-object-randomizer/versions -->
+    <version.jinahya-object-randomizer>0.0.7</version.jinahya-object-randomizer>
   </properties>
 
   <dependencyManagement>
@@ -107,12 +131,48 @@
         so dependencies on them carry no <version>. A direct entry below beats an imported one, which is how the
         pins that follow it work.
         -->
+      <!-- Before Boot's, so that these win over the versions Boot's import brings. -->
+      <dependency>
+        <groupId>org.junit</groupId>
+        <artifactId>junit-bom</artifactId>
+        <version>${version.org.junit}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.mockito</groupId>
+        <artifactId>mockito-bom</artifactId>
+        <version>${version.org.mockito}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
       <dependency>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-dependencies</artifactId>
         <version>${version.org.springframework.boot}</version>
         <type>pom</type>
         <scope>import</scope>
+      </dependency>
+
+      <dependency>
+        <groupId>ch.qos.logback</groupId>
+        <artifactId>logback-classic</artifactId>
+        <version>${version.ch.qos.logback}</version>
+      </dependency>
+      <dependency>
+        <groupId>ch.qos.logback</groupId>
+        <artifactId>logback-core</artifactId>
+        <version>${version.ch.qos.logback}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.assertj</groupId>
+        <artifactId>assertj-core</artifactId>
+        <version>${version.org.assertj}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.github.jinahya</groupId>
+        <artifactId>jinahya-object-randomizer</artifactId>
+        <version>${version.jinahya-object-randomizer}</version>
       </dependency>
 
       <!-- The upstream entity jar. -->
@@ -188,6 +248,16 @@
         <groupId>org.mybatis.spring.boot</groupId>
         <artifactId>mybatis-spring-boot-starter-test</artifactId>
         <version>${version.org.mybatis.spring.boot}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.geolatte</groupId>
+        <artifactId>geolatte-geom</artifactId>
+        <version>${version.org.geolatte}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.locationtech.jts</groupId>
+        <artifactId>jts-core</artifactId>
+        <version>${version.org.locationtech.jts}</version>
       </dependency>
     </dependencies>
   </dependencyManagement>
@@ -298,8 +368,8 @@
       <scope>test</scope>
     </dependency>
     <!--
-      The embedded database @DataJpaTest swaps in for MySQL. Without one on the classpath, @AutoConfigureTestDatabase
-      fails.
+      The embedded database the @DataJpaTest slices run on, in MySQL mode, through the h2 profile
+      (src/test/resources/application-h2.yaml).
       -->
     <dependency>
       <groupId>com.h2database</groupId>
@@ -329,6 +399,17 @@
     <dependency>
       <groupId>uk.co.jemos.podam</groupId>
       <artifactId>podam</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <!-- Geometry types for the spatial columns (address.location); test scope, as upstream. -->
+    <dependency>
+      <groupId>org.geolatte</groupId>
+      <artifactId>geolatte-geom</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.locationtech.jts</groupId>
+      <artifactId>jts-core</artifactId>
       <scope>test</scope>
     </dependency>
   </dependencies>
@@ -387,7 +468,7 @@
             </configuration>
           </execution>
           <execution>
-            <!-- The build JDK: the compiler release above is 25. -->
+            <!-- The build JDK: the tests compile at release 25 above; the main sources at 17, through the release flag. -->
             <id>enforce-require-java-version</id>
             <goals>
               <goal>enforce</goal>

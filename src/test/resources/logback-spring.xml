@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Logback for the tests, read by Spring Boot rather than by Logback itself: the -spring suffix keeps Logback from
+  picking the file up on its own at class-loading time, so Boot initialises logging once, with its extensions
+  (<springProfile>, <springProperty>) available here. A plain logback.xml or logback-test.xml would be read first by
+  Logback, without them, and then again by Boot.
+
+  Boot's defaults.xml and console-appender.xml bring what the tests got with no file at all: Boot's pattern and
+  colours, and the CONSOLE appender. Not base.xml, which would add Boot's FILE appender too, writing a spring.log
+  into the temp directory on every run. This file only sets the levels, which used to live under logging.level in
+  application.yaml; keep them in one place, here.
+  -->
+<configuration>
+  <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+  <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+  <root level="INFO">
+    <appender-ref ref="CONSOLE"/>
+  </root>
+
+  <!--
+    The statement, and then its bind parameters: the pair upstream's logback-test.xml turns on. Drop either to INFO
+    when the output gets in the way. Not spring.jpa.show-sql, which writes straight to System.out, unformatted, and
+    which _Repository_DataJpaTest_Configuration turns off for the slice.
+    -->
+  <logger name="org.hibernate.SQL" level="DEBUG"/>
+  <logger name="org.hibernate.orm.jdbc.bind" level="TRACE"/>
+
+  <!--
+    This project's own code, the tests included. Everything not named here stays at the root's INFO, so a
+    log.debug(...) in a test prints nothing without this.
+    -->
+  <logger name="com.github.jinahya.mysql.sakila.data" level="DEBUG"/>
+
+  <!-- The randomizers' podam is chatty at DEBUG; the test-companion jar's randomizers run under it. -->
+  <logger name="uk.co.jemos.podam" level="INFO"/>
+</configuration>

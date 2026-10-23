@@ -44,15 +44,8 @@ spring:
     # quietly opening a session to satisfy it.
     open-in-view: false
     # Deliberately not `show-sql: true`, which writes straight to System.out and would print every statement twice
-    # next to the logger below.
+    # next to the org.hibernate.SQL logger that logback-spring.xml turns on.
     show-sql: false
 
-logging:
-  level:
-    # The statement, and then its bind parameters -- the pair upstream's logback-test.xml turns on. Drop to `info`
-    # when the output gets in the way.
-    org.hibernate.SQL: debug
-    org.hibernate.orm.jdbc.bind: trace
-    # This project's own code, the tests included. Boot leaves everything not named here at the root's INFO, so a
-    # log.debug(...) in a test prints nothing without this.
-    com.github.jinahya.mysql.sakila.persistence.data: debug
+# Log levels live in logback-spring.xml, next to this file, not under logging.level here. Boot would lay levels set
+# here over that file's; keep them in one place.

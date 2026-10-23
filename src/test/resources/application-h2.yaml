@@ -1,0 +1,24 @@
+#
+# The `h2` profile: an embedded H2 for the @DataJpaTest slices, in place of the Sakila database of application.yaml.
+#
+# A bare @DataJpaTest would swap the datasource for an H2 of its own, but that one runs in H2's own mode, which does
+# not know the MySQL types upstream spells out in column definitions (`DATETIME DEFAULT CURRENT_TIMESTAMP` on
+# customer.create_date, payment.payment_date and rental.rental_date), so the schema generation fails on those three
+# tables. Boot offers no way to put a MODE on the URL it generates, so the swap is turned off here and the H2 is named
+# in full, in MySQL mode, as the H2 upstream generates its own schema into.
+#
+spring:
+  test:
+    database:
+      # Keep the datasource below, instead of the H2 that @AutoConfigureTestDatabase would otherwise swap in.
+      replace: none
+  datasource:
+    # MODE=MySQL: the MySQL types and syntax in upstream's column definitions. DATABASE_TO_LOWER=TRUE: unquoted
+    # identifiers fold to lower case, as on MySQL, and as upstream's own H2 unit tests set it. DB_CLOSE_DELAY=-1: the
+    # database outlives the connections of the pool, as Boot's own embedded URL has it. The name is random so that two
+    # contexts in one JVM do not create-drop each other's tables.
+    url: jdbc:h2:mem:${random.uuid};MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+
