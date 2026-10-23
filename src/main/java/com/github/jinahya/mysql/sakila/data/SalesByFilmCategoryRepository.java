@@ -27,7 +27,7 @@ import java.util.Objects;
  * queries. Name the attributes through the generated static metamodel rather than by string, for example
  * {@code (root, query, builder) -> builder.greaterThan(root.get(SalesByFilmCategory_.totalSales), amount)}.
  * <p>
- * The methods below answer the exercises of upstream's {@code EXERCISES_COORDINATES.asciidoc} on the
+ * The methods below answer the exercises of upstream's {@code EXERCISES.asciidoc} on the
  * {@code sales_by_film_category} view, one method per exercise, named in each method's javadoc by the exercise's id
  * ({@code SAKILA-SALES_BY_FILM_CATEGORY-B-01}, ...), one of each level, which is all the section has. The exercises
  * are context, not contract: a method that lists rows takes a {@link Pageable}, the page and the sort, and returns a

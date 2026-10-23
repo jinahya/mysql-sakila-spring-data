@@ -25,7 +25,7 @@ import java.util.Objects;
  * queries. Name the attributes through the generated static metamodel rather than by string, for example
  * {@code (root, query, builder) -> builder.equal(root.get(StaffList_.sid), sid)}.
  * <p>
- * The methods below answer the exercises of upstream's {@code EXERCISES_COORDINATES.asciidoc} on the {@code staff_list} view, one
+ * The methods below answer the exercises of upstream's {@code EXERCISES.asciidoc} on the {@code staff_list} view, one
  * method per exercise, named in each method's javadoc by the exercise's id ({@code SAKILA-STAFF_LIST-B-01}, ...), one
  * of each level, which is all the section has. The exercises are context, not contract: a method that lists rows
  * takes a {@link Pageable}, the page and the sort, and returns a {@link Page}, so the order the exercise asks for is

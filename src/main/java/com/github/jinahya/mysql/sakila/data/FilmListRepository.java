@@ -21,7 +21,7 @@ import org.springframework.data.domain.Pageable;
  * neither repeat nor skip a row whatever the caller sorts by. An unpaged {@code Pageable} returns every row in one
  * page.
  * <p>
- * The methods after {@link #listAll(Pageable)} answer the exercises of upstream's {@code EXERCISES_COORDINATES.asciidoc} on the
+ * The methods after {@link #listAll(Pageable)} answer the exercises of upstream's {@code EXERCISES.asciidoc} on the
  * {@code film_list} view, one method per exercise, named in each method's javadoc by the exercise's id
  * ({@code SAKILA-FILM_LIST-B-01}, ...). The exercises are context, not contract: an exercise that counts is a
  * {@code count...} method, and an exercise that shows rows is a {@code list...} method, which leaves the order, and the

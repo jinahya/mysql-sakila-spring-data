@@ -24,7 +24,7 @@ import java.math.BigDecimal;
  * neither repeat nor skip a row whatever the caller sorts by. An unpaged {@code Pageable} returns every row in one
  * page.
  * <p>
- * The methods answer the exercises of upstream's {@code EXERCISES_COORDINATES.asciidoc} on the {@code sales_by_store} view, one
+ * The methods answer the exercises of upstream's {@code EXERCISES.asciidoc} on the {@code sales_by_store} view, one
  * method per exercise, named in each method's javadoc by the exercise's id ({@code SAKILA-SALES_BY_STORE-B-01}, ...).
  * The exercises are context, not contract: an exercise that shows rows is a {@code list...} method, which leaves the
  * order, and the {@code LIMIT}, to the caller's {@code PageRequest}, and an exercise that sums is a {@code sum...}

@@ -29,7 +29,7 @@ import java.util.Optional;
  * {@code ActorInfo.selectListOrderByActorIdAsc}, {@code ActorInfo.selectListOrderByActorIdAscActorIdGt} and
  * {@code ActorInfo.countAll}), but no method here runs them yet.
  * <p>
- * The methods below answer the exercises of upstream's {@code EXERCISES_COORDINATES.asciidoc} on the {@code actor_info} view, one
+ * The methods below answer the exercises of upstream's {@code EXERCISES.asciidoc} on the {@code actor_info} view, one
  * method per exercise, named in each method's javadoc by the exercise's id ({@code SAKILA-ACTOR_INFO-B-01}, ...), one
  * or two of each level. The exercises are context, not contract: a method that lists rows takes a {@link Pageable},
  * the page and the sort, and returns a {@link Page}, so the order the exercise asks for, and its {@code LIMIT}, are

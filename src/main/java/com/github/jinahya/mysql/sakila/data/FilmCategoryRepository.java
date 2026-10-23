@@ -28,7 +28,7 @@ import org.springframework.stereotype.Repository;
  * {@code FilmCategory.selectListByFilmOrderByCategoryIdAsc}, {@code FilmCategory.countByCategory}, ...), but no
  * method here runs them yet. One that does is named after the query, and binds its parameters with {@code @Param}.
  * <p>
- * The methods below answer the exercises of upstream's {@code EXERCISES_COORDINATES.asciidoc} on the {@code film_category}
+ * The methods below answer the exercises of upstream's {@code EXERCISES.asciidoc} on the {@code film_category}
  * table, one method per exercise, named in each method's javadoc by the exercise's id
  * ({@code SAKILA-FILM_CATEGORY-I-01}, ...). The exercises are context, not contract: a method that shows rows takes
  * a {@link Pageable}, the page and the sort, and returns a {@link Page}, so the order the exercise asks for, and its

@@ -4,7 +4,7 @@
 #
 # Start it from the sibling checkout, which owns the compose file and the init scripts:
 #
-#     cd ../mysql-sakila-persistence && ./_docker-compose-up.sh
+#     cd ../mysql-sakila-persistence && ./_docker_compose_up.sh
 #
 # That runs mysql:9.7 as the container `mysql-sakila`, publishes 3306, and loads docker-entrypoint-initdb.d
 # (01-sakila-schema.sql, then 02-sakila-data.sql) into an empty database; Ctrl-C takes it down again.

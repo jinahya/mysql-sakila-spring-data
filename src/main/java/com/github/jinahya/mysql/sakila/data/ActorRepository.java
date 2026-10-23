@@ -35,7 +35,7 @@ import java.util.stream.Stream;
  * One that does is named after the query, and binds its parameters with {@code @Param}. The methods below derive their
  * queries from their names, or declare them with {@link Query}.
  * <p>
- * The methods after the first two answer the exercises of upstream's {@code EXERCISES_COORDINATES.asciidoc} on the {@code actor}
+ * The methods after the first two answer the exercises of upstream's {@code EXERCISES.asciidoc} on the {@code actor}
  * table, one method per exercise, named in each method's javadoc by the exercise's id ({@code SAKILA-ACTOR-B-01},
  * ...), one or two of each level. The exercises are context, not contract: each method takes a {@link Pageable},
  * the page and the sort, and returns a {@link Page}, so the order the exercise asks for, and its {@code LIMIT}, are

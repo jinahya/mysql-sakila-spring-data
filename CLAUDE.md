@@ -53,7 +53,7 @@ after a change upstream, run `./mvnw -DskipTests install` there before building 
   what the `Pageable` sorts by (`Sort.by(DESC, "actors")`). Not a record: Spring Data rewrites a record projection into
   a constructor expression, which drops the aliases, and a sort by `actors` then fails with
   `Could not interpret path expression`.
-- **Exercises.** Upstream's `../../EXERCISES_COORDINATES.asciidoc` (sibling root; `EXERCISES.yaml` is its registry) is the context, not
+- **Exercises.** Upstream's `../mysql-sakila-persistence/EXERCISES.asciidoc` (sibling root; `EXERCISES.yaml` is its registry) is the context, not
   a contract: for each repository, one or two exercises of each level (Basic, Intermediate, Advanced) become one
   method each, on the repository of the exercise's section, the exercise id (`SAKILA-ACTOR-I-01`) named in the
   method's javadoc together with the sort the exercise asks for, and one `@Nested` test class per method in both test
