@@ -1,7 +1,9 @@
 package com.github.jinahya.mysql.sakila.data;
 
 import com.github.jinahya.mysql.sakila.data.FilmActorRepository.ActorPairCount;
+import com.github.jinahya.mysql.sakila.data.FilmActorRepository.ActorsFilmCount;
 import com.github.jinahya.mysql.sakila.data.FilmActorRepository.FilmActorCount;
+import com.github.jinahya.mysql.sakila.data.FilmActorRepository.FilmPairActorCount;
 import com.github.jinahya.mysql.sakila.persistence.FilmActor;
 import com.github.jinahya.mysql.sakila.persistence.FilmActorId;
 import com.github.jinahya.mysql.sakila.persistence.FilmActorId_;
@@ -27,6 +29,7 @@ import java.util.Objects;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.assertj.core.api.Assertions.within;
 import static org.assertj.core.api.Assumptions.assumeThat;
 
@@ -179,6 +182,24 @@ class FilmActorRepository_SpringBootIT
         }
 
         /**
+         * Asserts that the first five, the most cast first and then by id as the exercise sorts, are the exercise's
+         * output.
+         */
+        @Test
+        void __Expected() {
+            final var page = repositoryInstance().selectActorCounts(PageRequest.of(0, 5, BY_ACTORS_DESC_THEN_FILM_ID));
+            assertThat(page.getContent())
+                    .extracting(FilmActorCount::getFilmId, FilmActorCount::getTitle, FilmActorCount::getActors)
+                    .containsExactly(
+                            tuple(508, "LAMBS CINCINATTI", 15L),
+                            tuple(87, "BOONDOCK BALLROOM", 13L),
+                            tuple(146, "CHITTY LOCK", 13L),
+                            tuple(188, "CRAZY HOME", 13L),
+                            tuple(249, "DRACULA CRYSTAL", 13L)
+                    );
+        }
+
+        /**
          * Asserts that the film of a selected link is among the films selected, with at least one actor.
          *
          * @param filmActor one of the links selected in {@link FilmActorRepository_SpringBootIT#__()}.
@@ -202,9 +223,16 @@ class FilmActorRepository_SpringBootIT
     class SelectAverageActors_Test {
 
         /**
+         * Asserts that the average is the exercise's output, {@code 5.48}.
+         */
+        @Test
+        void __Expected() {
+            assertThat(repositoryInstance().selectAverageActors()).hasValue(5.48d);
+        }
+
+        /**
          * Asserts that the average is present, and is the number of all links over the number of films with a link,
-         * which {@link FilmActorRepository#selectActorCounts(Pageable)} groups; the exercise rounds it to two decimal
-         * places, which is done here, not in the query.
+         * which {@link FilmActorRepository#selectActorCounts(Pageable)} groups, rounded to two decimal places.
          */
         @Test
         void __() {
@@ -212,11 +240,58 @@ class FilmActorRepository_SpringBootIT
             final var links = repositoryInstance().count();
             final var films = repositoryInstance().selectActorCounts(Pageable.unpaged()).getTotalElements();
             assumeThat(films).isPositive();
-            final var expected = (double) links / films;
+            final var expected = Math.round((double) links / films * 100.0d) / 100.0d;
             assertThat(average).hasValueSatisfying(v -> {
-                assertThat(v).isCloseTo(expected, within(1e-3d));
-                assertThat(Math.round(v * 100.0d) / 100.0d).isEqualTo(Math.round(expected * 100.0d) / 100.0d);
+                assertThat(v).isCloseTo(expected, within(1e-9d));
             });
+        }
+    }
+
+    /**
+     * Tests {@link FilmActorRepository#selectFilmCountsByActors()} ({@code SAKILA-FILM_ACTOR-I-04}).
+     */
+    @Nested
+    class SelectFilmCountsByActors_Test {
+
+        /**
+         * Asserts that the list is the exercise's output, by the number of actors.
+         */
+        @Test
+        void __Expected() {
+            final var list = repositoryInstance().selectFilmCountsByActors();
+            assertThat(list)
+                    .extracting(ActorsFilmCount::getActors, ActorsFilmCount::getFilms)
+                    .containsExactly(
+                            tuple(1L, 21L),
+                            tuple(2L, 69L),
+                            tuple(3L, 119L),
+                            tuple(4L, 137L),
+                            tuple(5L, 195L),
+                            tuple(6L, 150L),
+                            tuple(7L, 119L),
+                            tuple(8L, 90L),
+                            tuple(9L, 49L),
+                            tuple(10L, 21L),
+                            tuple(11L, 14L),
+                            tuple(12L, 6L),
+                            tuple(13L, 6L),
+                            tuple(15L, 1L)
+                    );
+        }
+
+        /**
+         * Asserts that the films counted are, in all, the films with a link, and their actors, in all, the links,
+         * both through {@link FilmActorRepository#selectActorCounts(Pageable)}'s count and the repository's own.
+         */
+        @Test
+        void __() {
+            final var list = repositoryInstance().selectFilmCountsByActors();
+            assertThat(list)
+                    .isSortedAccordingTo(Comparator.comparingLong(ActorsFilmCount::getActors));
+            final var films = list.stream().mapToLong(ActorsFilmCount::getFilms).sum();
+            final var links = list.stream().mapToLong(c -> c.getActors() * c.getFilms()).sum();
+            assertThat(films).isEqualTo(repositoryInstance().selectActorCounts(Pageable.unpaged()).getTotalElements());
+            assertThat(links).isEqualTo(repositoryInstance().count());
         }
     }
 
@@ -228,6 +303,23 @@ class FilmActorRepository_SpringBootIT
 
         private static final Sort BY_FILMS_DESC_THEN_ACTOR_IDS =
                 Sort.by(Sort.Direction.DESC, "films").and(Sort.by("actorId1", "actorId2"));
+
+        /**
+         * Asserts that the first three, the pairs appearing together the most first and then by their ids as the
+         * exercise sorts, are the exercise's output.
+         */
+        @Test
+        void __Expected() {
+            final var page = repositoryInstance().selectCoStarCounts(
+                    PageRequest.of(0, 3, BY_FILMS_DESC_THEN_ACTOR_IDS));
+            assertThat(page.getContent())
+                    .extracting(ActorPairCount::getActorId1, ActorPairCount::getActorId2, ActorPairCount::getFilms)
+                    .containsExactly(
+                            tuple(27, 60, 7L),
+                            tuple(15, 198, 6L),
+                            tuple(21, 108, 6L)
+                    );
+        }
 
         /**
          * Asserts that a page of the given size, the pairs appearing together the most first as the exercise sorts,
@@ -252,6 +344,44 @@ class FilmActorRepository_SpringBootIT
                         assertThat(c.getFilms()).as("films of actors %d and %d", c.getActorId1(), c.getActorId2())
                                 .isPositive()
                                 .isEqualTo(countFilmsOfBoth(c.getActorId1(), c.getActorId2()));
+                    });
+        }
+    }
+
+    /**
+     * Tests {@link FilmActorRepository#selectFilmPairsWithSameActors(Pageable)} ({@code SAKILA-FILM_ACTOR-A-03}).
+     */
+    @Nested
+    class SelectFilmPairsWithSameActors_Test {
+
+        private static final Sort BY_FILM_IDS = Sort.by("filmId1", "filmId2");
+
+        /**
+         * Asserts that the pairs, by the films' ids as the exercise sorts, are the exercise's output, one pair in all.
+         */
+        @Test
+        void __Expected() {
+            final var page = repositoryInstance().selectFilmPairsWithSameActors(PageRequest.of(0, 5, BY_FILM_IDS));
+            assertThat(page.getContent())
+                    .extracting(FilmPairActorCount::getFilmId1, FilmPairActorCount::getFilmId2,
+                                FilmPairActorCount::getActors)
+                    .containsExactly(tuple(97, 556, 1L));
+            assertThat(page.getTotalElements()).isEqualTo(1L);
+        }
+
+        /**
+         * Asserts that each pair selected has the smaller id first, and that each count is the number of actors of
+         * either film.
+         */
+        @Test
+        void __() {
+            final var page = repositoryInstance().selectFilmPairsWithSameActors(Pageable.unpaged(BY_FILM_IDS));
+            assertThat(page.getContent())
+                    .allSatisfy(c -> {
+                        assertThat(c.getFilmId1()).isLessThan(c.getFilmId2());
+                        assertThat(c.getActors())
+                                .isEqualTo(countByFilmId(c.getFilmId1()))
+                                .isEqualTo(countByFilmId(c.getFilmId2()));
                     });
         }
     }

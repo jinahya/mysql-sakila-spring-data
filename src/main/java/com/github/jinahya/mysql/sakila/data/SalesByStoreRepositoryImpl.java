@@ -1,6 +1,7 @@
 package com.github.jinahya.mysql.sakila.data;
 
 import com.github.jinahya.mysql.sakila.persistence.SalesByStore;
+import org.jspecify.annotations.Nullable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -9,8 +10,10 @@ import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 
 /**
  * The {@link SalesByStoreRepository}, over a {@link org.springframework.jdbc.core.simple.JdbcClient}.
@@ -23,11 +26,13 @@ import java.util.Objects;
  * Spring's {@code SimplePropertyRowMapper} matches {@code store} and {@code manager} to the parameters of those names,
  * and {@code total_sales} to {@code totalSales}, by the underscore convention.
  * <p>
- * {@link #sumTotalSales()} reads its statement from {@code SALES_BY_STORE_SUM_TOTAL_SALES.sql} beside this class;
- * {@link #listAll(Pageable)} writes its own in place. The page is selected with an {@code ORDER BY} built from the
- * {@link Pageable}'s {@link Sort}, each property mapped to a column of the view through {@link #COLUMNS}, and
- * {@code store} last, and with {@code LIMIT ... OFFSET ...} from the page, unless the {@code Pageable} is unpaged;
- * the total comes from a {@code COUNT(*)} of the view, run only when the page needs it.
+ * {@link #sumTotalSales()} and the exercise methods read their statements from {@code .sql} resources beside this
+ * class, named {@code SALES_BY_STORE_<METHOD>.sql} after the method ({@code SALES_BY_STORE_SUM_TOTAL_SALES.sql}, ...),
+ * each exercise's statement as {@code EXERCISES.asciidoc} has it; {@link #listAll(Pageable)} writes its own in place.
+ * The page is selected with an {@code ORDER BY} built from the {@link Pageable}'s {@link Sort}, each property mapped
+ * to a column of the view through {@link #COLUMNS}, and {@code store} last, and with {@code LIMIT ... OFFSET ...} from
+ * the page, unless the {@code Pageable} is unpaged; the total comes from a {@code COUNT(*)} of the view, run only when
+ * the page needs it.
  *
  * @see SalesByStoreRepository
  */
@@ -50,6 +55,30 @@ public class SalesByStoreRepositoryImpl
      */
     private static final String SQL_SUM_TOTAL_SALES =
             sql(SalesByStoreRepositoryImpl.class, "SALES_BY_STORE_SUM_TOTAL_SALES.sql");
+
+    /**
+     * The statement of {@link #listSales()}, {@code SAKILA-SALES_BY_STORE-B-01}.
+     */
+    private static final String SQL_LIST_SALES =
+            sql(SalesByStoreRepositoryImpl.class, "SALES_BY_STORE_LIST_SALES.sql");
+
+    /**
+     * The statement of {@link #selectSalesDifference()}, {@code SAKILA-SALES_BY_STORE-B-02}.
+     */
+    private static final String SQL_SELECT_SALES_DIFFERENCE =
+            sql(SalesByStoreRepositoryImpl.class, "SALES_BY_STORE_SELECT_SALES_DIFFERENCE.sql");
+
+    /**
+     * The statement of {@link #sumByStoreAndWithARental()}, {@code SAKILA-SALES_BY_STORE-I-01}.
+     */
+    private static final String SQL_SUM_BY_STORE_AND_WITH_A_RENTAL =
+            sql(SalesByStoreRepositoryImpl.class, "SALES_BY_STORE_SUM_BY_STORE_AND_WITH_A_RENTAL.sql");
+
+    /**
+     * The statement of {@link #listSalesAndTakenByManager()}, {@code SAKILA-SALES_BY_STORE-I-02}.
+     */
+    private static final String SQL_LIST_SALES_AND_TAKEN_BY_MANAGER =
+            sql(SalesByStoreRepositoryImpl.class, "SALES_BY_STORE_LIST_SALES_AND_TAKEN_BY_MANAGER.sql");
 
     /**
      * Builds the {@code ORDER BY} clause of the specified sort, with {@code store} appended as the last key unless the
@@ -96,7 +125,6 @@ public class SalesByStoreRepositoryImpl
                 .single();
     }
 
-    // ----------------------------------------------------------------------------------------------------- exercises
     @Override
     public Page<SalesByStore> listAll(final Pageable pageable) {
         Objects.requireNonNull(pageable, "pageable is null");
@@ -122,5 +150,42 @@ public class SalesByStoreRepositoryImpl
         return jdbcClient().sql(SQL_SUM_TOTAL_SALES)
                 .query(BigDecimal.class)
                 .single();
+    }
+
+    // ----------------------------------------------------------------------------------------------------- exercises
+    @Override
+    public List<SalesByStore> listSales() {
+        return jdbcClient().sql(SQL_LIST_SALES)
+                .query(targetClass)
+                .list();
+    }
+
+    @Override
+    public @Nullable BigDecimal selectSalesDifference() {
+        // an aggregate without GROUP BY gives one row, whose value is NULL when the view has no row
+        return jdbcClient().sql(SQL_SELECT_SALES_DIFFERENCE)
+                .query((rs, rowNum) -> Optional.ofNullable(rs.getBigDecimal("difference")))
+                .single()
+                .orElse(null);
+    }
+
+    @Override
+    public ByStoreAndWithARental sumByStoreAndWithARental() {
+        return jdbcClient().sql(SQL_SUM_BY_STORE_AND_WITH_A_RENTAL)
+                .query((rs, rowNum) -> new ByStoreAndWithARental(
+                        rs.getBigDecimal("by_store"),
+                        rs.getBigDecimal("with_a_rental")))
+                .single();
+    }
+
+    @Override
+    public List<SalesAndTakenByManager> listSalesAndTakenByManager() {
+        return jdbcClient().sql(SQL_LIST_SALES_AND_TAKEN_BY_MANAGER)
+                .query((rs, rowNum) -> new SalesAndTakenByManager(
+                        rs.getString(SalesByStore.COLUMN_NAME_STORE),
+                        rs.getString(SalesByStore.COLUMN_NAME_MANAGER),
+                        rs.getBigDecimal(SalesByStore.COLUMN_NAME_TOTAL_SALES),
+                        rs.getBigDecimal("taken_by_manager")))
+                .list();
     }
 }

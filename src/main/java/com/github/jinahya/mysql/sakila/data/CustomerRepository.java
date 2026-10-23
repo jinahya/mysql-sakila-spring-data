@@ -5,11 +5,14 @@ import com.github.jinahya.mysql.sakila.persistence.Customer_;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.jpa.repository.NativeQuery;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Objects;
+import java.util.stream.Stream;
 
 /**
  * A repository for {@link Customer}, the {@code customer} table of the Sakila database.
@@ -27,18 +30,24 @@ import java.util.Objects;
  * {@code (root, query, builder) -> builder.isTrue(root.get(Customer_.active))}.
  * <p>
  * The methods below answer the exercises of upstream's {@code EXERCISES.asciidoc} on the {@code customer} table, one
- * method per exercise, named in each method's javadoc by the exercise's id ({@code SAKILA-CUSTOMER-B-01}, ...), one
- * or two of each level. The exercises are context, not contract: each method takes a {@link Pageable}, the page and
- * the sort, and returns a {@link Page}, so the order the exercise asks for, and its {@code LIMIT}, are the caller's
- * {@code PageRequest}; each method's javadoc says which sort that is. An exercise that shows rows is a {@code default}
- * method, {@code list...}, which builds a {@link Specification} with the Criteria API and runs it through
- * {@link org.springframework.data.jpa.repository.JpaSpecificationExecutor}. An exercise that shows columns, grouped
- * and counted, cannot be a {@code Specification}, which only filters; such a method, {@code select...}, declares its
- * JPQL with {@link Query}, with a count query of its own since Spring Data cannot derive one from a grouped select,
- * and returns a projection, one of the interfaces declared here, which Spring Data backs with the selected columns,
- * each aliased with the name of the getter it feeds. Those aliases are what the {@code Pageable} sorts by; an
- * interface rather than a record, because Spring Data rewrites a record projection into a constructor expression,
- * which drops the aliases, and the sort with them.
+ * method per exercise, named in each method's javadoc by the exercise's id ({@code SAKILA-CUSTOMER-B-01}, ...), and
+ * by its role: the book's pick, which every data module answers, this module's own extra, or a native-only one. A
+ * Basic method is plain: the book's pick returns a {@link List}, this module's own extra a {@link Stream}, in the
+ * order the exercise asks for, written in the query. An Intermediate or Advanced method takes a {@link Pageable}, the
+ * page and the sort, and returns a {@link Page}, so the order the exercise asks for, and its {@code LIMIT}, are the
+ * caller's {@code PageRequest}; each method's javadoc says which sort that is. An exercise that shows rows is a
+ * {@code default} method, {@code list...}, which builds a {@link Specification} with the Criteria API and runs it
+ * through {@link org.springframework.data.jpa.repository.JpaSpecificationExecutor}. An exercise that shows columns,
+ * grouped and counted, cannot be a {@code Specification}, which only filters; such a method, {@code select...},
+ * declares its JPQL with {@link Query}, with a count query of its own where it is paged, since Spring Data cannot
+ * derive one from a grouped select, and returns a projection, one of the interfaces declared here, which Spring Data
+ * backs with the selected columns, each aliased with the name of the getter it feeds. Those aliases are what the
+ * {@code Pageable} sorts by; an interface rather than a record, because Spring Data rewrites a record projection into
+ * a constructor expression, which drops the aliases, and the sort with them.
+ * <p>
+ * An exercise only native SQL can answer, here a top three of each store, which takes a window function JPQL does
+ * not have, is a {@link NativeQuery} of the exercise's own SQL, with its order and its limit, returning a list of a
+ * projection whose getters name the select's aliases.
  *
  * @see Customer
  * @see Customer_
@@ -50,8 +59,7 @@ public interface CustomerRepository
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * A value of the {@code active} flag, and how many customers have it: a projection of
-     * {@link #selectActiveCounts(Pageable)}, sortable by {@code active} and {@code customers}.
+     * A value of the {@code active} flag, and how many customers have it: a row of {@link #selectActiveCounts()}.
      */
     interface ActiveCount {
 
@@ -71,8 +79,7 @@ public interface CustomerRepository
     }
 
     /**
-     * A store, by id, and how many customers it has: a projection of {@link #selectStoreCounts(Pageable)}, sortable by
-     * {@code storeId} and {@code customers}.
+     * A store, by id, and how many customers it has: a row of {@link #selectStoreCounts()}.
      */
     interface StoreCustomerCount {
 
@@ -128,51 +135,120 @@ public interface CustomerRepository
     }
 
     /**
-     * Selects each value of the {@link Customer_#ACTIVE} flag with the number of customers who have it
-     * ({@code SAKILA-CUSTOMER-B-01}, which orders by {@code active}).
-     * <p>
-     * The customers are grouped by the flag and counted. The flag is a {@link Boolean} here, mapped from the
-     * {@code 0} / {@code 1} of the column, so the page holds at most two rows; the count query counts the distinct
-     * values.
-     *
-     * @param pageable the page to return, and its sort, by {@code active} or {@code customers}; must not be
-     *                 {@code null}.
-     * @return a page of the values of the flag, with their counts.
+     * A customer of a store, by id and names, and the sum of the customer's payments: a row of
+     * {@link #selectTopThreePayersOfEachStore()}.
      */
-    @Query(value = """
-            SELECT c.active AS active, COUNT(c) AS customers
-            FROM Customer c
-            GROUP BY c.active""",
-           countQuery = """
-                   SELECT COUNT(DISTINCT c.active)
-                   FROM Customer c""")
-    Page<ActiveCount> selectActiveCounts(Pageable pageable);
+    interface StoreCustomerPaidTotal {
+
+        /**
+         * Returns the id of the store the customer belongs to.
+         *
+         * @return the id of the store.
+         */
+        Integer getStoreId();
+
+        /**
+         * Returns the id of the customer.
+         *
+         * @return the id of the customer.
+         */
+        Integer getCustomerId();
+
+        /**
+         * Returns the first name of the customer.
+         *
+         * @return the first name of the customer.
+         */
+        String getFirstName();
+
+        /**
+         * Returns the last name of the customer.
+         *
+         * @return the last name of the customer.
+         */
+        String getLastName();
+
+        /**
+         * Returns the sum of the customer's payments.
+         *
+         * @return the sum of the payments.
+         */
+        BigDecimal getPaid();
+    }
 
     /**
-     * Selects each store, by id, with the number of its customers ({@code SAKILA-CUSTOMER-B-02}, which orders by
-     * {@code storeId}).
+     * A store, by id, how many of its customers paid more than its average paying customer, and that average: a
+     * projection of {@link #selectAboveAveragePayerCounts(Pageable)}, sortable by {@code storeId}, {@code customers}
+     * and {@code averagePaid}.
+     */
+    interface StoreAboveAverageCount {
+
+        /**
+         * Returns the id of the store.
+         *
+         * @return the id of the store.
+         */
+        Integer getStoreId();
+
+        /**
+         * Returns the number of the store's customers who paid more than the store's average paying customer.
+         *
+         * @return the number of customers.
+         */
+        long getCustomers();
+
+        /**
+         * Returns what the store's average paying customer paid, rounded to two decimal places.
+         *
+         * @return the average sum of payments.
+         */
+        BigDecimal getAveragePaid();
+    }
+
+    /**
+     * Selects each value of the {@link Customer_#ACTIVE} flag with the number of customers who have it, as a stream
+     * ({@code SAKILA-CUSTOMER-B-01}, this module's own extra, which orders by {@code active}).
+     * <p>
+     * The customers are grouped by the flag and counted, in the order of the flag, written in the query. The flag is a
+     * {@link Boolean} here, mapped from the {@code 0} / {@code 1} of the column, so the stream yields at most two rows,
+     * {@code false} first.
+     * <p>
+     * A {@link Stream} reads the rows as they are consumed, over a result set that stays open until the stream is
+     * closed, so close it, in a try-with-resources. It also has to be consumed inside a transaction the caller opened:
+     * the transaction the repository opens for itself ends when this method returns, which would close the result set
+     * under the stream, so Spring Data refuses a call that no transaction surrounds, with an
+     * {@link org.springframework.dao.InvalidDataAccessApiUsageException}, before any query runs.
+     *
+     * @return a stream of the values of the flag, with their counts, to be closed by the caller.
+     */
+    @Query("""
+            SELECT c.active AS active, COUNT(c) AS customers
+            FROM Customer c
+            GROUP BY c.active
+            ORDER BY c.active""")
+    Stream<ActiveCount> selectActiveCounts();
+
+    /**
+     * Selects each store, by id, with the number of its customers ({@code SAKILA-CUSTOMER-B-02}, the book's pick,
+     * which orders by {@code storeId}).
      * <p>
      * The customers are grouped by the id of their {@link Customer_#STORE}, a path through the association which
-     * Hibernate resolves to the foreign key column, with no join; the count query counts the distinct stores that
-     * have a customer.
+     * Hibernate resolves to the foreign key column, with no join, and counted, in the order of the store's id, written
+     * in the query.
      *
-     * @param pageable the page to return, and its sort, by {@code storeId} or {@code customers}; must not be
-     *                 {@code null}.
-     * @return a page of the stores that have a customer, with their numbers of customers.
+     * @return a list of the stores that have a customer, with their numbers of customers, by the id of the store.
      */
-    @Query(value = """
+    @Query("""
             SELECT c.store.storeId AS storeId, COUNT(c) AS customers
             FROM Customer c
-            GROUP BY c.store.storeId""",
-           countQuery = """
-                   SELECT COUNT(DISTINCT c.store.storeId)
-                   FROM Customer c""")
-    Page<StoreCustomerCount> selectStoreCounts(Pageable pageable);
+            GROUP BY c.store.storeId
+            ORDER BY c.store.storeId""")
+    List<StoreCustomerCount> selectStoreCounts();
 
     /**
      * Selects the customers who paid at least once, with the sum of their payments ({@code SAKILA-CUSTOMER-I-01},
-     * which takes the first five by {@code paid} descending, then by {@code customerId}, so that the five are always
-     * the same five).
+     * the book's pick, which takes the first five by {@code paid} descending, then by {@code customerId}, so that the
+     * five are always the same five).
      * <p>
      * The payments are summed through the customer's {@link Customer_#PAYMENTS}, by an inner join, so a customer with
      * no payment is not in the page; the count query counts the customers that have one.
@@ -194,8 +270,9 @@ public interface CustomerRepository
     Page<CustomerPaidTotal> selectPaidTotals(Pageable pageable);
 
     /**
-     * Lists the customers who never rented ({@code SAKILA-CUSTOMER-I-02}, which shows the whole rows, in no particular
-     * order; the installed sample data has none).
+     * Lists the customers who never rented ({@code SAKILA-CUSTOMER-I-02}, this module's own extra, which shows the
+     * whole rows, in no particular order; give it one, such as by {@link Customer_#CUSTOMER_ID}; the installed sample
+     * data has none).
      * <p>
      * A {@link Specification} of one predicate, {@code isEmpty} on the customer's {@link Customer_#RENTALS}, which
      * Hibernate renders as the exercise's {@code NOT EXISTS} on the {@code rental} table.
@@ -208,4 +285,62 @@ public interface CustomerRepository
         final Specification<Customer> specification = (r, q, b) -> b.isEmpty(r.get(Customer_.rentals));
         return findAll(specification, pageable);
     }
+
+    /**
+     * Selects the three customers who paid the most at each store ({@code SAKILA-CUSTOMER-A-01}, native-only, ordered
+     * by {@code storeId}, then by {@code paid} descending, then by {@code customerId}, in the query).
+     * <p>
+     * The payments are summed by customer, and the customers numbered within their store by {@code ROW_NUMBER()}, the
+     * biggest payer first, ties broken by the id; the first three of each store are kept. JPQL has no window function,
+     * so this is the exercise's own SQL, with the aliases named after the getters of {@link StoreCustomerPaidTotal}.
+     *
+     * @return a list of the three biggest payers of each store, store by store.
+     */
+    @NativeQuery("""
+            SELECT store_id AS storeId, customer_id AS customerId, first_name AS firstName, last_name AS lastName,
+                   paid
+            FROM (SELECT c.store_id, c.customer_id, c.first_name, c.last_name, SUM(p.amount) AS paid,
+                         ROW_NUMBER() OVER (PARTITION BY c.store_id ORDER BY SUM(p.amount) DESC, c.customer_id) AS n
+                  FROM customer c
+                           JOIN payment p ON p.customer_id = c.customer_id
+                  GROUP BY c.store_id, c.customer_id, c.first_name, c.last_name) t
+            WHERE n <= 3
+            ORDER BY store_id, n""")
+    List<StoreCustomerPaidTotal> selectTopThreePayersOfEachStore();
+
+    /**
+     * Selects, for each store, how many of its customers paid more than the store's average paying customer, with
+     * that average ({@code SAKILA-CUSTOMER-A-02}, the book's pick, which orders by {@code storeId}).
+     * <p>
+     * JPQL has no common table expression, so the sums are correlated subqueries: a customer's own sum of payments,
+     * against the sum of all payments to customers of the store divided by the number of the store's customers who
+     * paid at least once, which is the store's average paying customer. The customers who pass are grouped by store
+     * and counted, and the average is selected beside the count, rounded to two places. The count query counts the
+     * stores that have such a customer, through the same predicate.
+     *
+     * @param pageable the page to return, and its sort, by {@code storeId}, {@code customers} or
+     *                 {@code averagePaid}; must not be {@code null}.
+     * @return a page of the stores, with their numbers of customers who paid more than the store's average.
+     */
+    @Query(value = """
+            SELECT s.storeId AS storeId,
+                   COUNT(c) AS customers,
+                   ROUND((SELECT SUM(p3.amount) FROM Payment p3 WHERE p3.customer.store = s)
+                         / (SELECT COUNT(c3) FROM Customer c3 WHERE c3.store = s AND c3.payments IS NOT EMPTY),
+                         2) AS averagePaid
+            FROM Customer c
+            JOIN c.store s
+            WHERE (SELECT SUM(p.amount) FROM Payment p WHERE p.customer = c)
+                  > (SELECT SUM(p2.amount) FROM Payment p2 WHERE p2.customer.store = s)
+                    / (SELECT COUNT(c2) FROM Customer c2 WHERE c2.store = s AND c2.payments IS NOT EMPTY)
+            GROUP BY s.storeId""",
+           countQuery = """
+                   SELECT COUNT(DISTINCT c.store)
+                   FROM Customer c
+                   WHERE (SELECT SUM(p.amount) FROM Payment p WHERE p.customer = c)
+                         > (SELECT SUM(p2.amount) FROM Payment p2 WHERE p2.customer.store = c.store)
+                           / (SELECT COUNT(c2)
+                              FROM Customer c2
+                              WHERE c2.store = c.store AND c2.payments IS NOT EMPTY)""")
+    Page<StoreAboveAverageCount> selectAboveAveragePayerCounts(Pageable pageable);
 }

@@ -8,7 +8,9 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Objects;
+import java.util.stream.Stream;
 
 /**
  * A repository for {@link Film}, the {@code film} table of the Sakila database.
@@ -29,13 +31,16 @@ import java.util.Objects;
  * method here runs them yet. One that does is named after the query, and binds its parameters with {@code @Param}.
  * <p>
  * The methods below answer the exercises of upstream's {@code EXERCISES.asciidoc} on the {@code film} table, one
- * method per exercise, named in each method's javadoc by the exercise's id ({@code SAKILA-FILM-B-01}, ...), one or
- * two of each level. The exercises are context, not contract: a method that shows rows takes a {@link Pageable}, the
- * page and the sort, and returns a {@link Page}, so the order the exercise asks for, and its {@code LIMIT}, are the
- * caller's {@code PageRequest}; each method's javadoc says which sort that is. An exercise that shows rows is a
- * {@code default} method, {@code list...}, which builds a {@link Specification} with the Criteria API and runs it
- * through {@link org.springframework.data.jpa.repository.JpaSpecificationExecutor}; one that counts rows is a
- * {@code default} method, {@code count...}, over a {@link Specification} too. An exercise that shows columns, grouped
+ * method per exercise, in the order of the exercises' ids, each named in its javadoc by the id
+ * ({@code SAKILA-FILM-B-01}, ...) and by its role: the book's pick, this module's own extra, or not a pick, kept from
+ * before the picks. The exercises are context, not contract. A Basic one is plain: no {@link Pageable}, the order the
+ * exercise asks for written in the query, a {@link List} for the book's pick and a {@link Stream} for this module's
+ * own extra. An Intermediate or Advanced one takes a {@link Pageable}, the page and the sort, and returns a
+ * {@link Page}, so the order the exercise asks for, and its {@code LIMIT}, are the caller's {@code PageRequest}; each
+ * method's javadoc says which sort that is. An exercise that counts the rows of a filter is answered by the page of
+ * those rows, whose {@link Page#getTotalElements()} is the count. An exercise that shows rows is a {@code default}
+ * method, {@code list...}, which builds a {@link Specification} with the Criteria API and runs it through
+ * {@link org.springframework.data.jpa.repository.JpaSpecificationExecutor}. An exercise that shows columns, grouped
  * and counted, cannot be a {@link Specification}, which only filters; such a method, {@code select...}, declares its
  * JPQL with {@link Query}, with a count query of its own since Spring Data cannot derive one from a grouped select,
  * and returns a projection, one of the interfaces declared here, which Spring Data backs with the selected columns,
@@ -53,8 +58,8 @@ public interface FilmRepository
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * A rating, and how many films have it: a projection of {@link #selectRatingCounts(Pageable)}, sortable by
-     * {@code rating} and {@code films}.
+     * A rating, and how many films have it: a projection of {@link #selectRatingCounts()} and
+     * {@link #selectRatingCountsOfLongerThanRatingAverage(Pageable)}, sortable by {@code rating} and {@code films}.
      */
     interface RatingCount {
 
@@ -71,6 +76,26 @@ public interface FilmRepository
          * @return the number of films.
          */
         long getFilms();
+    }
+
+    /**
+     * A rating, and the average rental rate of its films: a projection of {@link #selectAverageRentalRates()}.
+     */
+    interface RatingAverageRentalRate {
+
+        /**
+         * Returns the rating.
+         *
+         * @return the rating.
+         */
+        Film.Rating getRating();
+
+        /**
+         * Returns the average rental rate of the films of the rating, rounded to two decimal places.
+         *
+         * @return the average rental rate.
+         */
+        double getAverageRentalRate();
     }
 
     /**
@@ -102,30 +127,27 @@ public interface FilmRepository
     }
 
     /**
-     * Selects the ratings, with how many films each has ({@code SAKILA-FILM-B-01}, which orders by {@code rating}).
+     * Selects the ratings, with how many films each has ({@code SAKILA-FILM-B-01}, the book's pick, which orders by
+     * {@code rating}).
      * <p>
-     * The films are grouped by rating and counted, so it is a {@link Query}, not a {@link Specification}. A film with
-     * no rating is left out, by both the query and its count query, which counts the distinct ratings. The rating is
-     * an {@code ENUM} column on the Sakila database, so a sort by {@code rating} there is in the order of the
-     * {@code ENUM}'s values, which is the order of {@link Film.Rating}'s constants, not the alphabetical one.
+     * The films are grouped by rating and counted, so it is a {@link Query}, not a {@link Specification}, and the
+     * order is the query's own. A film with no rating is left out. The rating is an {@code ENUM} column on the Sakila
+     * database, so the order there is that of the {@code ENUM}'s values, which is the order of {@link Film.Rating}'s
+     * constants, not the alphabetical one.
      *
-     * @param pageable the page to return, and its sort, by {@code rating} or {@code films}; must not be {@code null}.
-     * @return a page of the ratings, with their numbers of films.
+     * @return a list of the ratings, with their numbers of films, by rating.
      */
-    @Query(value = """
+    @Query("""
             SELECT f.rating AS rating, COUNT(f) AS films
             FROM Film f
             WHERE f.rating IS NOT NULL
-            GROUP BY f.rating""",
-           countQuery = """
-                   SELECT COUNT(DISTINCT f.rating)
-                   FROM Film f
-                   WHERE f.rating IS NOT NULL""")
-    Page<RatingCount> selectRatingCounts(Pageable pageable);
+            GROUP BY f.rating
+            ORDER BY f.rating""")
+    List<RatingCount> selectRatingCounts();
 
     /**
      * Lists the films whose value of {@link Film_#LENGTH} attribute is greater than the specified value
-     * ({@code SAKILA-FILM-B-02}, which takes the first five by {@link Film_#LENGTH} descending, then by
+     * ({@code SAKILA-FILM-B-02}, not a pick, which takes the first five by {@link Film_#LENGTH} descending, then by
      * {@link Film_#TITLE}; the exercise asks for more than three hours, {@code 180}).
      * <p>
      * A {@link Specification} of one comparison; no join. A film with no length is not longer than anything, so it
@@ -142,23 +164,51 @@ public interface FilmRepository
     }
 
     /**
-     * Counts the films which have no copy in the inventory ({@code SAKILA-FILM-I-01}).
+     * Selects the ratings, with the average rental rate of the films of each, as a stream ({@code SAKILA-FILM-B-03},
+     * this module's own extra, which orders by {@code rating}).
+     * <p>
+     * The films are grouped by rating, and the average of their {@link Film_#RENTAL_RATE} is rounded to two decimal
+     * places in the query, as the exercise does. A film with no rating is left out, and the order is that of
+     * {@link #selectRatingCounts()}.
+     * <p>
+     * A {@link Stream} reads the rows as they are consumed, over a result set that stays open until the stream is
+     * closed, so close it, in a try-with-resources. It also has to be consumed inside a transaction the caller opened:
+     * Spring Data refuses a call that no transaction surrounds, with an
+     * {@link org.springframework.dao.InvalidDataAccessApiUsageException}, before any query runs.
+     *
+     * @return a stream of the ratings, with the average rental rates of their films, by rating, to be closed by the
+     *         caller.
+     */
+    @Query("""
+            SELECT f.rating AS rating, ROUND(AVG(f.rentalRate), 2) AS averageRentalRate
+            FROM Film f
+            WHERE f.rating IS NOT NULL
+            GROUP BY f.rating
+            ORDER BY f.rating""")
+    Stream<RatingAverageRentalRate> selectAverageRentalRates();
+
+    /**
+     * Lists the films which have no copy in the inventory ({@code SAKILA-FILM-I-01}, this module's own extra, which
+     * asks how many; that is the page's {@link Page#getTotalElements()}, whatever its size, and the exercise names no
+     * order).
      * <p>
      * A {@link Specification} of one {@code IS EMPTY} on the film's {@link Film_#INVENTORIES}, which the provider
-     * renders as a {@code NOT EXISTS} on the {@code inventory} table, run through
-     * {@link org.springframework.data.jpa.repository.JpaSpecificationExecutor#count(Specification)}.
+     * renders as a {@code NOT EXISTS} on the {@code inventory} table; the count query Spring Data derives from it
+     * counts the same films.
      *
-     * @return the number of films with no copy.
+     * @param pageable the page to return, and its sort; must not be {@code null}.
+     * @return a page of the films with no copy.
      */
-    default long countWithoutInventory() {
+    default Page<Film> listWithoutInventory(final Pageable pageable) {
+        Objects.requireNonNull(pageable, "pageable is null");
         final Specification<Film> specification = (r, q, b) -> b.isEmpty(r.get(Film_.inventories));
-        return count(specification);
+        return findAll(specification, pageable);
     }
 
     /**
-     * Selects the films which were rented at least once, with how many times ({@code SAKILA-FILM-I-02}, which
-     * takes the first five by {@code rentals} descending, then by {@code filmId}, so that the five are always the
-     * same five).
+     * Selects the films which were rented at least once, with how many times ({@code SAKILA-FILM-I-02}, the book's
+     * pick, which takes the first five by {@code rentals} descending, then by {@code filmId}, so that the five are
+     * always the same five).
      * <p>
      * A rental refers to a copy, and a copy to a film, so the rentals are counted through two inner joins, from the
      * film's {@link Film_#INVENTORIES} to each copy's rentals; a film never rented is not in the page. The count
@@ -181,4 +231,27 @@ public interface FilmRepository
                                  FROM Rental r
                                  WHERE r.inventory.film = f)""")
     Page<FilmRentalCount> selectRentalCounts(Pageable pageable);
+
+    /**
+     * Selects the ratings, with how many of their films are longer than the average film of the rating
+     * ({@code SAKILA-FILM-A-01}, the book's pick, which orders by {@code rating}).
+     * <p>
+     * A correlated subquery averages the {@link Film_#LENGTH} of the films of the outer film's rating; the films
+     * longer than it are grouped by rating and counted. The count query counts the distinct ratings that keep a film
+     * through the same filter. As in {@link #selectRatingCounts()}, a sort by {@code rating} on the Sakila database is
+     * in the order of the {@code ENUM}'s values.
+     *
+     * @param pageable the page to return, and its sort, by {@code rating} or {@code films}; must not be {@code null}.
+     * @return a page of the ratings, with their numbers of films longer than the rating's average.
+     */
+    @Query(value = """
+            SELECT f1.rating AS rating, COUNT(f1) AS films
+            FROM Film f1
+            WHERE f1.length > (SELECT AVG(f2.length) FROM Film f2 WHERE f2.rating = f1.rating)
+            GROUP BY f1.rating""",
+           countQuery = """
+                   SELECT COUNT(DISTINCT f1.rating)
+                   FROM Film f1
+                   WHERE f1.length > (SELECT AVG(f2.length) FROM Film f2 WHERE f2.rating = f1.rating)""")
+    Page<RatingCount> selectRatingCountsOfLongerThanRatingAverage(Pageable pageable);
 }

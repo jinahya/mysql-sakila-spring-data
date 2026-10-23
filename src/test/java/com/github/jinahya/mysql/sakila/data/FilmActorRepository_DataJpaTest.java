@@ -1,7 +1,9 @@
 package com.github.jinahya.mysql.sakila.data;
 
 import com.github.jinahya.mysql.sakila.data.FilmActorRepository.ActorPairCount;
+import com.github.jinahya.mysql.sakila.data.FilmActorRepository.ActorsFilmCount;
 import com.github.jinahya.mysql.sakila.data.FilmActorRepository.FilmActorCount;
+import com.github.jinahya.mysql.sakila.data.FilmActorRepository.FilmPairActorCount;
 import com.github.jinahya.mysql.sakila.persistence.Actor;
 import com.github.jinahya.mysql.sakila.persistence.Film;
 import com.github.jinahya.mysql.sakila.persistence.FilmActor;
@@ -15,6 +17,7 @@ import org.springframework.data.domain.Sort;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.assertj.core.api.Assertions.within;
 
@@ -23,7 +26,8 @@ import static org.assertj.core.api.Assertions.within;
  * <p>
  * See that class for how the slice is configured. Each test persists the films, actors and links it needs, through
  * the fixtures, and the slice rolls them back when it ends, so a test starts over empty tables and can count what it
- * finds. The ids of the actors ascend in the order they are saved, which is what the pair exercise orders by.
+ * finds. The ids of the actors and of the films ascend in the order they are saved, which is what the pair
+ * exercises order by.
  *
  * @see FilmActorRepository_SpringBootIT
  */
@@ -149,6 +153,18 @@ class FilmActorRepository_DataJpaTest
             assertThat(first.getTotalElements()).isEqualTo(2L);
             assertThat(first.getTotalPages()).isEqualTo(2);
         }
+
+        /**
+         * Asserts that a {@code null} page is refused, before any query runs.
+         * <p>
+         * The package is {@code @NullMarked}, so Spring Data checks the arguments of every repository method, a
+         * {@code default} one included, and throws {@link IllegalArgumentException} before the method runs.
+         */
+        @Test
+        void _IllegalArgumentException_NullPageable() {
+            assertThatThrownBy(() -> repositoryInstance().selectActorCounts(null))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
     }
 
     /**
@@ -183,6 +199,55 @@ class FilmActorRepository_DataJpaTest
             assertThat(average).hasValueSatisfying(v -> {
                 assertThat(v).isCloseTo(2.0d, within(1e-9d));
             });
+        }
+
+        /**
+         * Saves films of two actors, of one and of one, and asserts that the average, four links over three films,
+         * {@code 1.333...}, is rounded to two decimal places, {@code 1.33}, as the exercise does.
+         */
+        @Test
+        void __Rounded() {
+            cast(fixtures().film(), fixtures().actor(), fixtures().actor());
+            cast(fixtures().film(), fixtures().actor());
+            cast(fixtures().film(), fixtures().actor());
+            final var average = repositoryInstance().selectAverageActors();
+            assertThat(average).hasValueSatisfying(v -> {
+                assertThat(v).isCloseTo(1.33d, within(1e-9d));
+            });
+        }
+    }
+
+    /**
+     * Tests {@link FilmActorRepository#selectFilmCountsByActors()} ({@code SAKILA-FILM_ACTOR-I-04}).
+     * <p>
+     * The SQL of the native query is plain, a {@code GROUP BY} over a derived table, so it runs on the H2 too.
+     */
+    @Nested
+    class SelectFilmCountsByActors_Test {
+
+        /**
+         * Saves a film with no actor, and asserts that the list is empty: a film with no link is not counted.
+         */
+        @Test
+        void _Empty_NoLink() {
+            fixtures().film();
+            assertThat(repositoryInstance().selectFilmCountsByActors()).isEmpty();
+        }
+
+        /**
+         * Saves two films of two actors, one of one actor and one of none, and asserts that the list holds one film
+         * of one actor and two of two, by the number of actors as the exercise orders.
+         */
+        @Test
+        void __() {
+            cast(fixtures().film(), fixtures().actor(), fixtures().actor());
+            cast(fixtures().film(), fixtures().actor());
+            cast(fixtures().film(), fixtures().actor(), fixtures().actor());
+            fixtures().film();
+            final var list = repositoryInstance().selectFilmCountsByActors();
+            assertThat(list)
+                    .extracting(ActorsFilmCount::getActors, ActorsFilmCount::getFilms)
+                    .containsExactly(tuple(1L, 1L), tuple(2L, 2L));
         }
     }
 
@@ -241,6 +306,97 @@ class FilmActorRepository_DataJpaTest
                     .containsExactly(tuple(a1.getActorId(), a2.getActorId(), 2L));
             assertThat(first.getTotalElements()).isEqualTo(3L);
             assertThat(first.getTotalPages()).isEqualTo(3);
+        }
+
+        /**
+         * Asserts that a {@code null} page is refused, before any query runs.
+         * <p>
+         * The package is {@code @NullMarked}, so Spring Data checks the arguments of every repository method, a
+         * {@code default} one included, and throws {@link IllegalArgumentException} before the method runs.
+         */
+        @Test
+        void _IllegalArgumentException_NullPageable() {
+            assertThatThrownBy(() -> repositoryInstance().selectCoStarCounts(null))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+    }
+
+    /**
+     * Tests {@link FilmActorRepository#selectFilmPairsWithSameActors(Pageable)} ({@code SAKILA-FILM_ACTOR-A-03}).
+     */
+    @Nested
+    class SelectFilmPairsWithSameActors_Test {
+
+        private static final Sort BY_FILM_IDS = Sort.by("filmId1", "filmId2");
+
+        /**
+         * Saves a film of two actors and a film of one of them, and asserts that the page is empty, with no elements
+         * in all: the two films share an actor, but not all of them.
+         */
+        @Test
+        void _Empty_NoSameActors() {
+            final var a = fixtures().actor();
+            final var b = fixtures().actor();
+            cast(fixtures().film(), a, b);
+            cast(fixtures().film(), a);
+            final var page = repositoryInstance().selectFilmPairsWithSameActors(PageRequest.of(0, 5, BY_FILM_IDS));
+            assertThat(page).isEmpty();
+            assertThat(page.getTotalElements()).isZero();
+        }
+
+        /**
+         * Saves two films of the actors {@code a} and {@code b}, two films of {@code a} alone, a film of {@code a},
+         * {@code b} and {@code c}, and a film of {@code c} alone, and asserts that the page holds the two pairs of
+         * films with the same actors, with their numbers of actors, by the films' ids as the exercise orders, each
+         * pair once with the smaller id first, two in all; and that a page of one holds the first pair alone, still
+         * two in all.
+         * <p>
+         * The films are saved in order, so their ids ascend in that order.
+         */
+        @Test
+        void __() {
+            final var a = fixtures().actor();
+            final var b = fixtures().actor();
+            final var c = fixtures().actor();
+            final var ab1 = fixtures().film();
+            final var a1 = fixtures().film();
+            final var ab2 = fixtures().film();
+            final var abc = fixtures().film();
+            final var a2 = fixtures().film();
+            final var c1 = fixtures().film();
+            cast(ab1, a, b);
+            cast(a1, a);
+            cast(ab2, a, b);
+            cast(abc, a, b, c);
+            cast(a2, a);
+            cast(c1, c);
+            final var page = repositoryInstance().selectFilmPairsWithSameActors(PageRequest.of(0, 5, BY_FILM_IDS));
+            assertThat(page.getContent())
+                    .extracting(FilmPairActorCount::getFilmId1, FilmPairActorCount::getFilmId2,
+                                FilmPairActorCount::getActors)
+                    .containsExactly(
+                            tuple(ab1.getFilmId(), ab2.getFilmId(), 2L),
+                            tuple(a1.getFilmId(), a2.getFilmId(), 1L)
+                    );
+            assertThat(page.getTotalElements()).isEqualTo(2L);
+            final var first = repositoryInstance().selectFilmPairsWithSameActors(PageRequest.of(0, 1, BY_FILM_IDS));
+            assertThat(first.getContent())
+                    .extracting(FilmPairActorCount::getFilmId1, FilmPairActorCount::getFilmId2)
+                    .containsExactly(tuple(ab1.getFilmId(), ab2.getFilmId()));
+            assertThat(first.getTotalElements()).isEqualTo(2L);
+            assertThat(first.getTotalPages()).isEqualTo(2);
+        }
+
+        /**
+         * Asserts that a {@code null} page is refused, before any query runs.
+         * <p>
+         * The package is {@code @NullMarked}, so Spring Data checks the arguments of every repository method, a
+         * {@code default} one included, and throws {@link IllegalArgumentException} before the method runs.
+         */
+        @Test
+        void _IllegalArgumentException_NullPageable() {
+            assertThatThrownBy(() -> repositoryInstance().selectFilmPairsWithSameActors(null))
+                    .isInstanceOf(IllegalArgumentException.class);
         }
     }
 }

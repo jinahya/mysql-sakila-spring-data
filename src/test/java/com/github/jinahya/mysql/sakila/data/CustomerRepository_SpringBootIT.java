@@ -2,7 +2,9 @@ package com.github.jinahya.mysql.sakila.data;
 
 import com.github.jinahya.mysql.sakila.data.CustomerRepository.ActiveCount;
 import com.github.jinahya.mysql.sakila.data.CustomerRepository.CustomerPaidTotal;
+import com.github.jinahya.mysql.sakila.data.CustomerRepository.StoreAboveAverageCount;
 import com.github.jinahya.mysql.sakila.data.CustomerRepository.StoreCustomerCount;
+import com.github.jinahya.mysql.sakila.data.CustomerRepository.StoreCustomerPaidTotal;
 import com.github.jinahya.mysql.sakila.persistence.Customer;
 import com.github.jinahya.mysql.sakila.persistence.Customer_;
 import com.github.jinahya.mysql.sakila.persistence.Payment;
@@ -18,11 +20,13 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.InvalidDataAccessApiUsageException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.Collections;
@@ -31,6 +35,8 @@ import java.util.List;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.assertj.core.api.Assumptions.assumeThat;
 
 /**
@@ -157,70 +163,70 @@ class CustomerRepository_SpringBootIT
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * Tests {@link CustomerRepository#selectActiveCounts(Pageable)} ({@code SAKILA-CUSTOMER-B-01}).
+     * Tests {@link CustomerRepository#selectActiveCounts()} ({@code SAKILA-CUSTOMER-B-01}).
      */
     @Nested
     class SelectActiveCounts_Test {
 
-        private static final Sort BY_ACTIVE = Sort.by("active");
-
         /**
-         * Asserts that a page of the given size, by the flag as the exercise sorts, is ordered so, that each count is
-         * the number of customers whose flag has that value, counted again by a {@link Specification}, and that the
-         * groups, which are two at most, are as many in all as the count query says.
-         *
-         * @param size the size of the page.
+         * Asserts, in one transaction, that the stream yields the two rows the exercise's SQL gives, {@code false}
+         * first, as the query orders them, and that each count is the number of customers whose flag has that value,
+         * counted again by a {@link Specification}, the two adding up to all customers.
          */
-        @ValueSource(ints = {1, 2})
-        @ParameterizedTest
-        void __(final int size) {
-            final var page = repositoryInstance().selectActiveCounts(PageRequest.of(0, size, BY_ACTIVE));
-            assertPage(page);
-            assertThat(page.getTotalElements()).isBetween(1L, 2L);
-            assertThat(page.getContent())
-                    .isNotEmpty()
-                    .isSortedAccordingTo(Comparator.comparing(ActiveCount::getActive))
-                    .allSatisfy(c -> {
-                        assertThat(c.getCustomers()).as("customers whose active is %s", c.getActive())
-                                .isEqualTo(countByActive(c.getActive()));
-                    });
+        @Transactional
+        @Test
+        void __() {
+            final List<ActiveCount> list;
+            try (var stream = repositoryInstance().selectActiveCounts()) {
+                list = stream.toList();
+            }
+            assertThat(list)
+                    .extracting(ActiveCount::getActive, ActiveCount::getCustomers)
+                    .containsExactly(tuple(false, 15L), tuple(true, 584L));
+            assertThat(list).allSatisfy(c -> {
+                assertThat(c.getCustomers()).as("customers whose active is %s", c.getActive())
+                        .isEqualTo(countByActive(c.getActive()));
+            });
+            assertThat(list.stream().mapToLong(ActiveCount::getCustomers).sum())
+                    .isEqualTo(repositoryInstance().count());
         }
 
         /**
-         * Asserts that the counts of all groups add up to the number of all customers: every customer has the flag,
-         * so every customer is in exactly one group.
+         * Calls the method with no transaction around the test, and asserts that Spring Data refuses it.
+         * <p>
+         * A stream has to be consumed inside a transaction the caller opened. The repository would open one of its own,
+         * but that one ends when the method returns, so the check runs before the query, and throws
+         * {@link InvalidDataAccessApiUsageException}.
          */
         @Test
-        void __AddUp() {
-            final var page = repositoryInstance().selectActiveCounts(PageRequest.of(0, 2, BY_ACTIVE));
-            assertThat(page.hasNext()).isFalse();
-            final var sum = page.getContent().stream().mapToLong(ActiveCount::getCustomers).sum();
-            assertThat(sum).isEqualTo(repositoryInstance().count());
+        void _InvalidDataAccessApiUsageException_NoSurroundingTransaction() {
+            assertThatThrownBy(() -> {
+                try (var stream = repositoryInstance().selectActiveCounts()) {
+                    stream.forEach(c -> {
+                    });
+                }
+            }).isInstanceOf(InvalidDataAccessApiUsageException.class);
         }
     }
 
     /**
-     * Tests {@link CustomerRepository#selectStoreCounts(Pageable)} ({@code SAKILA-CUSTOMER-B-02}).
+     * Tests {@link CustomerRepository#selectStoreCounts()} ({@code SAKILA-CUSTOMER-B-02}).
      */
     @Nested
     class SelectStoreCounts_Test {
 
-        private static final Sort BY_STORE_ID = Sort.by("storeId");
-
         /**
-         * Asserts that a page of the given size, by the store as the exercise sorts, is ordered so, and that each
-         * count is the number of customers of that store, counted again by a {@link Specification} on the id of the
-         * store.
-         *
-         * @param size the size of the page.
+         * Asserts that the list holds the two rows the exercise's SQL gives, by the store's id, as the query orders
+         * them, and that each count is the number of customers of that store, counted again by a
+         * {@link Specification} on the id of the store.
          */
-        @ValueSource(ints = {1, 5})
-        @ParameterizedTest
-        void __(final int size) {
-            final var page = repositoryInstance().selectStoreCounts(PageRequest.of(0, size, BY_STORE_ID));
-            assertPage(page);
-            assertThat(page.getContent())
-                    .isNotEmpty()
+        @Test
+        void __() {
+            final var list = repositoryInstance().selectStoreCounts();
+            assertThat(list)
+                    .extracting(StoreCustomerCount::getStoreId, StoreCustomerCount::getCustomers)
+                    .containsExactly(tuple(1, 326L), tuple(2, 273L));
+            assertThat(list)
                     .isSortedAccordingTo(Comparator.comparing(StoreCustomerCount::getStoreId))
                     .allSatisfy(c -> {
                         assertThat(c.getCustomers()).as("customers of store %d", c.getStoreId())
@@ -234,9 +240,8 @@ class CustomerRepository_SpringBootIT
          */
         @Test
         void __AddUp() {
-            final var page = repositoryInstance().selectStoreCounts(PageRequest.of(0, 5, BY_STORE_ID));
-            assumeThat(page.hasNext()).isFalse();
-            final var sum = page.getContent().stream().mapToLong(StoreCustomerCount::getCustomers).sum();
+            final var list = repositoryInstance().selectStoreCounts();
+            final var sum = list.stream().mapToLong(StoreCustomerCount::getCustomers).sum();
             assertThat(sum).isEqualTo(repositoryInstance().count());
         }
     }
@@ -281,6 +286,24 @@ class CustomerRepository_SpringBootIT
         }
 
         /**
+         * Asserts that the first five, by {@code paid} descending, then by {@code customerId}, are the five the
+         * exercise's SQL gives.
+         */
+        @Test
+        void __TopFive() {
+            final var page = repositoryInstance().selectPaidTotals(PageRequest.of(0, 5, BY_PAID_DESC_THEN_CUSTOMER_ID));
+            assertThat(page.getContent())
+                    .extracting(CustomerPaidTotal::getCustomerId, CustomerPaidTotal::getFirstName,
+                                CustomerPaidTotal::getLastName, c -> c.getPaid().doubleValue())
+                    .containsExactly(
+                            tuple(526, "KARL", "SEAL", 221.55),
+                            tuple(148, "ELEANOR", "HUNT", 216.54),
+                            tuple(144, "CLARA", "SHAW", 195.58),
+                            tuple(137, "RHONDA", "KENNEDY", 194.61),
+                            tuple(178, "MARION", "SNYDER", 194.61));
+        }
+
+        /**
          * Asserts that a selected customer who paid at least once is among all rows, with the sum of their payments,
          * and that one who never paid is not.
          *
@@ -303,6 +326,15 @@ class CustomerRepository_SpringBootIT
                 assertThat(c.getLastName()).isEqualTo(customer.getLastName());
                 assertThat(c.getPaid()).isEqualByComparingTo(paid);
             });
+        }
+
+        /**
+         * Asserts that a {@code null} pageable is rejected before any query runs.
+         */
+        @Test
+        void _IllegalArgumentException_NullPageable() {
+            assertThatThrownBy(() -> repositoryInstance().selectPaidTotals(null))
+                    .isInstanceOf(IllegalArgumentException.class);
         }
     }
 
@@ -333,6 +365,94 @@ class CustomerRepository_SpringBootIT
             final Specification<Customer> rented = (r, q, b) -> b.isNotEmpty(r.get(Customer_.rentals));
             assertThat(page.getTotalElements())
                     .isEqualTo(repositoryInstance().count() - repositoryInstance().count(rented));
+        }
+
+        /**
+         * Asserts that a {@code null} pageable is rejected before any query runs.
+         */
+        @Test
+        void _IllegalArgumentException_NullPageable() {
+            assertThatThrownBy(() -> repositoryInstance().listNeverRented(null))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+    }
+
+    /**
+     * Tests {@link CustomerRepository#selectTopThreePayersOfEachStore()} ({@code SAKILA-CUSTOMER-A-01}).
+     */
+    @Nested
+    class SelectTopThreePayersOfEachStore_Test {
+
+        /**
+         * Asserts that the native query gives the six rows the exercise's SQL gives, in its order, and that each sum
+         * is the sum of the customer's payments, added up again from the rows of {@link PaymentRepository}.
+         */
+        @Test
+        void __() {
+            final var list = repositoryInstance().selectTopThreePayersOfEachStore();
+            assertThat(list)
+                    .extracting(StoreCustomerPaidTotal::getStoreId, StoreCustomerPaidTotal::getCustomerId,
+                                StoreCustomerPaidTotal::getFirstName, StoreCustomerPaidTotal::getLastName,
+                                c -> c.getPaid().doubleValue())
+                    .containsExactly(
+                            tuple(1, 148, "ELEANOR", "HUNT", 216.54),
+                            tuple(1, 144, "CLARA", "SHAW", 195.58),
+                            tuple(1, 459, "TOMMY", "COLLAZO", 186.62),
+                            tuple(2, 526, "KARL", "SEAL", 221.55),
+                            tuple(2, 137, "RHONDA", "KENNEDY", 194.61),
+                            tuple(2, 178, "MARION", "SNYDER", 194.61));
+            assertThat(list).allSatisfy(c -> assertThat(c.getPaid())
+                    .isEqualByComparingTo(sumPaymentsOf(c.getCustomerId())));
+        }
+    }
+
+    /**
+     * Tests {@link CustomerRepository#selectAboveAveragePayerCounts(Pageable)} ({@code SAKILA-CUSTOMER-A-02}).
+     */
+    @Nested
+    class SelectAboveAveragePayerCounts_Test {
+
+        private static final Sort BY_STORE_ID = Sort.by("storeId");
+
+        /**
+         * Asserts that the rows, by {@code storeId} as the exercise sorts, are the two the exercise's SQL gives, and
+         * that the count query counts the two stores.
+         */
+        @Test
+        void __() {
+            final var page = repositoryInstance().selectAboveAveragePayerCounts(PageRequest.of(0, 5, BY_STORE_ID));
+            assertPage(page);
+            assertThat(page.getContent())
+                    .extracting(StoreAboveAverageCount::getStoreId, StoreAboveAverageCount::getCustomers,
+                                c -> c.getAveragePaid().doubleValue())
+                    .containsExactly(
+                            tuple(1, 154L, 113.49),
+                            tuple(2, 126L, 111.39));
+            assertThat(page.getTotalElements()).isEqualTo(2L);
+        }
+
+        /**
+         * Asserts that pages of one, by {@code storeId} descending, hold the second store and then the first, two in
+         * all, which the count query says.
+         */
+        @Test
+        void __Paged() {
+            final var sort = Sort.by(Sort.Direction.DESC, "storeId");
+            final var page0 = repositoryInstance().selectAboveAveragePayerCounts(PageRequest.of(0, 1, sort));
+            assertThat(page0.getContent()).extracting(StoreAboveAverageCount::getStoreId).containsExactly(2);
+            assertThat(page0.getTotalElements()).isEqualTo(2L);
+            final var page1 = repositoryInstance().selectAboveAveragePayerCounts(page0.nextPageable());
+            assertThat(page1.getContent()).extracting(StoreAboveAverageCount::getStoreId).containsExactly(1);
+            assertThat(page1.hasNext()).isFalse();
+        }
+
+        /**
+         * Asserts that a {@code null} pageable is rejected before any query runs.
+         */
+        @Test
+        void _IllegalArgumentException_NullPageable() {
+            assertThatThrownBy(() -> repositoryInstance().selectAboveAveragePayerCounts(null))
+                    .isInstanceOf(IllegalArgumentException.class);
         }
     }
 

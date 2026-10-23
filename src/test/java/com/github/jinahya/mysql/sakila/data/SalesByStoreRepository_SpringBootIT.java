@@ -30,6 +30,7 @@ import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.assertj.core.api.Assumptions.assumeThat;
 
 /**
@@ -38,10 +39,13 @@ import static org.assertj.core.api.Assumptions.assumeThat;
  * The repository is not a Spring Data one, so this does not extend {@link _Repository_SpringBootIT}: it is a plain
  * {@code @SpringBootTest}, over the context of {@link ___Spring_TestContext}, which {@code @Import}s the
  * implementation. There is no {@code @DataJpaTest} for it either: the slice's H2 is generated from the entities, and
- * the view does not exist there. Each repository call runs in a transaction of its own, and nothing here writes.
+ * the view does not exist there, and every exercise method is native-only, running MySQL's own SQL. Each repository
+ * call runs in a transaction of its own, and nothing here writes.
  * <p>
- * The fixture is every row of the view, one per store, selected once in {@link #__()}; each test tries every one of
- * them, or a few page sizes. What the view says is cross-checked through the repositories of the tables it is built
+ * The fixture is every row of the view, one per store, selected once in {@link #__()}; each test of the listing tries
+ * every one of them, or a few page sizes. The exercise methods run the exercises' SQL as it is, so each is asserted
+ * against the output upstream records for it, in {@code src/test/sql/sales_by_store_exercises_0N_<level>.sql}, in the
+ * order the exercise asks for. What the view says is cross-checked through the repositories of the tables it is built
  * from: {@link StoreRepository} for the stores, and {@link PaymentRepository} for the payments it sums.
  * <p>
  * Needs the database of {@code application.yaml} up, with Sakila loaded; see that file.
@@ -96,10 +100,8 @@ class SalesByStoreRepository_SpringBootIT {
         assertThat(page.getTotalElements()).isGreaterThanOrEqualTo(page.getNumberOfElements());
     }
 
-    // ----------------------------------------------------------------------------------------------------- exercises
-
     /**
-     * Tests {@link SalesByStoreRepository#listAll(Pageable)} ({@code SAKILA-SALES_BY_STORE-B-01}).
+     * Tests {@link SalesByStoreRepository#listAll(Pageable)}.
      */
     @Nested
     class ListAll_Test {
@@ -194,15 +196,15 @@ class SalesByStoreRepository_SpringBootIT {
     }
 
     /**
-     * Tests {@link SalesByStoreRepository#sumTotalSales()} ({@code SAKILA-SALES_BY_STORE-I-01}).
+     * Tests {@link SalesByStoreRepository#sumTotalSales()}.
      */
     @Nested
     class SumTotalSales_Test {
 
         /**
          * Asserts that the sum is the sum of the selected rows' sales, and is the sum of the amounts of the payments
-         * which have a rental, read through {@link PaymentRepository}, as the exercise checks: the view reaches a
-         * store through the rental, so a payment without one cannot be in it.
+         * which have a rental, read through {@link PaymentRepository}: the view reaches a store through the rental, so
+         * a payment without one cannot be in it.
          */
         @Test
         void __() {
@@ -216,6 +218,121 @@ class SalesByStoreRepository_SpringBootIT {
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
             log.debug("with a rental: {}", withARental);
             assertThat(sum).isEqualByComparingTo(withARental);
+        }
+    }
+
+    // ----------------------------------------------------------------------------------------------------- exercises
+
+    /**
+     * Tests {@link SalesByStoreRepository#listSales()} ({@code SAKILA-SALES_BY_STORE-B-01}).
+     */
+    @Nested
+    class ListSales_Test {
+
+        /**
+         * Asserts that the rows are the exercise's two, in the order the view defines, by country and then by city, and
+         * that they are the rows of the listing.
+         */
+        @Test
+        void __() {
+            final var list = repository.listSales();
+            list.forEach(r -> log.debug("row: {}", r));
+            assertThat(list)
+                    .extracting(SalesByStore::getStore, SalesByStore::getManager,
+                                r -> r.getTotalSales().toPlainString())
+                    .containsExactly(
+                            tuple("Woodridge,Australia", "Jon Stephens", "33726.77"),
+                            tuple("Lethbridge,Canada", "Mike Hillyer", "33679.79"));
+            assertThat(list)
+                    .usingRecursiveFieldByFieldElementComparator()
+                    .containsExactlyInAnyOrderElementsOf(rows);
+        }
+    }
+
+    /**
+     * Tests {@link SalesByStoreRepository#selectSalesDifference()} ({@code SAKILA-SALES_BY_STORE-B-02}).
+     */
+    @Nested
+    class SelectSalesDifference_Test {
+
+        /**
+         * Asserts that the difference is the exercise's {@code 46.98}, and is the largest of the selected rows' sales
+         * less the smallest.
+         */
+        @Test
+        void __() {
+            final var difference = repository.selectSalesDifference();
+            log.debug("difference: {}", difference);
+            assertThat(difference).isNotNull();
+            assertThat(difference.toPlainString()).isEqualTo("46.98");
+            final var sales = rows.stream().map(SalesByStore::getTotalSales).toList();
+            assertThat(difference).isEqualByComparingTo(
+                    sales.stream().max(Comparator.naturalOrder()).orElseThrow()
+                            .subtract(sales.stream().min(Comparator.naturalOrder()).orElseThrow()));
+        }
+    }
+
+    /**
+     * Tests {@link SalesByStoreRepository#sumByStoreAndWithARental()} ({@code SAKILA-SALES_BY_STORE-I-01}).
+     */
+    @Nested
+    class SumByStoreAndWithARental_Test {
+
+        /**
+         * Asserts that both sums are the exercise's {@code 67406.56}, as it checks: the first is
+         * {@link SalesByStoreRepository#sumTotalSales()}, and the two are the same.
+         */
+        @Test
+        void __() {
+            final var sums = repository.sumByStoreAndWithARental();
+            log.debug("sums: {}", sums);
+            assertThat(sums.byStore().toPlainString()).isEqualTo("67406.56");
+            assertThat(sums.byStore())
+                    .isEqualByComparingTo(sums.withARental())
+                    .isEqualByComparingTo(repository.sumTotalSales());
+        }
+    }
+
+    /**
+     * Tests {@link SalesByStoreRepository#listSalesAndTakenByManager()} ({@code SAKILA-SALES_BY_STORE-I-02}).
+     */
+    @Nested
+    class ListSalesAndTakenByManager_Test {
+
+        /**
+         * Asserts that the rows are the exercise's two, with each store's sales and what its manager took, and that
+         * the two columns add up to the same total: every payment was taken by one of the two managers.
+         */
+        @Test
+        void __() {
+            final var list = repository.listSalesAndTakenByManager();
+            list.forEach(r -> log.debug("row: {}", r));
+            assertThat(list)
+                    .extracting(SalesByStoreRepository.SalesAndTakenByManager::store,
+                                SalesByStoreRepository.SalesAndTakenByManager::manager,
+                                r -> r.totalSales().toPlainString(),
+                                r -> r.takenByManager().toPlainString())
+                    .containsExactly(
+                            tuple("Lethbridge,Canada", "Mike Hillyer", "33679.79", "33482.50"),
+                            tuple("Woodridge,Australia", "Jon Stephens", "33726.77", "33924.06"));
+            final var totalSales = list.stream()
+                    .map(SalesByStoreRepository.SalesAndTakenByManager::totalSales)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            final var takenByManagers = list.stream()
+                    .map(SalesByStoreRepository.SalesAndTakenByManager::takenByManager)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            assertThat(totalSales).isEqualByComparingTo(takenByManagers);
+        }
+
+        /**
+         * Asserts that the rows are sorted by the store, as the exercise asks; the names are compared ignoring case, as
+         * the database's collation compares them.
+         */
+        @Test
+        void __Sorted() {
+            assertThat(repository.listSalesAndTakenByManager())
+                    .extracting(SalesByStoreRepository.SalesAndTakenByManager::store)
+                    .isSortedAccordingTo(String.CASE_INSENSITIVE_ORDER);
         }
     }
 

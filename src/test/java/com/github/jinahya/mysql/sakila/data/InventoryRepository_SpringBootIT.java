@@ -1,6 +1,7 @@
 package com.github.jinahya.mysql.sakila.data;
 
 import com.github.jinahya.mysql.sakila.data.InventoryRepository.FilmCopyCount;
+import com.github.jinahya.mysql.sakila.data.InventoryRepository.IdleTime;
 import com.github.jinahya.mysql.sakila.data.InventoryRepository.StoreCopyCount;
 import com.github.jinahya.mysql.sakila.persistence.Inventory;
 import com.github.jinahya.mysql.sakila.persistence.Inventory_;
@@ -12,27 +13,32 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.InvalidDataAccessApiUsageException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.temporal.ChronoUnit;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.assertj.core.api.Assumptions.assumeThat;
 
 /**
  * Tests {@link InventoryRepository} against the Sakila database, through {@link _Repository_SpringBootIT}.
  * <p>
  * See that class for the context and the transactions. The tests here only read: the fixture is a few copies of the
- * sample data, selected once in {@link #__()}, and each test checks a query of the exercises against them, or against
- * counts of the copies taken another way. The base's own tests, such as its {@code findById} round trips, run here
- * too.
+ * sample data, selected once in {@link #__()}, and each test checks a query of the exercises against them, against
+ * counts of the copies taken another way, or against the output upstream's {@code inventory_exercises_*.sql} records
+ * for the installed data. The base's own tests, such as its {@code findById} round trips, run here too.
  * <p>
  * Needs the database of {@code application.yaml} up, with Sakila loaded; see that file.
  *
@@ -123,37 +129,40 @@ class InventoryRepository_SpringBootIT
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * Tests {@link InventoryRepository#selectCopyCountsByStore(Pageable)} ({@code SAKILA-INVENTORY-B-01}).
+     * Tests {@link InventoryRepository#selectCopyCountsByStore()} ({@code SAKILA-INVENTORY-B-01}).
      */
     @Nested
     class SelectCopyCountsByStore_Test {
-
-        private static final Sort BY_STORE_ID = Sort.by("storeId");
 
         private static Stream<Inventory> inventories() {
             return InventoryRepository_SpringBootIT.inventories();
         }
 
         /**
-         * Asserts that the stores, by store id as the exercise sorts, are ordered so, that each count is the number of
-         * copies of the store, and that the counts add up to all copies.
+         * Asserts that the list is the exercise's recorded output, the two stores by id with 2270 and 2311 copies,
+         * that each count is the number of copies of the store, and that the counts add up to all copies.
          */
         @Test
         void __() {
-            final var page = repositoryInstance().selectCopyCountsByStore(PageRequest.of(0, 5, BY_STORE_ID));
-            assertPage(page);
-            assertThat(page.getContent())
-                    .isNotEmpty()
-                    .isSortedAccordingTo(Comparator.comparing(StoreCopyCount::getStoreId))
-                    .allSatisfy(c -> {
-                        assertThat(c.getCopies()).as("copies of store %d", c.getStoreId())
-                                .isPositive()
-                                .isEqualTo(countByStoreId(c.getStoreId()));
-                    });
-            if (!page.hasNext()) {
-                final var sum = page.getContent().stream().mapToLong(StoreCopyCount::getCopies).sum();
-                assertThat(sum).isEqualTo(repositoryInstance().count());
-            }
+            final var list = repositoryInstance().selectCopyCountsByStore();
+            assertThat(list)
+                    .extracting(StoreCopyCount::getStoreId, StoreCopyCount::getCopies)
+                    .containsExactly(tuple(1, 2270L), tuple(2, 2311L));
+            assertThat(list).allSatisfy(c -> {
+                assertThat(c.getCopies()).as("copies of store %d", c.getStoreId())
+                        .isEqualTo(countByStoreId(c.getStoreId()));
+            });
+            final var sum = list.stream().mapToLong(StoreCopyCount::getCopies).sum();
+            assertThat(sum).isEqualTo(repositoryInstance().count());
+        }
+
+        /**
+         * Asserts that the list is ordered by store id, as the query orders it.
+         */
+        @Test
+        void __Ordered() {
+            final var list = repositoryInstance().selectCopyCountsByStore();
+            assertThat(list).isSortedAccordingTo(Comparator.comparing(StoreCopyCount::getStoreId));
         }
 
         /**
@@ -163,11 +172,75 @@ class InventoryRepository_SpringBootIT
          */
         @MethodSource("inventories")
         @ParameterizedTest
-        void __ContainsStoreOfFixture(final Inventory inventory) {
-            final var all = repositoryInstance().selectCopyCountsByStore(Pageable.unpaged(BY_STORE_ID));
-            assertThat(all.getContent())
+        void __Selected(final Inventory inventory) {
+            final var list = repositoryInstance().selectCopyCountsByStore();
+            assertThat(list)
                     .extracting(StoreCopyCount::getStoreId)
                     .contains(inventory.getStoreId());
+        }
+    }
+
+    /**
+     * Tests {@link InventoryRepository#findAllByFilmIdOrderByInventoryIdAsc(Integer)} ({@code SAKILA-INVENTORY-B-02}).
+     */
+    @Nested
+    class FindAllByFilmIdOrderByInventoryIdAsc_Test {
+
+        private static Stream<Inventory> inventories() {
+            return InventoryRepository_SpringBootIT.inventories();
+        }
+
+        /**
+         * Asserts, in one transaction, that the film {@code 1} streams the exercise's recorded output, the copies
+         * {@code 1} to {@code 8}, the first four of the store {@code 1} and the rest of the store {@code 2}.
+         */
+        @Test
+        @Transactional
+        void __Transactional() {
+            try (var found = repositoryInstance().findAllByFilmIdOrderByInventoryIdAsc(1)) {
+                assertThat(found.toList())
+                        .extracting(Inventory::getInventoryId, Inventory::getStoreId)
+                        .containsExactly(tuple(1, 1), tuple(2, 1), tuple(3, 1), tuple(4, 1),
+                                         tuple(5, 2), tuple(6, 2), tuple(7, 2), tuple(8, 2));
+            }
+        }
+
+        /**
+         * Asserts, in one transaction, that the film of a selected copy streams it, as the instance managed in the
+         * transaction, among copies of that film only, by id, as many as a {@link Specification} counts.
+         *
+         * @param inventory one of the copies selected in {@link InventoryRepository_SpringBootIT#__()}.
+         */
+        @MethodSource("inventories")
+        @ParameterizedTest
+        @Transactional
+        void __Ordered(final Inventory inventory) {
+            final var managed = repositoryInstance().findById(inventory.getInventoryId()).orElseThrow();
+            try (var found = repositoryInstance().findAllByFilmIdOrderByInventoryIdAsc(managed.getFilmId())) {
+                final var list = found.toList();
+                assertThat(list)
+                        .allSatisfy(i -> assertThat(i.getFilmId()).isEqualTo(managed.getFilmId()))
+                        .isSortedAccordingTo(Comparator.comparing(Inventory::getInventoryId))
+                        .anySatisfy(i -> assertThat(i).isSameAs(managed))
+                        .hasSize((int) countByFilmId(managed.getFilmId()));
+            }
+        }
+
+        /**
+         * Calls the method with no transaction around the test, and asserts that Spring Data refuses it, with
+         * {@link InvalidDataAccessApiUsageException}, before any query runs.
+         *
+         * @param inventory one of the copies selected in {@link InventoryRepository_SpringBootIT#__()}.
+         */
+        @MethodSource("inventories")
+        @ParameterizedTest
+        void _InvalidDataAccessApiUsageException_NoSurroundingTransaction(final Inventory inventory) {
+            assertThatThrownBy(() -> {
+                try (var found = repositoryInstance().findAllByFilmIdOrderByInventoryIdAsc(inventory.getFilmId())) {
+                    found.forEach(i -> {
+                    });
+                }
+            }).isInstanceOf(InvalidDataAccessApiUsageException.class);
         }
     }
 
@@ -185,15 +258,32 @@ class InventoryRepository_SpringBootIT
         }
 
         /**
-         * Asserts that a page of the given size, the most copied first as the exercise sorts, is ordered so, that
-         * each title is the film's, read through {@link FilmRepository}, and that each count is the number of copies
-         * of the film.
+         * Asserts that the first five, the most copied first and then by film id as the exercise sorts, are the
+         * exercise's recorded output, five films of eight copies each, of the 958 films with a copy.
+         */
+        @Test
+        void __() {
+            final var page = repositoryInstance().selectCopyCountsByFilm(
+                    PageRequest.of(0, 5, BY_COPIES_DESC_THEN_FILM_ID));
+            assertThat(page.getContent())
+                    .extracting(FilmCopyCount::getFilmId, FilmCopyCount::getTitle, FilmCopyCount::getCopies)
+                    .containsExactly(tuple(1, "ACADEMY DINOSAUR", 8L),
+                                     tuple(31, "APACHE DIVINE", 8L),
+                                     tuple(69, "BEVERLY OUTLAW", 8L),
+                                     tuple(73, "BINGO TALENTED", 8L),
+                                     tuple(86, "BOOGIE AMELIE", 8L));
+            assertThat(page.getTotalElements()).isEqualTo(958L);
+        }
+
+        /**
+         * Asserts that a page of the given size, sorted the exercise's way, is ordered so, that each title is the
+         * film's, read through {@link FilmRepository}, and that each count is the number of copies of the film.
          *
          * @param size the size of the page.
          */
         @ValueSource(ints = {1, 5, 10})
         @ParameterizedTest
-        void __(final int size) {
+        void __Ordered(final int size) {
             final var page = repositoryInstance().selectCopyCountsByFilm(
                     PageRequest.of(0, size, BY_COPIES_DESC_THEN_FILM_ID));
             assertPage(page);
@@ -205,9 +295,24 @@ class InventoryRepository_SpringBootIT
                         final var film = filmRepository.findById(c.getFilmId()).orElseThrow();
                         assertThat(film.getTitle()).isEqualTo(c.getTitle());
                         assertThat(c.getCopies()).as("copies of film %d", c.getFilmId())
-                                .isPositive()
                                 .isEqualTo(countByFilmId(c.getFilmId()));
                     });
+        }
+
+        /**
+         * Asserts that the second page of five continues the first, with the same total.
+         */
+        @Test
+        void __Paged() {
+            final var first = repositoryInstance().selectCopyCountsByFilm(
+                    PageRequest.of(0, 5, BY_COPIES_DESC_THEN_FILM_ID));
+            final var second = repositoryInstance().selectCopyCountsByFilm(first.nextPageable());
+            final var ten = repositoryInstance().selectCopyCountsByFilm(
+                    PageRequest.of(0, 10, BY_COPIES_DESC_THEN_FILM_ID));
+            assertThat(second.getTotalElements()).isEqualTo(first.getTotalElements());
+            assertThat(second.getContent()).extracting(FilmCopyCount::getFilmId)
+                    .containsExactlyElementsOf(ten.getContent().subList(5, 10).stream()
+                                                       .map(FilmCopyCount::getFilmId).toList());
         }
 
         /**
@@ -217,7 +322,7 @@ class InventoryRepository_SpringBootIT
          */
         @MethodSource("inventories")
         @ParameterizedTest
-        void __ContainsFilmOfFixture(final Inventory inventory) {
+        void __Selected(final Inventory inventory) {
             final var all = repositoryInstance().selectCopyCountsByFilm(Pageable.unpaged(BY_COPIES_DESC_THEN_FILM_ID));
             assertThat(all.getContent())
                     .extracting(FilmCopyCount::getFilmId)
@@ -226,24 +331,149 @@ class InventoryRepository_SpringBootIT
     }
 
     /**
-     * Tests {@link InventoryRepository#countNeverRented()} ({@code SAKILA-INVENTORY-I-02}).
+     * Tests {@link InventoryRepository#listNeverRented(Pageable)} ({@code SAKILA-INVENTORY-I-02}).
      */
     @Nested
-    class CountNeverRented_Test {
+    class ListNeverRented_Test {
 
         /**
-         * Asserts that the count is the number of all copies less the number of copies with a rental, counted by the
-         * complementary {@link Specification}, {@code IS NOT EMPTY} on the copy's rentals.
+         * Asserts that the copies never rented are as many as the exercise's recorded output, one, and as many as all
+         * copies less those with a rental, counted by the complementary {@link Specification}, {@code IS NOT EMPTY}
+         * on the copy's rentals.
          */
         @Test
         void __() {
-            final var count = repositoryInstance().countNeverRented();
+            final var page = repositoryInstance().listNeverRented(PageRequest.of(0, 5, BY_INVENTORY_ID));
+            assertPage(page);
+            assertThat(page.getTotalElements()).isEqualTo(1L);
             final Specification<Inventory> rented = (r, q, b) -> b.isNotEmpty(r.get(Inventory_.rentals));
-            final var all = repositoryInstance().count();
-            assertThat(count)
-                    .isNotNegative()
-                    .isLessThanOrEqualTo(all)
-                    .isEqualTo(all - repositoryInstance().count(rented));
+            assertThat(page.getTotalElements())
+                    .isEqualTo(repositoryInstance().count() - repositoryInstance().count(rented));
+        }
+
+        /**
+         * Asserts that the page, sorted by id, is ordered so.
+         */
+        @Test
+        void __Ordered() {
+            final var page = repositoryInstance().listNeverRented(Pageable.unpaged(BY_INVENTORY_ID));
+            assertThat(page.getContent())
+                    .isNotEmpty()
+                    .isSortedAccordingTo(Comparator.comparing(Inventory::getInventoryId));
+        }
+
+        /**
+         * Asserts that a page past the last is empty, with the same total.
+         */
+        @Test
+        void __Paged() {
+            final var first = repositoryInstance().listNeverRented(PageRequest.of(0, 1, BY_INVENTORY_ID));
+            final var past = repositoryInstance().listNeverRented(PageRequest.of(first.getTotalPages(), 1,
+                                                                                 BY_INVENTORY_ID));
+            assertThat(past).isEmpty();
+            assertThat(past.getTotalElements()).isEqualTo(first.getTotalElements());
+        }
+    }
+
+    /**
+     * Tests {@link InventoryRepository#selectLongestIdleTimes()} ({@code SAKILA-INVENTORY-A-01}).
+     */
+    @Nested
+    class SelectLongestIdleTimes_Test {
+
+        /**
+         * Asserts that the native query selects the exercise's recorded output: five copies, by idle days
+         * descending, then by copy id.
+         */
+        @Test
+        void __() {
+            final var list = repositoryInstance().selectLongestIdleTimes();
+            assertThat(list)
+                    .extracting(IdleTime::getInventoryId, IdleTime::getIdleDays)
+                    .containsExactly(tuple(977, 45L),
+                                     tuple(3921, 45L),
+                                     tuple(506, 39L),
+                                     tuple(517, 39L),
+                                     tuple(934, 39L));
+        }
+
+        /**
+         * Asserts that each idle time is the days between its two dates, the earlier the return, as {@code DATEDIFF}
+         * counts them, by calendar dates.
+         */
+        @Test
+        void __Ordered() {
+            final var list = repositoryInstance().selectLongestIdleTimes();
+            assertThat(list)
+                    .isSortedAccordingTo(Comparator.comparingLong(IdleTime::getIdleDays).reversed()
+                                                 .thenComparing(IdleTime::getInventoryId))
+                    .allSatisfy(t -> {
+                        assertThat(t.getReturnDate()).isBefore(t.getNextRentalDate());
+                        final var days = ChronoUnit.DAYS.between(t.getReturnDate().toLocalDate(),
+                                                                 t.getNextRentalDate().toLocalDate());
+                        assertThat(t.getIdleDays()).isEqualTo(days);
+                    });
+        }
+    }
+
+    /**
+     * Tests {@link InventoryRepository#selectCopyCountsOfFilmsEveryCopyRented(Pageable)}
+     * ({@code SAKILA-INVENTORY-A-02}).
+     */
+    @Nested
+    class SelectCopyCountsOfFilmsEveryCopyRented_Test {
+
+        private static final Sort BY_FILM_ID = Sort.by("filmId");
+
+        /**
+         * Asserts that the films whose every copy was rented are as many as the exercise's recorded output, 957 of
+         * the 958 films with a copy.
+         */
+        @Test
+        void __() {
+            final var page = repositoryInstance().selectCopyCountsOfFilmsEveryCopyRented(
+                    PageRequest.of(0, 5, BY_FILM_ID));
+            assertPage(page);
+            assertThat(page.getTotalElements()).isEqualTo(957L);
+            final var withCopy = repositoryInstance().selectCopyCountsByFilm(PageRequest.of(0, 1, BY_FILM_ID));
+            assertThat(withCopy.getTotalElements()).isEqualTo(958L);
+        }
+
+        /**
+         * Asserts, in one transaction, that a page by film id is ordered so, that each count is the number of copies
+         * of the film, and that no copy of a selected film is among the copies never rented.
+         *
+         * @param size the size of the page.
+         */
+        @ValueSource(ints = {1, 5, 10})
+        @ParameterizedTest
+        @Transactional
+        void __Ordered(final int size) {
+            final var page = repositoryInstance().selectCopyCountsOfFilmsEveryCopyRented(
+                    PageRequest.of(0, size, BY_FILM_ID));
+            assertPage(page);
+            final var neverRented = repositoryInstance().listNeverRented(Pageable.unpaged(BY_INVENTORY_ID))
+                    .getContent().stream().map(Inventory::getFilmId).toList();
+            assertThat(page.getContent())
+                    .isNotEmpty()
+                    .isSortedAccordingTo(Comparator.comparing(FilmCopyCount::getFilmId))
+                    .allSatisfy(c -> {
+                        assertThat(c.getCopies()).isEqualTo(countByFilmId(c.getFilmId()));
+                        assertThat(neverRented).doesNotContain(c.getFilmId());
+                    });
+        }
+
+        /**
+         * Asserts that the film of a copy never rented is not selected, however many pages are walked.
+         */
+        @Test
+        void __Paged() {
+            final var neverRented = repositoryInstance().listNeverRented(Pageable.unpaged(BY_INVENTORY_ID))
+                    .getContent().stream().map(Inventory::getFilmId).toList();
+            final var all = repositoryInstance().selectCopyCountsOfFilmsEveryCopyRented(Pageable.unpaged(BY_FILM_ID));
+            assertThat(all.getContent()).hasSize((int) all.getTotalElements())
+                    .extracting(FilmCopyCount::getFilmId)
+                    .doesNotContainAnyElementsOf(neverRented);
         }
     }
 

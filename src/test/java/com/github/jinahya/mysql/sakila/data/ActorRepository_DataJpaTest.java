@@ -1,6 +1,7 @@
 package com.github.jinahya.mysql.sakila.data;
 
 import com.github.jinahya.mysql.sakila.data.ActorRepository.ActorFilmCount;
+import com.github.jinahya.mysql.sakila.data.ActorRepository.ActorLongestFilm;
 import com.github.jinahya.mysql.sakila.data.ActorRepository.LastNameCount;
 import com.github.jinahya.mysql.sakila.persistence.Actor;
 import com.github.jinahya.mysql.sakila.persistence.Actor_;
@@ -17,6 +18,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.stream.Stream;
 
 import static com.github.jinahya.mysql.sakila.data._Repository_DataJpaTest_Fixtures.randomName;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -272,24 +274,14 @@ class ActorRepository_DataJpaTest
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * Tests {@link ActorRepository#listByLastName(String, Pageable)} ({@code SAKILA-ACTOR-B-01}).
+     * Tests {@link ActorRepository#findAllByLastNameOrderByActorIdAsc(String)} ({@code SAKILA-ACTOR-B-01}).
      */
     @Nested
-    class ListByLastName_Test {
+    class FindAllByLastNameOrderByActorIdAsc_Test {
 
         /**
-         * Asserts that a last name no actor has lists an empty page, with no elements in all.
-         */
-        @Test
-        void _Empty_Unknown() {
-            final var page = repositoryInstance().listByLastName(randomName(), PageRequest.of(0, 5, BY_ACTOR_ID));
-            assertThat(page).isEmpty();
-            assertThat(page.getTotalElements()).isZero();
-        }
-
-        /**
-         * Saves three actors sharing a last name, and one with another, and asserts that pages of two by id hold the
-         * first two and then the third, three in all.
+         * Saves three actors sharing a last name, and one with another, and asserts that the name finds the three, and
+         * those very instances.
          */
         @Test
         void __() {
@@ -298,34 +290,61 @@ class ActorRepository_DataJpaTest
             final var actor2 = saveActor(randomName(), lastName);
             final var actor3 = saveActor(randomName(), lastName);
             final var other = saveActor(randomName(), randomName());
-            final var page0 = repositoryInstance().listByLastName(lastName, PageRequest.of(0, 2, BY_ACTOR_ID));
-            assertThat(page0.getContent()).containsExactly(actor1, actor2).doesNotContain(other);
-            assertThat(page0.getTotalElements()).isEqualTo(3L);
-            assertThat(page0.getTotalPages()).isEqualTo(2);
-            final var page1 = repositoryInstance().listByLastName(lastName, page0.nextPageable());
-            assertThat(page1.getContent()).containsExactly(actor3);
-            assertThat(page1.hasNext()).isFalse();
+            final var found = repositoryInstance().findAllByLastNameOrderByActorIdAsc(lastName);
+            assertThat(found)
+                    .containsExactlyInAnyOrder(actor1, actor2, actor3)
+                    .doesNotContain(other)
+                    .allSatisfy(a -> assertThat(a.getLastName()).isEqualTo(lastName));
+            assertThat(found).anySatisfy(a -> assertThat(a).isSameAs(actor1));
+        }
+
+        /**
+         * Saves three actors sharing a last name, and asserts that they are found by id, as the exercise sorts, which
+         * is the order they were saved in.
+         */
+        @Test
+        void __Ordered() {
+            final var lastName = randomName();
+            final var actor1 = saveActor(randomName(), lastName);
+            final var actor2 = saveActor(randomName(), lastName);
+            final var actor3 = saveActor(randomName(), lastName);
+            final var found = repositoryInstance().findAllByLastNameOrderByActorIdAsc(lastName);
+            assertThat(found).containsExactly(actor1, actor2, actor3);
+        }
+
+        /**
+         * Asserts that a last name no actor has finds an empty list.
+         */
+        @Test
+        void _Empty_Unknown() {
+            final var found = repositoryInstance().findAllByLastNameOrderByActorIdAsc(randomName());
+            assertThat(found).isEmpty();
+        }
+
+        /**
+         * Asserts that a {@code null} last name is refused with {@link IllegalArgumentException}, before any query
+         * runs: the package is {@code @NullMarked}, and Spring Data checks the arguments of a repository method so.
+         */
+        @Test
+        @SuppressWarnings({"DataFlowIssue", "NullAway"})
+        void _IllegalArgumentException_Null() {
+            assertThatThrownBy(() -> repositoryInstance().findAllByLastNameOrderByActorIdAsc(null))
+                    .isInstanceOf(IllegalArgumentException.class);
         }
     }
 
     /**
-     * Tests {@link ActorRepository#listByFirstNameStartingWith(String, Pageable)} ({@code SAKILA-ACTOR-B-02}).
+     * Tests {@link ActorRepository#findAllByFirstNameStartingWithOrderByFirstNameAscActorIdAsc(String)}
+     * ({@code SAKILA-ACTOR-B-02}).
      */
     @Nested
-    class ListByFirstNameStartingWith_Test {
+    class FindAllByFirstNameStartingWithOrderByFirstNameAscActorIdAsc_Test {
 
         /**
-         * Asserts that a prefix no first name starts with lists an empty page.
-         */
-        @Test
-        void _Empty_Unknown() {
-            final var page = repositoryInstance().listByFirstNameStartingWith(randomName(), Pageable.unpaged());
-            assertThat(page).isEmpty();
-        }
-
-        /**
-         * Saves actors whose first names share a prefix, and one whose does not, and asserts that the prefix lists
-         * the former, by first name and then by id, as the exercise sorts.
+         * Saves actors whose first names share a prefix, and one whose does not, and asserts that the prefix streams the
+         * former, by first name and then by id, as the exercise sorts.
+         * <p>
+         * The test's transaction surrounds the call, so the stream can be consumed.
          */
         @Test
         void __() {
@@ -334,13 +353,50 @@ class ActorRepository_DataJpaTest
             final var a2 = saveActor(prefix + 'a', randomName());
             final var a3 = saveActor(prefix + 'a', randomName());
             final var other = saveActor(randomName(), randomName());
-            final var sort = JpaSort.of(Sort.Direction.ASC, Actor_.firstName, Actor_.actorId);
-            final var page = repositoryInstance().listByFirstNameStartingWith(prefix, Pageable.unpaged(sort));
-            assertThat(page.getContent())
-                    .containsExactly(a2, a3, b1)
-                    .doesNotContain(other)
-                    .allSatisfy(a -> assertThat(a.getFirstName()).startsWith(prefix));
-            assertThat(page.getTotalElements()).isEqualTo(3L);
+            try (var found = repositoryInstance().findAllByFirstNameStartingWithOrderByFirstNameAscActorIdAsc(prefix)) {
+                assertThat(found.toList())
+                        .containsExactly(a2, a3, b1)
+                        .doesNotContain(other)
+                        .allSatisfy(a -> assertThat(a.getFirstName()).startsWith(prefix));
+            }
+        }
+
+        /**
+         * Asserts that a prefix no first name starts with streams nothing.
+         */
+        @Test
+        void _Empty_Unknown() {
+            try (var found = repositoryInstance().findAllByFirstNameStartingWithOrderByFirstNameAscActorIdAsc(
+                    randomName())) {
+                assertThat(found).isEmpty();
+            }
+        }
+
+        /**
+         * Runs the lookup with the test's transaction suspended, and asserts that Spring Data refuses it, before any
+         * query runs, as it does for {@link ActorRepository#findAllByLastName(String, Pageable)}.
+         */
+        @Transactional(propagation = Propagation.NOT_SUPPORTED)
+        @Test
+        void _InvalidDataAccessApiUsageException_NoSurroundingTransaction() {
+            assertThatThrownBy(() -> {
+                try (var found = repositoryInstance().findAllByFirstNameStartingWithOrderByFirstNameAscActorIdAsc(
+                        randomName())) {
+                    found.forEach(a -> {
+                    });
+                }
+            }).isInstanceOf(InvalidDataAccessApiUsageException.class);
+        }
+
+        /**
+         * Asserts that a {@code null} prefix is refused with {@link IllegalArgumentException}, before any query runs.
+         */
+        @Test
+        @SuppressWarnings({"DataFlowIssue", "NullAway"})
+        void _IllegalArgumentException_Null() {
+            assertThatThrownBy(() -> repositoryInstance().findAllByFirstNameStartingWithOrderByFirstNameAscActorIdAsc(
+                    null))
+                    .isInstanceOf(IllegalArgumentException.class);
         }
     }
 
@@ -460,6 +516,89 @@ class ActorRepository_DataJpaTest
             assertThat(page.getContent())
                     .contains(both)
                     .doesNotContain(one);
+        }
+    }
+
+    /**
+     * Tests {@link ActorRepository#selectLongestFilmsOfActorIdsBetween(int, int, Pageable)}
+     * ({@code SAKILA-ACTOR-A-03}).
+     */
+    @Nested
+    class SelectLongestFilmsOfActorIdsBetween_Test {
+
+        private static final Sort BY_ACTOR_ID_THEN_TITLE = Sort.by("actorId", "title");
+
+        /**
+         * Saves an actor in films of {@code 100}, {@code 120} and {@code 120} minutes, and another in one film, and
+         * asserts that the range of the two lists both films of {@code 120} minutes of the first, by title, then the
+         * one film of the second, and that a range of the first alone leaves the second out.
+         */
+        @Test
+        void __() {
+            final var first = saveActor(randomName(), randomName());
+            final var second = saveActor(randomName(), randomName());
+            final var shorter = saveFilm(Film.Rating.G);
+            shorter.setLength(100);
+            final var longest1 = saveFilm(Film.Rating.G);
+            longest1.setLength(120);
+            longest1.setTitle(randomName());
+            final var longest2 = saveFilm(Film.Rating.G);
+            longest2.setLength(120);
+            longest2.setTitle(randomName());
+            final var only = saveFilm(Film.Rating.G);
+            only.setLength(90);
+            for (final var film : new Film[] {shorter, longest1, longest2}) {
+                fixtures().filmActor(first, film);
+            }
+            fixtures().filmActor(second, only);
+            final var titles = Stream.of(longest1, longest2).map(Film::getTitle).sorted().toList();
+            final var page = repositoryInstance().selectLongestFilmsOfActorIdsBetween(
+                    first.getActorId(), second.getActorId(), Pageable.unpaged(BY_ACTOR_ID_THEN_TITLE));
+            assertThat(page.getContent())
+                    .extracting(ActorLongestFilm::getActorId, ActorLongestFilm::getTitle,
+                                ActorLongestFilm::getLength)
+                    .containsExactly(
+                            tuple(first.getActorId(), titles.get(0), 120),
+                            tuple(first.getActorId(), titles.get(1), 120),
+                            tuple(second.getActorId(), only.getTitle(), 90)
+                    );
+            final var firstOnly = repositoryInstance().selectLongestFilmsOfActorIdsBetween(
+                    first.getActorId(), first.getActorId(), Pageable.unpaged(BY_ACTOR_ID_THEN_TITLE));
+            assertThat(firstOnly.getContent())
+                    .extracting(ActorLongestFilm::getActorId)
+                    .containsOnly(first.getActorId());
+        }
+
+        /**
+         * Saves an actor in three films of one length, and asserts that pages of two by title split them two and one,
+         * three in all, which the count query says.
+         */
+        @Test
+        void __Paged() {
+            final var actor = saveActor(randomName(), randomName());
+            for (int i = 0; i < 3; i++) {
+                final var film = saveFilm(Film.Rating.G);
+                film.setLength(150);
+                fixtures().filmActor(actor, film);
+            }
+            final var page0 = repositoryInstance().selectLongestFilmsOfActorIdsBetween(
+                    actor.getActorId(), actor.getActorId(), PageRequest.of(0, 2, BY_ACTOR_ID_THEN_TITLE));
+            assertThat(page0.getContent()).hasSize(2);
+            assertThat(page0.getTotalElements()).isEqualTo(3L);
+            final var page1 = repositoryInstance().selectLongestFilmsOfActorIdsBetween(
+                    actor.getActorId(), actor.getActorId(), page0.nextPageable());
+            assertThat(page1.getContent()).hasSize(1);
+            assertThat(page1.hasNext()).isFalse();
+        }
+
+        /**
+         * Asserts that a {@code null} pageable is refused with {@link IllegalArgumentException}, before any query runs.
+         */
+        @Test
+        @SuppressWarnings({"DataFlowIssue", "NullAway"})
+        void _IllegalArgumentException_Null() {
+            assertThatThrownBy(() -> repositoryInstance().selectLongestFilmsOfActorIdsBetween(1, 5, null))
+                    .isInstanceOf(IllegalArgumentException.class);
         }
     }
 }

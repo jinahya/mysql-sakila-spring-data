@@ -9,6 +9,8 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -28,18 +30,19 @@ import java.util.Objects;
  * {@code (root, query, builder) -> builder.equal(root.get(Store_.managerStaff), staff)}.
  * <p>
  * The methods below answer the exercises of upstream's {@code EXERCISES.asciidoc} on the {@code store} table, one
- * method per exercise, named in each method's javadoc by the exercise's id ({@code SAKILA-STORE-I-01}, ...), one or
- * two of each level. The exercises are context, not contract: each method takes a {@link Pageable}, the page and the
- * sort, and returns a {@link Page}, so the order the exercise asks for, and its {@code LIMIT}, are the caller's
- * {@code PageRequest}; each method's javadoc says which sort that is. An exercise that shows rows is a {@code default}
- * method, {@code list...}, which builds a {@link Specification} with the Criteria API and runs it through
- * {@link org.springframework.data.jpa.repository.JpaSpecificationExecutor}. An exercise that shows columns, counted
- * or grouped, cannot be a {@code Specification}, which only filters; such a method, {@code select...}, declares its
- * JPQL with {@link Query}, with a count query of its own since Spring Data cannot derive one from a grouped select,
- * and returns a projection, one of the interfaces declared here, which Spring Data backs with the selected columns,
- * each aliased with the name of the getter it feeds. Those aliases are what the {@code Pageable} sorts by; an
- * interface rather than a record, because Spring Data rewrites a record projection into a constructor expression,
- * which drops the aliases, and the sort with them.
+ * method per exercise, named in each method's javadoc by the exercise's id ({@code SAKILA-STORE-B-01}, ...) and its
+ * role: the book's pick, or this module's own extra. A Basic exercise is plain: its method takes no {@link Pageable},
+ * the order the exercise asks for is written in the query, and it returns a {@link List}. An Intermediate or Advanced
+ * exercise takes a {@link Pageable}, the page and the sort, and returns a {@link Page}, so the order the exercise asks
+ * for, and its {@code LIMIT}, are the caller's {@code PageRequest}; each method's javadoc says which sort that is. An
+ * exercise that shows rows is a {@code default} method, {@code list...}, which builds a {@link Specification} with the
+ * Criteria API and runs it through {@link org.springframework.data.jpa.repository.JpaSpecificationExecutor}. An
+ * exercise that shows columns, counted or grouped, cannot be a {@code Specification}, which only filters; such a
+ * method, {@code select...}, declares its JPQL with {@link Query}, with a count query of its own since Spring Data
+ * cannot derive one from a grouped select, and returns a projection, one of the interfaces declared here, which Spring
+ * Data backs with the selected columns, each aliased with the name of the getter it feeds. Those aliases are what the
+ * {@code Pageable} sorts by; an interface rather than a record, because Spring Data rewrites a record projection into
+ * a constructor expression, which drops the aliases, and the sort with them.
  *
  * @see Store
  * @see Store_
@@ -116,8 +119,63 @@ public interface StoreRepository
     }
 
     /**
-     * Lists every store, with its manager and the city of its address ({@code SAKILA-STORE-I-01}, which orders by
-     * {@link Store_#STORE_ID}).
+     * A month, a store, by id, how many rentals of the store's copies began in that month, and what share of all the
+     * month's rentals that is: a projection of {@link #selectMonthlyRentalShares(Pageable)}, sortable by
+     * {@code rentalYear}, {@code rentalMonth}, {@code storeId}, {@code rentals} and {@code percent}.
+     */
+    interface StoreMonthlyRentalShare {
+
+        /**
+         * Returns the year of the month.
+         *
+         * @return the year.
+         */
+        Integer getRentalYear();
+
+        /**
+         * Returns the month of the year, from {@code 1} to {@code 12}.
+         *
+         * @return the month.
+         */
+        Integer getRentalMonth();
+
+        /**
+         * Returns the id of the store.
+         *
+         * @return the id of the store.
+         */
+        Integer getStoreId();
+
+        /**
+         * Returns the number of rentals of the store's copies that began in the month.
+         *
+         * @return the number of rentals.
+         */
+        long getRentals();
+
+        /**
+         * Returns the share of the month's rentals that are the store's, as a percentage rounded to two decimals.
+         *
+         * @return the percentage.
+         */
+        BigDecimal getPercent();
+    }
+
+    /**
+     * Finds every store, with the ids of its manager and its address ({@code SAKILA-STORE-B-01}, the book's pick,
+     * which orders by {@link Store_#STORE_ID}).
+     * <p>
+     * The query is derived from the method name, whose {@code OrderBy} is the exercise's order. Neither the
+     * {@link Store_#MANAGER_STAFF} nor the {@link Store_#ADDRESS} is fetched: the ids the exercise shows are the
+     * foreign keys of the row, which the uninitialized proxies carry.
+     *
+     * @return a list of every store, by id; empty if there is none.
+     */
+    List<Store> findAllByOrderByStoreIdAsc();
+
+    /**
+     * Lists every store, with its manager and the city of its address ({@code SAKILA-STORE-I-01}, the book's pick,
+     * which orders by {@link Store_#STORE_ID}).
      * <p>
      * A {@link Specification} with no predicate, which fetches the {@link Store_#MANAGER_STAFF}, and the
      * {@link Store_#ADDRESS} with its {@link Address_#CITY}, two joins away, along with each store, so that all three,
@@ -142,7 +200,7 @@ public interface StoreRepository
 
     /**
      * Selects every store, by id, with the numbers of its customers, its copies and its staff members
-     * ({@code SAKILA-STORE-I-02}, which orders by {@code storeId}).
+     * ({@code SAKILA-STORE-I-02}, this module's own extra, which orders by {@code storeId}).
      * <p>
      * The three counts come from three tables, and joining all three at once would multiply the rows, so each is a
      * correlated scalar subquery in the select, on the store of the row. Nothing is grouped, but the columns are
@@ -165,7 +223,8 @@ public interface StoreRepository
 
     /**
      * Selects the stores that have a copy of a film, by id, with how many distinct films they have a copy of, and how
-     * many of those no other store has a copy of ({@code SAKILA-STORE-A-01}, which orders by {@code storeId}).
+     * many of those no other store has a copy of ({@code SAKILA-STORE-A-01}, the book's pick, which orders by
+     * {@code storeId}).
      * <p>
      * The copies are reached through the store's {@link Store_#INVENTORIES}, by an inner join, and grouped by store;
      * the first count is of the distinct film ids. The second is of the distinct film ids that a {@code CASE} keeps,
@@ -194,4 +253,40 @@ public interface StoreRepository
                    FROM Store st
                    WHERE st.inventories IS NOT EMPTY""")
     Page<StoreFilmCounts> selectFilmCounts(Pageable pageable);
+
+    /**
+     * Selects, for each month and each store, how many rentals of the store's copies began in the month, and what
+     * share of all the month's rentals that is ({@code SAKILA-STORE-A-02}, this module's own extra, which orders by
+     * {@code rentalYear}, {@code rentalMonth}, then {@code storeId}).
+     * <p>
+     * The rentals are joined with their {@code inventory}, for the store, and grouped by the year and the month of
+     * {@code rentalDate} and by the store. The share needs the month's rentals of every store, which the group does
+     * not hold: a window function, {@code SUM(COUNT(r)) OVER (PARTITION BY ..)}, adds the counts of the month's
+     * groups up, which Hibernate's query language, unlike standard JPQL, allows; the count is cast to
+     * {@link BigDecimal} so that the division is not an integer one. The exercise's {@code DATE_FORMAT} is MySQL's
+     * own, so the month is two columns, the year and the month. The count query counts the groups, through the
+     * smallest rental id of each, since Spring Data cannot derive a count from a grouped select.
+     *
+     * @param pageable the page to return, and its sort, by {@code rentalYear}, {@code rentalMonth}, {@code storeId},
+     *                 {@code rentals} or {@code percent}; must not be {@code null}.
+     * @return a page of the months and stores, with their rentals and their shares of the months.
+     */
+    @Query(value = """
+            SELECT EXTRACT(YEAR FROM r.rentalDate) AS rentalYear, EXTRACT(MONTH FROM r.rentalDate) AS rentalMonth,
+                   i.storeId AS storeId, COUNT(r) AS rentals,
+                   ROUND(100 * CAST(COUNT(r) AS BigDecimal)
+                         / SUM(COUNT(r)) OVER (PARTITION BY EXTRACT(YEAR FROM r.rentalDate),
+                                                            EXTRACT(MONTH FROM r.rentalDate)), 2) AS percent
+            FROM Rental r
+            JOIN r.inventory i
+            GROUP BY EXTRACT(YEAR FROM r.rentalDate), EXTRACT(MONTH FROM r.rentalDate), i.storeId""",
+           countQuery = """
+                   SELECT COUNT(r)
+                   FROM Rental r
+                   WHERE r.rentalId IN (SELECT MIN(r2.rentalId)
+                                        FROM Rental r2
+                                        JOIN r2.inventory i2
+                                        GROUP BY EXTRACT(YEAR FROM r2.rentalDate), EXTRACT(MONTH FROM r2.rentalDate),
+                                                 i2.storeId)""")
+    Page<StoreMonthlyRentalShare> selectMonthlyRentalShares(Pageable pageable);
 }

@@ -8,12 +8,9 @@ import com.github.jinahya.mysql.sakila.persistence.FilmCategory_;
 import com.github.jinahya.mysql.sakila.persistence.FilmList;
 import com.github.jinahya.mysql.sakila.persistence.Film_;
 import lombok.extern.slf4j.Slf4j;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -25,27 +22,26 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.assertj.core.api.Assumptions.assumeThat;
+import static org.assertj.core.api.Assertions.tuple;
 
 /**
  * Tests {@link FilmListRepository} against the Sakila database.
  * <p>
  * The repository is not a Spring Data one, so this does not extend {@link _Repository_SpringBootIT}: it is a plain
  * {@code @SpringBootTest}, over the context of {@link ___Spring_TestContext}, which {@code @Import}s the
- * implementation. There is no {@code @DataJpaTest} for it either: the slice's H2 is generated from the entities, and
- * the view does not exist there. Each repository call runs in a transaction of its own, and nothing here writes.
+ * implementation. There is no {@code @DataJpaTest} for it either: the slice's H2 is generated from the entities, the
+ * view does not exist there, and every exercise method is native-only, running MySQL's own SQL. Each repository call
+ * runs in a transaction of its own, and nothing here writes.
  * <p>
- * The fixture is the first five rows of the view, by {@code FID}, selected once in {@link #__()}; each test tries
- * every one of them, or a few page sizes. What the view says is cross-checked through the repositories of the tables it
- * is built from: {@link FilmRepository} for the films and their categories, and {@link FilmActorRepository} for the
- * actors.
+ * The exercise methods run the exercises' SQL as it is, so each is asserted against the output upstream records for it,
+ * in {@code src/test/sql/film_list_exercises_0N_<level>.sql}, in the order the exercise asks for, and, where it is
+ * cheap, cross-checked through the repositories of the tables the view is built from: {@link FilmRepository} for the
+ * films and their categories, and {@link FilmActorRepository} for the actors.
  * <p>
  * Two reads of the same row are compared ignoring the order of the names in {@code actors}: the view builds that
  * string with a {@code GROUP_CONCAT} that has no {@code ORDER BY}, so MySQL may list the names in a different order
@@ -58,41 +54,15 @@ import static org.assertj.core.api.Assumptions.assumeThat;
  * @see FilmListRepositoryImpl
  */
 @SpringBootTest
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @Slf4j
 class FilmListRepository_SpringBootIT {
 
-    private static List<FilmList> rows;
-
     /**
-     * The sort of the exercises: by {@code FID}, which the implementation appends anyway.
+     * A sort by {@code FID}, which the implementation appends anyway.
      */
     private static final Sort BY_FID = Sort.by(Sort.Direction.ASC, FilmList.ATTRIBUTE_NAME_FID);
 
     // -----------------------------------------------------------------------------------------------------------------
-
-    /**
-     * Selects the first five rows of the view, by {@code FID}, as the fixture for the parameterized tests.
-     * <p>
-     * Runs once per class, which {@link TestInstance.Lifecycle#PER_CLASS} allows to be an instance method, so the
-     * autowired repository is already there; the result goes into a static field so that the static method sources of
-     * the nested classes can reach it. An empty view aborts the tests of this class rather than failing them: it is the
-     * fixture that is missing, not the behaviour under test that is wrong.
-     */
-    @BeforeAll
-    void __() {
-        rows = Collections.unmodifiableList(repository.listAll(PageRequest.of(0, 5, BY_FID)).getContent());
-        rows.forEach(r -> log.debug("row: {}", r));
-        assumeThat(rows).isNotEmpty();
-    }
-
-    private static Stream<FilmList> rows() {
-        return rows.stream();
-    }
-
-    private static Stream<String> categories() {
-        return rows.stream().map(FilmList::getCategory).distinct();
-    }
 
     /**
      * Asserts that the specified page is consistent with itself: no more content than its size, and at least as many
@@ -224,134 +194,14 @@ class FilmListRepository_SpringBootIT {
         }
     }
 
-    // ----------------------------------------------------------------------------------------------------- exercises
-
     /**
-     * Tests {@link FilmListRepository#countByCategory(String)} ({@code SAKILA-FILM_LIST-B-01}).
-     */
-    @Nested
-    class CountByCategory_Test {
-
-        private static Stream<String> categories() {
-            return FilmListRepository_SpringBootIT.categories();
-        }
-
-        /**
-         * Asserts that the category of a selected row counts a positive number of rows, which is the number of
-         * {@code film_category} links to a category of that name, counted through {@link FilmRepository} with a join;
-         * the view has one row for each such link.
-         *
-         * @param category the category of one of the rows selected in {@link FilmListRepository_SpringBootIT#__()}.
-         */
-        @MethodSource("categories")
-        @ParameterizedTest
-        void __(final String category) {
-            final var count = repository.countByCategory(category);
-            log.debug("{} films: {}", category, count);
-            final Specification<Film> specification = (r, q, b) -> b.equal(
-                    r.join(Film_.filmCategories).get(FilmCategory_.category).get(Category_.name), category);
-            assertThat(count)
-                    .isPositive()
-                    .isEqualTo(filmRepository.count(specification));
-        }
-
-        /**
-         * Asserts that a category no film has counts zero.
-         */
-        @Test
-        void _Zero_Unknown() {
-            assertThat(repository.countByCategory("no such category, surely")).isZero();
-        }
-    }
-
-    /**
-     * Tests {@link FilmListRepository#listByFid(Integer, Pageable)} ({@code SAKILA-FILM_LIST-B-02}).
-     */
-    @Nested
-    class ListByFid_Test {
-
-        private static Stream<FilmList> rows() {
-            return FilmListRepository_SpringBootIT.rows();
-        }
-
-        /**
-         * Asserts that the {@code FID} of a selected row lists rows of that {@code FID} only, the selected row among
-         * them, and that each says what the film says: its title and its rating, through {@link FilmRepository}, and
-         * as many actors as the film has {@code film_actor} links, counting the names in the comma-separated string.
-         *
-         * @param row one of the rows selected in {@link FilmListRepository_SpringBootIT#__()}.
-         */
-        @MethodSource("rows")
-        @ParameterizedTest
-        void __(final FilmList row) {
-            final var fid = row.getFid();
-            final var page = repository.listByFid(fid, Pageable.unpaged(BY_FID));
-            final var film = filmRepository.findById(fid).orElseThrow();
-            final var actors = countActorsOf(film);
-            assertThat(page.getContent())
-                    .isNotEmpty()
-                    .allSatisfy(r -> {
-                        assertThat(r.getFid()).isEqualTo(fid);
-                        assertThat(r.getTitle()).isEqualTo(film.getTitle());
-                        assertThat(r.getRating()).isEqualTo(film.getRating());
-                        assertThat(namesOf(r.getActors())).hasSize((int) actors);
-                    })
-                    .anySatisfy(r -> {
-                        assertThat(r).usingRecursiveComparison()
-                                .ignoringFields(FilmList.ATTRIBUTE_NAME_ACTORS)
-                                .isEqualTo(row);
-                        assertThat(namesOf(r.getActors()))
-                                .containsExactlyInAnyOrderElementsOf(namesOf(row.getActors()));
-                    });
-        }
-
-        /**
-         * Asserts that pages of one, walked one after another, add up to the single unpaged page of the selected
-         * row's {@code FID}, row by row, with the same total.
-         *
-         * @param row one of the rows selected in {@link FilmListRepository_SpringBootIT#__()}.
-         */
-        @MethodSource("rows")
-        @ParameterizedTest
-        void __Paged(final FilmList row) {
-            final var fid = row.getFid();
-            final var all = repository.listByFid(fid, Pageable.unpaged(BY_FID));
-            assertThat(all.getContent()).isNotEmpty();
-            final var walked = new ArrayList<FilmList>();
-            var page = repository.listByFid(fid, PageRequest.of(0, 1, BY_FID));
-            while (true) {
-                assertPage(page);
-                assertThat(page.getTotalElements()).isEqualTo(all.getTotalElements());
-                walked.addAll(page.getContent());
-                if (!page.hasNext()) {
-                    break;
-                }
-                page = repository.listByFid(fid, page.nextPageable());
-            }
-            assertSameRows(walked, all.getContent());
-        }
-
-        /**
-         * Asserts that an {@code FID} no film has lists nothing, with a total of zero.
-         */
-        @Test
-        void _Empty_Unknown() {
-            final var page = repository.listByFid(0, PageRequest.of(0, 1, BY_FID));
-            assertThat(page.getContent()).isEmpty();
-            assertThat(page.getTotalElements()).isZero();
-        }
-    }
-
-    /**
-     * Tests {@link FilmListRepository#countAll()} ({@code SAKILA-FILM_LIST-I-01}).
+     * Tests {@link FilmListRepository#countAll()}.
      */
     @Nested
     class CountAll_Test {
 
         /**
-         * Asserts that the count is the total of the unpaged listing, and is the number of films which have a
-         * category, counted through {@link FilmRepository}, as the exercise checks; the two are the same since no film
-         * of the sample data has more than one category.
+         * Asserts that the count is the total of the unpaged listing.
          */
         @Test
         void __() {
@@ -360,8 +210,246 @@ class FilmListRepository_SpringBootIT {
             assertThat(count)
                     .isPositive()
                     .isEqualTo(repository.listAll(Pageable.unpaged()).getTotalElements());
+        }
+    }
+
+    // ----------------------------------------------------------------------------------------------------- exercises
+
+    /**
+     * Tests {@link FilmListRepository#countActionFilms()} ({@code SAKILA-FILM_LIST-B-01}).
+     */
+    @Nested
+    class CountActionFilms_Test {
+
+        /**
+         * Asserts that the count is the exercise's {@code 64}, and is the number of {@code film_category} links to the
+         * {@code Action} category, counted through {@link FilmRepository} with a join; the view has one row for each
+         * such link.
+         */
+        @Test
+        void __() {
+            final var count = repository.countActionFilms();
+            log.debug("Action films: {}", count);
+            final Specification<Film> specification = (r, q, b) -> b.equal(
+                    r.join(Film_.filmCategories).get(FilmCategory_.category).get(Category_.name), "Action");
+            assertThat(count)
+                    .isEqualTo(64L)
+                    .isEqualTo(filmRepository.count(specification));
+        }
+    }
+
+    /**
+     * Tests {@link FilmListRepository#listActorsOfFilmOne()} ({@code SAKILA-FILM_LIST-B-02}).
+     */
+    @Nested
+    class ListActorsOfFilmOne_Test {
+
+        /**
+         * Asserts that the film {@code 1} has the one row the exercise shows, {@code ACADEMY DINOSAUR} with its ten
+         * actors, in whatever order, and as many as the film has {@code film_actor} links, counted through
+         * {@link FilmActorRepository}.
+         */
+        @Test
+        void __() {
+            final var list = repository.listActorsOfFilmOne();
+            list.forEach(r -> log.debug("row: {}", r));
+            assertThat(list).singleElement().satisfies(r -> {
+                assertThat(r.fid()).isEqualTo(1);
+                assertThat(r.title()).isEqualTo("ACADEMY DINOSAUR");
+                assertThat(namesOf(r.actors())).containsExactlyInAnyOrder(
+                        "PENELOPE GUINESS", "CHRISTIAN GABLE", "LUCILLE TRACY", "SANDRA PECK", "JOHNNY CAGE",
+                        "MENA TEMPLE", "WARREN NOLTE", "OPRAH KILMER", "ROCK DUKAKIS", "MARY KEITEL");
+                final var film = filmRepository.findById(r.fid()).orElseThrow();
+                assertThat(namesOf(r.actors())).hasSize((int) countActorsOf(film));
+            });
+        }
+    }
+
+    /**
+     * Tests {@link FilmListRepository#listChildrenFilmsRatedG()} ({@code SAKILA-FILM_LIST-B-03}).
+     */
+    @Nested
+    class ListChildrenFilmsRatedG_Test {
+
+        /**
+         * Asserts that the films are the exercise's ten, with their lengths.
+         */
+        @Test
+        void __() {
+            final var list = repository.listChildrenFilmsRatedG();
+            list.forEach(r -> log.debug("row: {}", r));
+            assertThat(list)
+                    .extracting(FilmListRepository.FilmLength::fid, FilmListRepository.FilmLength::title,
+                                FilmListRepository.FilmLength::length)
+                    .containsExactly(
+                            tuple(238, "DOCTOR GRAIL", 57),
+                            tuple(280, "EMPIRE MALKOVICH", 177),
+                            tuple(304, "FARGO GANDHI", 130),
+                            tuple(354, "GHOST GROUNDHOG", 85),
+                            tuple(373, "GRADUATE LORD", 156),
+                            tuple(409, "HEARTBREAKERS BRIGHT", 59),
+                            tuple(626, "NOON PAPI", 57),
+                            tuple(853, "STRANGER STRANGERS", 139),
+                            tuple(873, "SWEETHEARTS SUSPECTS", 108),
+                            tuple(959, "WARLOCK WEREWOLF", 83));
+        }
+
+        /**
+         * Asserts that the films are sorted by title, and then by {@code FID}, as the exercise asks; the titles are
+         * compared ignoring case, as the database's collation compares them.
+         */
+        @Test
+        void __Sorted() {
+            assertThat(repository.listChildrenFilmsRatedG())
+                    .isSortedAccordingTo(Comparator.comparing(FilmListRepository.FilmLength::title,
+                                                              String.CASE_INSENSITIVE_ORDER)
+                                                 .thenComparing(FilmListRepository.FilmLength::fid));
+        }
+    }
+
+    /**
+     * Tests {@link FilmListRepository#listFilmsWithNoActor()} ({@code SAKILA-FILM_LIST-B-04}).
+     */
+    @Nested
+    class ListFilmsWithNoActor_Test {
+
+        /**
+         * Asserts that the films are the exercise's three, with their categories, by {@code FID}, and that none of them
+         * has a {@code film_actor} link, counted through {@link FilmActorRepository}.
+         */
+        @Test
+        void __() {
+            final var list = repository.listFilmsWithNoActor();
+            list.forEach(r -> log.debug("row: {}", r));
+            assertThat(list)
+                    .extracting(FilmListRepository.FilmInCategory::fid, FilmListRepository.FilmInCategory::title,
+                                FilmListRepository.FilmInCategory::category)
+                    .containsExactly(
+                            tuple(257, "DRUMLINE CYCLONE", "Travel"),
+                            tuple(323, "FLIGHT LIES", "Sports"),
+                            tuple(803, "SLACKER LIAISONS", "Drama"));
+            for (final var r : list) {
+                final var film = filmRepository.findById(r.fid()).orElseThrow();
+                assertThat(countActorsOf(film)).isZero();
+            }
+        }
+    }
+
+    /**
+     * Tests {@link FilmListRepository#countFilmListAndFilmsWithACategory()} ({@code SAKILA-FILM_LIST-I-01}).
+     */
+    @Nested
+    class CountFilmListAndFilmsWithACategory_Test {
+
+        /**
+         * Asserts that both counts are the exercise's {@code 1000}: the first is {@link FilmListRepository#countAll()},
+         * and the second the number of films which have a category, counted through {@link FilmRepository}.
+         */
+        @Test
+        void __() {
+            final var counts = repository.countFilmListAndFilmsWithACategory();
+            log.debug("counts: {}", counts);
+            assertThat(counts.filmList()).isEqualTo(1000L).isEqualTo(repository.countAll());
             final Specification<Film> specification = (r, q, b) -> b.isNotEmpty(r.get(Film_.filmCategories));
-            assertThat(count).isEqualTo(filmRepository.count(specification));
+            assertThat(counts.filmsWithACategory())
+                    .isEqualTo(1000L)
+                    .isEqualTo(filmRepository.count(specification));
+        }
+    }
+
+    /**
+     * Tests {@link FilmListRepository#countFilmsByRatingAndPrice()} ({@code SAKILA-FILM_LIST-I-02}).
+     */
+    @Nested
+    class CountFilmsByRatingAndPrice_Test {
+
+        /**
+         * Asserts that the rows are the exercise's five, one per rating, in the order of MySQL's {@code ENUM}, which is
+         * the order of the {@link Film.Rating} constants too, and that their counts add up to every row of the view.
+         */
+        @Test
+        void __() {
+            final var list = repository.countFilmsByRatingAndPrice();
+            list.forEach(r -> log.debug("row: {}", r));
+            assertThat(list)
+                    .extracting(FilmListRepository.RatingPrices::rating, FilmListRepository.RatingPrices::price099,
+                                FilmListRepository.RatingPrices::price299, FilmListRepository.RatingPrices::price499)
+                    .containsExactly(
+                            tuple("G", 64L, 59L, 55L),
+                            tuple("PG", 62L, 64L, 68L),
+                            tuple("PG-13", 72L, 74L, 77L),
+                            tuple("R", 70L, 60L, 65L),
+                            tuple("NC-17", 73L, 66L, 71L));
+            assertThat(list)
+                    .extracting(r -> Film.Rating.valueOfColumnValue(r.rating()))
+                    .isSorted();
+            assertThat(list.stream().mapToLong(r -> r.price099() + r.price299() + r.price499()).sum())
+                    .isEqualTo(repository.countAll());
+        }
+    }
+
+    /**
+     * Tests {@link FilmListRepository#listFilmsMiscountingActors()} ({@code SAKILA-FILM_LIST-I-03}).
+     */
+    @Nested
+    class ListFilmsMiscountingActors_Test {
+
+        /**
+         * Asserts that no film is miscounted, as the exercise says.
+         */
+        @Test
+        void __() {
+            assertThat(repository.listFilmsMiscountingActors()).isEmpty();
+        }
+    }
+
+    /**
+     * Tests {@link FilmListRepository#countLongerThanAverageByCategory()} ({@code SAKILA-FILM_LIST-A-01}).
+     */
+    @Nested
+    class CountLongerThanAverageByCategory_Test {
+
+        /**
+         * Asserts that the rows are the exercise's sixteen, one per category.
+         */
+        @Test
+        void __() {
+            final var list = repository.countLongerThanAverageByCategory();
+            list.forEach(r -> log.debug("row: {}", r));
+            assertThat(list)
+                    .extracting(FilmListRepository.CategoryLongerThanAverage::category,
+                                FilmListRepository.CategoryLongerThanAverage::longerThanAverage)
+                    .containsExactly(
+                            tuple("Sports", 42L),
+                            tuple("Foreign", 37L),
+                            tuple("Family", 36L),
+                            tuple("New", 34L),
+                            tuple("Animation", 32L),
+                            tuple("Documentary", 31L),
+                            tuple("Drama", 31L),
+                            tuple("Sci-Fi", 31L),
+                            tuple("Action", 30L),
+                            tuple("Games", 30L),
+                            tuple("Travel", 30L),
+                            tuple("Children", 28L),
+                            tuple("Comedy", 28L),
+                            tuple("Horror", 28L),
+                            tuple("Classics", 27L),
+                            tuple("Music", 25L));
+        }
+
+        /**
+         * Asserts that the rows are sorted by the count, descending, and then by the category, as the exercise asks;
+         * the names are compared ignoring case, as the database's collation compares them.
+         */
+        @Test
+        void __Sorted() {
+            assertThat(repository.countLongerThanAverageByCategory())
+                    .isSortedAccordingTo(
+                            Comparator.comparingLong(FilmListRepository.CategoryLongerThanAverage::longerThanAverage)
+                                    .reversed()
+                                    .thenComparing(FilmListRepository.CategoryLongerThanAverage::category,
+                                                   String.CASE_INSENSITIVE_ORDER));
         }
     }
 

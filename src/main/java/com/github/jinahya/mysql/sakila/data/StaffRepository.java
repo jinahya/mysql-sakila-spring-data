@@ -6,10 +6,15 @@ import com.github.jinahya.mysql.sakila.persistence.Store_;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
 import java.util.Objects;
+import java.util.stream.Stream;
 
 /**
  * A repository for {@link Staff}, the {@code staff} table of the Sakila database.
@@ -27,9 +32,11 @@ import java.util.Objects;
  * {@code (root, query, builder) -> builder.isTrue(root.get(Staff_.active))}.
  * <p>
  * The methods below answer the exercises of upstream's {@code EXERCISES.asciidoc} on the {@code staff} table, one
- * method per exercise, named in each method's javadoc by the exercise's id ({@code SAKILA-STAFF-B-01}, ...), one or
- * two of each level. The exercises are context, not contract: each method takes a {@link Pageable}, the page and the
- * sort, and returns a {@link Page}, so the order the exercise asks for, and its {@code LIMIT}, are the caller's
+ * method per exercise, named in each method's javadoc by the exercise's id ({@code SAKILA-STAFF-B-01}, ...) and its
+ * role: the book's pick, or this module's own extra. A Basic exercise is plain: its method takes no {@link Pageable},
+ * the order the exercise asks for is written in the query, and it returns a {@link List} (the book's pick) or a
+ * {@link Stream} (this module's own extra). An Intermediate or Advanced exercise takes a {@link Pageable}, the page and
+ * the sort, and returns a {@link Page}, so the order the exercise asks for, and its {@code LIMIT}, are the caller's
  * {@code PageRequest}; each method's javadoc says which sort that is. An exercise that shows rows is a {@code default}
  * method, {@code list...}, which builds a {@link Specification} with the Criteria API and runs it through
  * {@link org.springframework.data.jpa.repository.JpaSpecificationExecutor}. An exercise that shows columns, grouped
@@ -78,32 +85,75 @@ public interface StaffRepository
     }
 
     /**
-     * Lists every staff member, with the store they work at ({@code SAKILA-STAFF-B-01}, which orders by
-     * {@link Staff_#STAFF_ID}).
-     * <p>
-     * A {@link Specification} with no predicate, which fetches the {@link Staff_#STORE} along with each staff member,
-     * so that the store, lazy otherwise, is loaded by the same select and can be read once the page is detached. The
-     * fetch is skipped for the count query Spring Data runs for the page, whose result type is {@link Long}: a count
-     * fetches nothing.
-     *
-     * @param pageable the page to return, and its sort; must not be {@code null}.
-     * @return a page of the staff members, each with its store loaded.
+     * A staff member, by id, and the day on which the staff member took the most, with how many payments and how much
+     * that day: a projection of {@link #selectBestDays(Pageable)}, sortable by {@code staffId}, {@code paymentDay},
+     * {@code payments} and {@code total}.
      */
-    default Page<Staff> listWithStore(final Pageable pageable) {
-        Objects.requireNonNull(pageable, "pageable is null");
-        final Specification<Staff> specification = (r, q, b) -> {
-            final var resultType = Objects.requireNonNull(q).getResultType();
-            if (resultType != Long.class && resultType != long.class) {
-                r.fetch(Staff_.store);
-            }
-            return b.conjunction();
-        };
-        return findAll(specification, pageable);
+    interface StaffBestDay {
+
+        /**
+         * Returns the id of the staff member.
+         *
+         * @return the id of the staff member.
+         */
+        Integer getStaffId();
+
+        /**
+         * Returns the day on which the staff member took the most.
+         *
+         * @return the day.
+         */
+        LocalDate getPaymentDay();
+
+        /**
+         * Returns the number of payments the staff member took that day.
+         *
+         * @return the number of payments.
+         */
+        long getPayments();
+
+        /**
+         * Returns the sum of the amounts of the payments the staff member took that day.
+         *
+         * @return the sum of the amounts.
+         */
+        BigDecimal getTotal();
     }
 
     /**
-     * Selects the staff members who handled at least one rental, with how many ({@code SAKILA-STAFF-I-01}, which
-     * orders by {@code staffId}).
+     * Finds every staff member, with the store they work at ({@code SAKILA-STAFF-B-01}, the book's pick, which orders
+     * by {@link Staff_#STAFF_ID}).
+     * <p>
+     * The query is derived from the method name, whose {@code OrderBy} is the exercise's order. The
+     * {@link EntityGraph} fetches the {@link Staff_#STORE} along with each staff member, so that the store, lazy
+     * otherwise, is loaded by the same select and can be read once the list is detached.
+     *
+     * @return a list of every staff member, by id, each with its store loaded; empty if there is none.
+     */
+    @EntityGraph(attributePaths = Staff.ATTRIBUTE_NAME_STORE)
+    List<Staff> findAllByOrderByStaffIdAsc();
+
+    /**
+     * Finds the staff members who have no password, as a stream ({@code SAKILA-STAFF-B-02}, this module's own extra,
+     * which orders by {@link Staff_#STAFF_ID}).
+     * <p>
+     * The query is derived from the method name: an {@code IS NULL} on {@link Staff_#PASSWORD}, and the exercise's
+     * order.
+     * <p>
+     * A {@link Stream} reads the rows as they are consumed, over a result set that stays open until the stream is
+     * closed, so close it, in a try-with-resources. It also has to be consumed inside a transaction the caller opened:
+     * the transaction the repository opens for itself ends when this method returns, which would close the result set
+     * under the stream, so Spring Data refuses a call that no transaction surrounds, with an
+     * {@link org.springframework.dao.InvalidDataAccessApiUsageException}, before any query runs.
+     *
+     * @return a stream of the staff members whose password is {@code null}, by id, to be closed by the caller; empty
+     *         if there is none.
+     */
+    Stream<Staff> findAllByPasswordIsNullOrderByStaffIdAsc();
+
+    /**
+     * Selects the staff members who handled at least one rental, with how many ({@code SAKILA-STAFF-I-01}, this
+     * module's own extra, which orders by {@code staffId}).
      * <p>
      * The staff member has no collection of rentals, so the query starts from {@code Rental}, joins its
      * {@code staff}, and groups by the staff member; a staff member with no rental is not in the page. The count query
@@ -127,8 +177,8 @@ public interface StaffRepository
     Page<StaffRentalCount> selectRentalCounts(Pageable pageable);
 
     /**
-     * Lists the staff members who manage the very store they work at ({@code SAKILA-STAFF-I-02}, which orders by
-     * {@link Staff_#STAFF_ID}).
+     * Lists the staff members who manage the very store they work at ({@code SAKILA-STAFF-I-02}, the book's pick,
+     * which orders by {@link Staff_#STAFF_ID}).
      * <p>
      * A {@link Specification} with a join: the staff member's {@link Staff_#STORE} is joined, and its
      * {@link Store_#MANAGER_STAFF} compared with the staff member itself. The schema ties neither column to the other,
@@ -145,4 +195,41 @@ public interface StaffRepository
         };
         return findAll(specification, pageable);
     }
+
+    /**
+     * Selects, for each staff member, the day on which the staff member took the most, with how many payments and
+     * how much ({@code SAKILA-STAFF-A-01}, the book's pick, which orders by {@code staffId}).
+     * <p>
+     * The payments are grouped by staff member and by day, the date part of {@code paymentDate}, and a group is kept
+     * by a {@code HAVING} when its sum is not less than {@code ALL} the sums of that staff member's other days, a
+     * correlated subquery; JPQL has no window function to rank the days with. Two days tied for the most would both be
+     * kept; the sample data has no such tie. The count query counts the groups the same {@code HAVING} keeps, through
+     * the smallest payment id of each, since Spring Data cannot derive a count from a grouped select.
+     *
+     * @param pageable the page to return, and its sort, by {@code staffId}, {@code paymentDay}, {@code payments} or
+     *                 {@code total}; must not be {@code null}.
+     * @return a page of the staff members' best days.
+     */
+    @Query(value = """
+            SELECT s.staffId AS staffId, EXTRACT(DATE FROM p.paymentDate) AS paymentDay, COUNT(p) AS payments,
+                   SUM(p.amount) AS total
+            FROM Payment p
+            JOIN p.staff s
+            GROUP BY s.staffId, EXTRACT(DATE FROM p.paymentDate)
+            HAVING SUM(p.amount) >= ALL (SELECT SUM(p2.amount)
+                                         FROM Payment p2
+                                         WHERE p2.staff.staffId = s.staffId
+                                         GROUP BY EXTRACT(DATE FROM p2.paymentDate))""",
+           countQuery = """
+                   SELECT COUNT(p)
+                   FROM Payment p
+                   WHERE p.paymentId IN (SELECT MIN(p3.paymentId)
+                                         FROM Payment p3
+                                         JOIN p3.staff s3
+                                         GROUP BY s3.staffId, EXTRACT(DATE FROM p3.paymentDate)
+                                         HAVING SUM(p3.amount) >= ALL (SELECT SUM(p2.amount)
+                                                                       FROM Payment p2
+                                                                       WHERE p2.staff.staffId = s3.staffId
+                                                                       GROUP BY EXTRACT(DATE FROM p2.paymentDate)))""")
+    Page<StaffBestDay> selectBestDays(Pageable pageable);
 }

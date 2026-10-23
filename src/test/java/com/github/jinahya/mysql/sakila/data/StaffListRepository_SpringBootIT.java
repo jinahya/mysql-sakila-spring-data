@@ -1,9 +1,11 @@
 package com.github.jinahya.mysql.sakila.data;
 
+import com.github.jinahya.mysql.sakila.data.StaffListRepository.StaffCities;
 import com.github.jinahya.mysql.sakila.persistence.StaffList;
 import com.github.jinahya.mysql.sakila.persistence.StaffList_;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -20,6 +22,7 @@ import java.util.List;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.assertj.core.api.Assumptions.assumeThat;
 
 /**
@@ -96,30 +99,25 @@ class StaffListRepository_SpringBootIT
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * Tests {@link StaffListRepository#listAll(Pageable)} ({@code SAKILA-STAFF_LIST-B-01}).
+     * Tests {@link StaffListRepository#findAllByOrderByIdAsc()} ({@code SAKILA-STAFF_LIST-B-01}).
      */
     @Nested
-    class ListAll_Test {
+    class FindAllByOrderByIdAsc_Test {
 
         private static Stream<StaffList> staffLists() {
             return StaffListRepository_SpringBootIT.staffLists();
         }
 
         /**
-         * Asserts that a page of the given size, by id as the exercise sorts, is ordered so, holds as many rows in
-         * all as the {@code staff} table has staff members, and names each of them as the table does, first name and
-         * last name as one string.
-         *
-         * @param size the size of the page.
+         * Asserts that the list, by id as the exercise orders, is ordered so, holds as many rows as the {@code staff}
+         * table has staff members, and names each of them as the table does, first name and last name as one string,
+         * at the store the table says.
          */
-        @ValueSource(ints = {1, 2, 5})
-        @ParameterizedTest
-        void __(final int size) {
-            final var page = repositoryInstance().listAll(PageRequest.of(0, size, BY_ID));
-            assertPage(page);
-            assertThat(page.getTotalElements()).isEqualTo(staffRepository.count());
-            assertThat(page.getContent())
-                    .isNotEmpty()
+        @Test
+        void __() {
+            final var found = repositoryInstance().findAllByOrderByIdAsc();
+            assertThat(found)
+                    .hasSize((int) staffRepository.count())
                     .isSortedAccordingTo(Comparator.comparing(StaffList::getId))
                     .allSatisfy(l -> {
                         final var staff = staffRepository.findById(l.getId()).orElseThrow();
@@ -130,23 +128,31 @@ class StaffListRepository_SpringBootIT
         }
 
         /**
-         * Asserts that every row lists a selected row, and that pages of one walk the same rows in the same order.
+         * Asserts that the list starts with the rows the exercise shows, on the sample data: the id, the name, the
+         * city, the country and the store of each staff member.
+         */
+        @Test
+        void __Expected() {
+            final var found = repositoryInstance().findAllByOrderByIdAsc();
+            assertThat(found)
+                    .extracting(StaffList::getId, StaffList::getName, StaffList::getCity, StaffList::getCountry,
+                                StaffList::getSid)
+                    .startsWith(
+                            tuple(1, "Mike Hillyer", "Lethbridge", "Canada", 1),
+                            tuple(2, "Jon Stephens", "Woodridge", "Australia", 2)
+                    );
+        }
+
+        /**
+         * Asserts that the list holds a selected row.
          *
          * @param staffList one of the rows selected in {@link StaffListRepository_SpringBootIT#__()}.
          */
         @MethodSource("staffLists")
         @ParameterizedTest
         void __Selected(final StaffList staffList) {
-            final var all = repositoryInstance().listAll(Pageable.unpaged(BY_ID));
-            assertThat(all.getContent()).contains(staffList);
-            var page = repositoryInstance().listAll(PageRequest.of(0, 1, BY_ID));
-            assertThat(page.getTotalElements()).isEqualTo(all.getTotalElements());
-            for (final var expected : all) {
-                assertThat(page.getContent()).containsExactly(expected);
-                if (page.hasNext()) {
-                    page = repositoryInstance().listAll(page.nextPageable());
-                }
-            }
+            final var found = repositoryInstance().findAllByOrderByIdAsc();
+            assertThat(found).contains(staffList);
         }
     }
 
@@ -175,6 +181,74 @@ class StaffListRepository_SpringBootIT
             assertThat(counts.getStaffLists()).isEqualTo(repositoryInstance().count());
             assertThat(counts.getStaffs()).isEqualTo(staffRepository.count());
             assertThat(staffRepository.existsById(staffList.getId())).isTrue();
+        }
+    }
+
+    /**
+     * Tests {@link StaffListRepository#selectCities(Pageable)} ({@code SAKILA-STAFF_LIST-I-02}).
+     */
+    @Nested
+    class SelectCities_Test {
+
+        /**
+         * A sort by the id, the select's alias {@code id}, as the exercise sorts.
+         */
+        private static final Sort BY_ID = Sort.by(StaffList_.ID);
+
+        private static Stream<StaffList> staffLists() {
+            return StaffListRepository_SpringBootIT.staffLists();
+        }
+
+        /**
+         * Asserts that all the rows, by the id as the exercise sorts, are the rows the exercise shows, on the sample
+         * data: each staff member lives in the city of the store the staff member works at.
+         */
+        @Test
+        void __Expected() {
+            final var page = repositoryInstance().selectCities(Pageable.unpaged(BY_ID));
+            assertThat(page.getContent())
+                    .extracting(StaffCities::getId, StaffCities::getName, StaffCities::getLivesIn,
+                                StaffCities::getWorksIn)
+                    .containsExactly(
+                            tuple(1, "Mike Hillyer", "Lethbridge", "Lethbridge"),
+                            tuple(2, "Jon Stephens", "Woodridge", "Woodridge")
+                    );
+        }
+
+        /**
+         * Asserts that a selected row is selected, with its own name and city as the {@code livesIn}, and a city the
+         * store works in.
+         *
+         * @param staffList one of the rows selected in {@link StaffListRepository_SpringBootIT#__()}.
+         */
+        @MethodSource("staffLists")
+        @ParameterizedTest
+        void __(final StaffList staffList) {
+            final var page = repositoryInstance().selectCities(Pageable.unpaged(BY_ID));
+            assertThat(page.getContent())
+                    .filteredOn(c -> c.getId().equals(staffList.getId()))
+                    .singleElement()
+                    .satisfies(c -> {
+                        assertThat(c.getName()).isEqualTo(staffList.getName());
+                        assertThat(c.getLivesIn()).isEqualTo(staffList.getCity());
+                        assertThat(c.getWorksIn()).isNotBlank();
+                    });
+        }
+
+        /**
+         * Asserts that a page of the given size, by the id, is ordered so, and holds as many rows in all as the view.
+         *
+         * @param size the size of the page.
+         */
+        @ValueSource(ints = {1, 2, 5})
+        @ParameterizedTest
+        void __Paged(final int size) {
+            final var page = repositoryInstance().selectCities(PageRequest.of(0, size, BY_ID));
+            assertPage(page);
+            assertThat(page.getTotalElements()).isEqualTo(repositoryInstance().count());
+            assertThat(page.getContent())
+                    .hasSize((int) Math.min(size, page.getTotalElements()))
+                    .isSortedAccordingTo(Comparator.comparing(StaffCities::getId));
         }
     }
 

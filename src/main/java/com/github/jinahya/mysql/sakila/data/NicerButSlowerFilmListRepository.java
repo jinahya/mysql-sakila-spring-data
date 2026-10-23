@@ -4,6 +4,9 @@ import com.github.jinahya.mysql.sakila.persistence.NicerButSlowerFilmList;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import java.math.BigDecimal;
+import java.util.List;
+
 /**
  * A repository for {@link NicerButSlowerFilmList}, the {@code nicer_but_slower_film_list} view of the Sakila database.
  * <p>
@@ -14,7 +17,7 @@ import org.springframework.data.domain.Pageable;
  * {@link NicerButSlowerFilmListRepositoryImpl}, over a {@code JdbcClient}, and nothing registers that bean on its own:
  * a consumer component-scans this package or {@code @Import}s the class, and injects it by this interface.
  * <p>
- * A method that returns rows takes a {@link Pageable}, the page and the sort, and returns a {@link Page}. The sort
+ * {@link #listAll(Pageable)} takes a {@link Pageable}, the page and the sort, and returns a {@link Page}. The sort
  * names the attributes of {@link NicerButSlowerFilmList} ({@link NicerButSlowerFilmList#ATTRIBUTE_NAME_FID},
  * {@link NicerButSlowerFilmList#ATTRIBUTE_NAME_TITLE}, ...), which the implementation maps to the columns of the view;
  * a property the view has no column for is rejected. The {@link NicerButSlowerFilmList#ATTRIBUTE_NAME_FID fid} is
@@ -22,10 +25,11 @@ import org.springframework.data.domain.Pageable;
  * sorts by. An unpaged {@code Pageable} returns every row in one page.
  * <p>
  * The methods after {@link #listAll(Pageable)} answer the exercises of upstream's {@code EXERCISES.asciidoc} on the
- * {@code nicer_but_slower_film_list} view, one method per exercise, named in each method's javadoc by the exercise's
- * id ({@code SAKILA-NICER_BUT_SLOWER_FILM_LIST-B-01}, ...). The exercises are context, not contract: an exercise that
- * counts is a {@code count...} method, and an exercise that shows rows is a {@code list...} method, which leaves the
- * order, and the {@code LIMIT}, to the caller's {@code PageRequest}.
+ * {@code nicer_but_slower_film_list} view, one method per exercise, in the order of their ids, each named in its
+ * javadoc ({@code SAKILA-NICER_BUT_SLOWER_FILM_LIST-B-01}, ...). The view has no entity, so every one of them is
+ * native-only: it runs the exercise's SQL as {@code EXERCISES.asciidoc} has it, its literals, its {@code ORDER BY} and
+ * its {@code LIMIT} included, from a {@code .sql} resource beside the implementation, and returns a single value or the
+ * exercise's columns as a record, nested here or, for the same columns, in {@link FilmListRepository}.
  *
  * @see NicerButSlowerFilmList
  * @see NicerButSlowerFilmListRepositoryImpl
@@ -35,9 +39,45 @@ public interface NicerButSlowerFilmListRepository
         extends _NonEntityRepository<NicerButSlowerFilmList> {
 
     /**
+     * The number of films of a category, and their average length.
+     *
+     * @param category      the name of the category.
+     * @param films         the number of films of the category.
+     * @param averageLength the average length of the films, rounded to two decimal places; {@code average_length}.
+     */
+    record CategoryAverageLength(String category, long films, BigDecimal averageLength) {
+
+    }
+
+    /**
+     * The number of films of a band of lengths, with the shortest and the longest of them.
+     *
+     * @param band     the band: {@code short}, under an hour; {@code medium}, up to two hours; {@code long}, longer.
+     * @param films    the number of films of the band.
+     * @param shortest the length of the shortest film of the band, in minutes.
+     * @param longest  the length of the longest film of the band, in minutes.
+     */
+    record LengthBand(String band, long films, Integer shortest, Integer longest) {
+
+    }
+
+    /**
+     * The longest length of the films of a category, and how many films have it.
+     *
+     * @param category the name of the category.
+     * @param longest  the longest length of the films of the category, in minutes.
+     * @param films    the number of films of the category of that length.
+     */
+    record CategoryLongest(String category, Integer longest, long films) {
+
+    }
+
+    // -----------------------------------------------------------------------------------------------------------------
+
+    /**
      * Lists every row of the view.
      * <p>
-     * Not an exercise; the view's plain listing, which the tests select their fixture rows with.
+     * Not an exercise; the view's plain listing, which the tests page through.
      *
      * @param pageable the page to return, and its sort; must not be {@code null}.
      * @return a page of the rows of the view.
@@ -47,30 +87,89 @@ public interface NicerButSlowerFilmListRepository
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * Lists the rows of the view whose {@link NicerButSlowerFilmList#COLUMN_NAME_FID FID} is the specified value
-     * ({@code SAKILA-NICER_BUT_SLOWER_FILM_LIST-B-01}, which shows the film {@code 1}, with its title and the names of
-     * its actors as this view writes them, to compare with the same row of {@code film_list}).
+     * Lists the actors of the film {@code 1}, as this view writes them ({@code SAKILA-NICER_BUT_SLOWER_FILM_LIST-B-01};
+     * native-only; no sort, the rows of one film), to compare with the same row of {@code film_list}.
      * <p>
-     * A page rather than an optional, as {@link FilmListRepository#listByFid(Integer, Pageable)} explains: {@code FID}
-     * does not identify a row of the view.
+     * A list rather than an optional, as {@link FilmListRepository#listActorsOfFilmOne()} explains: {@code FID} does
+     * not identify a row of the view. The names are written with only the first letter of each in upper case.
      *
-     * @param fid      the {@code FID}, the id of the film, to match; must not be {@code null}.
-     * @param pageable the page to return, and its sort; must not be {@code null}.
-     * @return a page of the rows of the film whose id is {@code fid}; empty if there is none.
+     * @return the rows of the film {@code 1}, with its title and the names of its actors in one string.
      */
-    Page<NicerButSlowerFilmList> listByFid(Integer fid, Pageable pageable);
+    List<FilmListRepository.FilmActors> listActorsOfFilmOne();
+
+    /**
+     * Counts the films {@code PENELOPE GUINESS} plays in, by the view's {@code actors}
+     * ({@code SAKILA-NICER_BUT_SLOWER_FILM_LIST-B-02}; native-only; no sort, a single value).
+     * <p>
+     * The name is matched with {@code LIKE '%Penelope Guiness%'}, as this view writes it; the comparison is the
+     * database's, case-insensitive by the collation of the column.
+     *
+     * @return the number of rows whose {@code actors} name {@code Penelope Guiness}; {@code films}.
+     */
+    long countFilmsOfPenelopeGuiness();
+
+    /**
+     * Lists the films which have no actors ({@code SAKILA-NICER_BUT_SLOWER_FILM_LIST-B-03}; native-only; sorted by
+     * {@code FID}).
+     *
+     * @return the films whose {@code actors} is {@code NULL}, with their categories, by {@code FID}.
+     */
+    List<FilmListRepository.FilmInCategory> listFilmsWithNoActor();
+
+    /**
+     * Lists the five categories whose films are the longest, on average
+     * ({@code SAKILA-NICER_BUT_SLOWER_FILM_LIST-I-01}; native-only; sorted by {@code average_length}, descending, then
+     * by {@code category}, and limited to five).
+     *
+     * @return the five categories of the longest average length, with the number of their films and that average.
+     */
+    List<CategoryAverageLength> listFiveLongestCategoriesOnAverage();
+
+    /**
+     * Counts the films which are short, medium and long ({@code SAKILA-NICER_BUT_SLOWER_FILM_LIST-I-02}; native-only;
+     * sorted by {@code shortest}, which puts the bands in their own order).
+     * <p>
+     * The band is a {@code CASE} on the length, grouped by its alias, which MySQL allows.
+     *
+     * @return a row per band, with the number of its films, and their shortest and longest lengths.
+     */
+    List<LengthBand> countFilmsByLengthBand();
 
     /**
      * Counts the rows of the view that differ from the same row of {@code film_list} in any column but the actors
-     * ({@code SAKILA-NICER_BUT_SLOWER_FILM_LIST-A-01}, whose answer is {@code 0}).
+     * ({@code SAKILA-NICER_BUT_SLOWER_FILM_LIST-A-01}; native-only; no sort, a single value, whose answer is
+     * {@code 0}).
      * <p>
      * The two views are joined row by row, by {@code FID} and {@code category}, and a row counts when its
      * {@code title}, {@code description}, {@code price}, {@code length} or {@code rating} differs from the other
-     * view's.
-     * The columns may be {@code NULL}, so they are compared with MySQL's null-safe {@code <=>}, under which two
-     * {@code NULL}s are equal, not with {@code =}; the statement is MySQL's own, and runs on the Sakila database only.
+     * view's. The columns may be {@code NULL}, so they are compared with MySQL's null-safe {@code <=>}, under which two
+     * {@code NULL}s are equal, not with {@code =}.
      *
-     * @return the number of rows that differ; {@code 0} when the two views differ only in how the actors are written.
+     * @return the number of rows that differ, {@code differing}; {@code 0} when the two views differ only in how the
+     *         actors are written.
      */
     long countDifferingFromFilmList();
+
+    /**
+     * Lists the longest length in each category, and how many films have it
+     * ({@code SAKILA-NICER_BUT_SLOWER_FILM_LIST-A-02}; native-only; sorted by {@code category}).
+     * <p>
+     * The longest length is a correlated subquery over the view itself, for the category of the outer row.
+     *
+     * @return a row per category, with its longest length and the number of its films of that length, by category.
+     */
+    List<CategoryLongest> listLongestByCategory();
+
+    /**
+     * Counts the films whose {@code actors} string names a different number of actors than {@code film_actor} has
+     * ({@code SAKILA-NICER_BUT_SLOWER_FILM_LIST-A-03}; native-only; no sort, a single value, whose answer is
+     * {@code 0}).
+     * <p>
+     * The names are counted by their commas, with {@code CHAR_LENGTH}, and compared with a correlated count of the
+     * film's {@code film_actor} links; a film with no actor is left out.
+     *
+     * @return the number of rows whose actors are miscounted, {@code mismatched}; {@code 0} when the view agrees with
+     *         {@code film_actor}.
+     */
+    long countMismatchedActors();
 }

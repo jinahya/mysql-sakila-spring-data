@@ -11,6 +11,7 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -29,11 +30,13 @@ import java.util.function.LongSupplier;
  * Spring's conversion of a {@code String} to an enum goes by the name; the mapper goes by
  * {@link Film.Rating#valueOfColumnValue(String)} instead.
  * <p>
- * {@link #countAll()} reads its statement from {@code FILM_LIST_COUNT_ALL.sql} beside this class; the others write
- * theirs in place. A page is selected with an {@code ORDER BY} built from the {@link Pageable}'s {@link Sort}, each
- * property mapped to a column of the view through {@link #COLUMNS}, and {@code FID} last, and with
- * {@code LIMIT ... OFFSET ...} from the page, unless the {@code Pageable} is unpaged; the total comes from a
- * {@code COUNT(*)} of the same {@code WHERE}, run only when the page needs it.
+ * {@link #countAll()} and the exercise methods read their statements from {@code .sql} resources beside this class,
+ * named {@code FILM_LIST_<METHOD>.sql} after the method ({@code FILM_LIST_COUNT_ALL.sql}, ...), each exercise's
+ * statement as {@code EXERCISES.asciidoc} has it; {@link #listAll(Pageable)} writes its own in place. A page is
+ * selected with an {@code ORDER BY} built from the {@link Pageable}'s {@link Sort}, each property mapped to a column of
+ * the view through {@link #COLUMNS}, and {@code FID} last, and with {@code LIMIT ... OFFSET ...} from the page, unless
+ * the {@code Pageable} is unpaged; the total comes from a {@code COUNT(*)} of the same {@code WHERE}, run only when the
+ * page needs it.
  *
  * @see FilmListRepository
  */
@@ -87,9 +90,77 @@ public class FilmListRepositoryImpl
                                          + " FROM " + FilmList.TABLE_NAME;
 
     /**
+     * Maps a row of {@code FID}, {@code title} and {@code actors} into a {@link FilmActors}; shared with
+     * {@link NicerButSlowerFilmListRepositoryImpl}, whose rows of the same columns map alike.
+     */
+    static final RowMapper<FilmActors> FILM_ACTORS_ROW_MAPPER = (rs, rowNum) -> new FilmActors(
+            rs.getObject(FilmList.COLUMN_NAME_FID, Integer.class),
+            rs.getString(FilmList.COLUMN_NAME_TITLE),
+            rs.getString(FilmList.COLUMN_NAME_ACTORS)
+    );
+
+    /**
+     * Maps a row of {@code FID}, {@code title} and {@code category} into a {@link FilmInCategory}; shared with
+     * {@link NicerButSlowerFilmListRepositoryImpl}, whose rows of the same columns map alike.
+     */
+    static final RowMapper<FilmInCategory> FILM_IN_CATEGORY_ROW_MAPPER = (rs, rowNum) -> new FilmInCategory(
+            rs.getObject(FilmList.COLUMN_NAME_FID, Integer.class),
+            rs.getString(FilmList.COLUMN_NAME_TITLE),
+            rs.getString(FilmList.COLUMN_NAME_CATEGORY)
+    );
+
+    /**
      * The statement of {@link #countAll()}.
      */
     private static final String SQL_COUNT_ALL = sql(FilmListRepositoryImpl.class, "FILM_LIST_COUNT_ALL.sql");
+
+    /**
+     * The statement of {@link #countActionFilms()}, {@code SAKILA-FILM_LIST-B-01}.
+     */
+    private static final String SQL_COUNT_ACTION_FILMS =
+            sql(FilmListRepositoryImpl.class, "FILM_LIST_COUNT_ACTION_FILMS.sql");
+
+    /**
+     * The statement of {@link #listActorsOfFilmOne()}, {@code SAKILA-FILM_LIST-B-02}.
+     */
+    private static final String SQL_LIST_ACTORS_OF_FILM_ONE =
+            sql(FilmListRepositoryImpl.class, "FILM_LIST_LIST_ACTORS_OF_FILM_ONE.sql");
+
+    /**
+     * The statement of {@link #listChildrenFilmsRatedG()}, {@code SAKILA-FILM_LIST-B-03}.
+     */
+    private static final String SQL_LIST_CHILDREN_FILMS_RATED_G =
+            sql(FilmListRepositoryImpl.class, "FILM_LIST_LIST_CHILDREN_FILMS_RATED_G.sql");
+
+    /**
+     * The statement of {@link #listFilmsWithNoActor()}, {@code SAKILA-FILM_LIST-B-04}.
+     */
+    private static final String SQL_LIST_FILMS_WITH_NO_ACTOR =
+            sql(FilmListRepositoryImpl.class, "FILM_LIST_LIST_FILMS_WITH_NO_ACTOR.sql");
+
+    /**
+     * The statement of {@link #countFilmListAndFilmsWithACategory()}, {@code SAKILA-FILM_LIST-I-01}.
+     */
+    private static final String SQL_COUNT_FILM_LIST_AND_FILMS_WITH_A_CATEGORY =
+            sql(FilmListRepositoryImpl.class, "FILM_LIST_COUNT_FILM_LIST_AND_FILMS_WITH_A_CATEGORY.sql");
+
+    /**
+     * The statement of {@link #countFilmsByRatingAndPrice()}, {@code SAKILA-FILM_LIST-I-02}.
+     */
+    private static final String SQL_COUNT_FILMS_BY_RATING_AND_PRICE =
+            sql(FilmListRepositoryImpl.class, "FILM_LIST_COUNT_FILMS_BY_RATING_AND_PRICE.sql");
+
+    /**
+     * The statement of {@link #listFilmsMiscountingActors()}, {@code SAKILA-FILM_LIST-I-03}.
+     */
+    private static final String SQL_LIST_FILMS_MISCOUNTING_ACTORS =
+            sql(FilmListRepositoryImpl.class, "FILM_LIST_LIST_FILMS_MISCOUNTING_ACTORS.sql");
+
+    /**
+     * The statement of {@link #countLongerThanAverageByCategory()}, {@code SAKILA-FILM_LIST-A-01}.
+     */
+    private static final String SQL_COUNT_LONGER_THAN_AVERAGE_BY_CATEGORY =
+            sql(FilmListRepositoryImpl.class, "FILM_LIST_COUNT_LONGER_THAN_AVERAGE_BY_CATEGORY.sql");
 
     /**
      * Builds the {@code ORDER BY} clause of the specified sort, with {@code FID} appended as the last key unless the
@@ -156,34 +227,80 @@ public class FilmListRepositoryImpl
         return select(null, Map.of(), pageable, this::countAll);
     }
 
-    // ----------------------------------------------------------------------------------------------------- exercises
-    @Override
-    public long countByCategory(final String category) {
-        Objects.requireNonNull(category, "category is null");
-        return jdbcClient().sql("SELECT COUNT(*) FROM " + FilmList.TABLE_NAME
-                                + " WHERE " + FilmList.COLUMN_NAME_CATEGORY + " = :category")
-                .param("category", category)
-                .query(Long.class)
-                .single();
-    }
-
-    @Override
-    public Page<FilmList> listByFid(final Integer fid, final Pageable pageable) {
-        Objects.requireNonNull(fid, "fid is null");
-        Objects.requireNonNull(pageable, "pageable is null");
-        final var where = FilmList.COLUMN_NAME_FID + " = :fid";
-        final var params = Map.of("fid", fid);
-        return select(where, params, pageable, () -> jdbcClient()
-                .sql("SELECT COUNT(*) FROM " + FilmList.TABLE_NAME + " WHERE " + where)
-                .params(params)
-                .query(Long.class)
-                .single());
-    }
-
     @Override
     public long countAll() {
         return jdbcClient().sql(SQL_COUNT_ALL)
                 .query(Long.class)
                 .single();
+    }
+
+    // ----------------------------------------------------------------------------------------------------- exercises
+    @Override
+    public long countActionFilms() {
+        return jdbcClient().sql(SQL_COUNT_ACTION_FILMS)
+                .query(Long.class)
+                .single();
+    }
+
+    @Override
+    public List<FilmActors> listActorsOfFilmOne() {
+        return jdbcClient().sql(SQL_LIST_ACTORS_OF_FILM_ONE)
+                .query(FILM_ACTORS_ROW_MAPPER)
+                .list();
+    }
+
+    @Override
+    public List<FilmLength> listChildrenFilmsRatedG() {
+        return jdbcClient().sql(SQL_LIST_CHILDREN_FILMS_RATED_G)
+                .query((rs, rowNum) -> new FilmLength(
+                        rs.getObject(FilmList.COLUMN_NAME_FID, Integer.class),
+                        rs.getString(FilmList.COLUMN_NAME_TITLE),
+                        rs.getObject(FilmList.COLUMN_NAME_LENGTH, Integer.class)))
+                .list();
+    }
+
+    @Override
+    public List<FilmInCategory> listFilmsWithNoActor() {
+        return jdbcClient().sql(SQL_LIST_FILMS_WITH_NO_ACTOR)
+                .query(FILM_IN_CATEGORY_ROW_MAPPER)
+                .list();
+    }
+
+    @Override
+    public FilmListAndFilmsWithACategory countFilmListAndFilmsWithACategory() {
+        return jdbcClient().sql(SQL_COUNT_FILM_LIST_AND_FILMS_WITH_A_CATEGORY)
+                .query((rs, rowNum) -> new FilmListAndFilmsWithACategory(
+                        rs.getLong("film_list"),
+                        rs.getLong("films_with_a_category")))
+                .single();
+    }
+
+    @Override
+    public List<RatingPrices> countFilmsByRatingAndPrice() {
+        return jdbcClient().sql(SQL_COUNT_FILMS_BY_RATING_AND_PRICE)
+                .query((rs, rowNum) -> new RatingPrices(
+                        rs.getString(FilmList.COLUMN_NAME_RATING),
+                        rs.getLong("price_0_99"),
+                        rs.getLong("price_2_99"),
+                        rs.getLong("price_4_99")))
+                .list();
+    }
+
+    @Override
+    public List<FilmTitle> listFilmsMiscountingActors() {
+        return jdbcClient().sql(SQL_LIST_FILMS_MISCOUNTING_ACTORS)
+                .query((rs, rowNum) -> new FilmTitle(
+                        rs.getObject(FilmList.COLUMN_NAME_FID, Integer.class),
+                        rs.getString(FilmList.COLUMN_NAME_TITLE)))
+                .list();
+    }
+
+    @Override
+    public List<CategoryLongerThanAverage> countLongerThanAverageByCategory() {
+        return jdbcClient().sql(SQL_COUNT_LONGER_THAN_AVERAGE_BY_CATEGORY)
+                .query((rs, rowNum) -> new CategoryLongerThanAverage(
+                        rs.getString(FilmList.COLUMN_NAME_CATEGORY),
+                        rs.getLong("longer_than_average")))
+                .list();
     }
 }

@@ -5,8 +5,14 @@ import com.github.jinahya.mysql.sakila.persistence.Inventory_;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.jpa.repository.NativeQuery;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Objects;
+import java.util.stream.Stream;
 
 /**
  * A repository for {@link Inventory}, the {@code inventory} table of the Sakila database, whose rows are the copies
@@ -27,18 +33,21 @@ import org.springframework.stereotype.Repository;
  * method here runs them yet. One that does is named after the query, and binds its parameters with {@code @Param}.
  * <p>
  * The methods below answer the exercises of upstream's {@code EXERCISES.asciidoc} on the {@code inventory} table,
- * one method per exercise, named in each method's javadoc by the exercise's id ({@code SAKILA-INVENTORY-B-01}, ...),
- * one or two of each level. The exercises are context, not contract: a method that shows rows takes a
- * {@link Pageable}, the page and the sort, and returns a {@link Page}, so the order the exercise asks for, and its
- * {@code LIMIT}, are the caller's {@code PageRequest}; each method's javadoc says which sort that is. An exercise
- * that counts rows is a {@code default} method, {@code count...}, which builds a {@link Specification} with the
- * Criteria API and runs it through {@link org.springframework.data.jpa.repository.JpaSpecificationExecutor}. An
- * exercise that shows columns, grouped and counted, cannot be a {@link Specification}, which only filters; such a
- * method, {@code select...}, declares its JPQL with {@link Query}, with a count query of its own since Spring Data
- * cannot derive one from a grouped select, and returns a projection, one of the interfaces declared here, which
- * Spring Data backs with the selected columns, each aliased with the name of the getter it feeds. Those aliases are
- * what the {@code Pageable} sorts by; an interface rather than a record, because Spring Data rewrites a record
- * projection into a constructor expression, which drops the aliases, and the sort with them.
+ * one method per exercise, named in each method's javadoc by the exercise's id ({@code SAKILA-INVENTORY-B-01}, ...)
+ * and its role: the book's pick, this module's own extra, or native-only. The exercises are context, not contract.
+ * A Basic one is plain: the book's pick returns a {@link List}, this module's own extra a {@link Stream}, and the
+ * order the exercise asks for is written in the query. An Intermediate or Advanced one takes a {@link Pageable}, the
+ * page and the sort, and returns a {@link Page}, so the order the exercise asks for, and its {@code LIMIT}, are the
+ * caller's {@code PageRequest}; each method's javadoc says which sort that is. An exercise that shows rows of copies
+ * is a {@code default} method, {@code list...}, which builds a {@link Specification} with the Criteria API and runs
+ * it through {@link org.springframework.data.jpa.repository.JpaSpecificationExecutor}. An exercise that shows
+ * columns, grouped and counted, cannot be a {@link Specification}, which only filters; such a method,
+ * {@code select...}, declares its JPQL with {@link Query}, with a count query of its own since Spring Data cannot
+ * derive one from a grouped select, and returns a projection, one of the interfaces declared here, which Spring Data
+ * backs with the selected columns, each aliased with the name of the getter it feeds. Those aliases are what the
+ * {@code Pageable} sorts by; an interface rather than a record, because Spring Data rewrites a record projection
+ * into a constructor expression, which drops the aliases, and the sort with them. An exercise only MySQL's own SQL
+ * can answer is a {@link NativeQuery}, which runs on the Sakila database only.
  *
  * @see Inventory
  * @see Inventory_
@@ -50,8 +59,7 @@ public interface InventoryRepository
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * A store, by id, and how many copies it has: a projection of {@link #selectCopyCountsByStore(Pageable)},
-     * sortable by {@code storeId} and {@code copies}.
+     * A store, by id, and how many copies it has: a projection of {@link #selectCopyCountsByStore()}.
      */
     interface StoreCopyCount {
 
@@ -71,8 +79,9 @@ public interface InventoryRepository
     }
 
     /**
-     * A film, by id and title, and how many copies it has: a projection of {@link #selectCopyCountsByFilm(Pageable)},
-     * sortable by {@code filmId}, {@code title} and {@code copies}.
+     * A film, by id and title, and how many copies it has: a projection of {@link #selectCopyCountsByFilm(Pageable)}
+     * and of {@link #selectCopyCountsOfFilmsEveryCopyRented(Pageable)}, sortable by {@code filmId}, {@code title} and
+     * {@code copies}.
      */
     interface FilmCopyCount {
 
@@ -99,30 +108,78 @@ public interface InventoryRepository
     }
 
     /**
-     * Selects the stores which have at least one copy, with how many ({@code SAKILA-INVENTORY-B-01}, which orders by
-     * {@code storeId}).
-     * <p>
-     * The copies are grouped by the read-only {@link Inventory_#STORE_ID} and counted, with no join to the
-     * {@code store} table, since the exercise shows the id alone; a store with no copy is not in the page. The count
-     * query counts the distinct store ids.
-     *
-     * @param pageable the page to return, and its sort, by {@code storeId} or {@code copies}; must not be
-     *                 {@code null}.
-     * @return a page of the stores with a copy, with their numbers of copies.
+     * A time a copy sat on the shelf between two rentals: a projection of {@link #selectLongestIdleTimes()}.
      */
-    @Query(value = """
-            SELECT i.storeId AS storeId, COUNT(i) AS copies
-            FROM Inventory i
-            GROUP BY i.storeId""",
-           countQuery = """
-                   SELECT COUNT(DISTINCT i.storeId)
-                   FROM Inventory i""")
-    Page<StoreCopyCount> selectCopyCountsByStore(Pageable pageable);
+    interface IdleTime {
+
+        /**
+         * Returns the id of the copy.
+         *
+         * @return the id of the copy.
+         */
+        Integer getInventoryId();
+
+        /**
+         * Returns the date the copy came back from one rental.
+         *
+         * @return the return date of the earlier rental.
+         */
+        LocalDateTime getReturnDate();
+
+        /**
+         * Returns the date the copy went out on the next rental.
+         *
+         * @return the rental date of the next rental.
+         */
+        LocalDateTime getNextRentalDate();
+
+        /**
+         * Returns the number of days between the two dates, as MySQL's {@code DATEDIFF} counts them.
+         *
+         * @return the number of days the copy sat on the shelf.
+         */
+        long getIdleDays();
+    }
 
     /**
-     * Selects the films which have at least one copy, with how many ({@code SAKILA-INVENTORY-I-01}, which takes
-     * the first five by {@code copies} descending, then by {@code filmId}, so that the five are always the same
-     * five).
+     * Selects the stores which have at least one copy, with how many ({@code SAKILA-INVENTORY-B-01}, the book's pick,
+     * which orders by {@code storeId}).
+     * <p>
+     * The copies are grouped by the read-only {@link Inventory_#STORE_ID} and counted, with no join to the
+     * {@code store} table, since the exercise shows the id alone; a store with no copy is not in the list. The order is
+     * the exercise's, written in the query.
+     *
+     * @return a list of the stores with a copy, with their numbers of copies, by store id.
+     */
+    @Query("""
+            SELECT i.storeId AS storeId, COUNT(i) AS copies
+            FROM Inventory i
+            GROUP BY i.storeId
+            ORDER BY i.storeId""")
+    List<StoreCopyCount> selectCopyCountsByStore();
+
+    /**
+     * Finds the copies of the film of the specified id, as a stream ({@code SAKILA-INVENTORY-B-02}, this module's own
+     * extra, which orders by {@link Inventory_#INVENTORY_ID}).
+     * <p>
+     * The query is derived from the method name, on the read-only {@link Inventory_#FILM_ID}, so the film is not
+     * joined; the order is the exercise's, in the name.
+     * <p>
+     * A {@link Stream} reads the rows as they are consumed, over a result set that stays open until the stream is
+     * closed, so close it, in a try-with-resources. It also has to be consumed inside a transaction the caller opened:
+     * the transaction the repository opens for itself ends when this method returns, which would close the result set
+     * under the stream, so Spring Data refuses a call that no transaction surrounds, with an
+     * {@link org.springframework.dao.InvalidDataAccessApiUsageException}, before any query runs.
+     *
+     * @param filmId the id of the film; must not be {@code null}.
+     * @return a stream of the copies of the film, by id, to be closed by the caller; empty if there is none.
+     */
+    Stream<Inventory> findAllByFilmIdOrderByInventoryIdAsc(Integer filmId);
+
+    /**
+     * Selects the films which have at least one copy, with how many ({@code SAKILA-INVENTORY-I-01}, the book's pick,
+     * which takes the first five by {@code copies} descending, then by {@code filmId}, so that the five are always
+     * the same five).
      * <p>
      * The copies are grouped by their film, joined for its id and title, and counted; a film with no copy is not in
      * the page. The count query counts the distinct films of the copies.
@@ -142,16 +199,80 @@ public interface InventoryRepository
     Page<FilmCopyCount> selectCopyCountsByFilm(Pageable pageable);
 
     /**
-     * Counts the copies which were never rented ({@code SAKILA-INVENTORY-I-02}).
+     * Lists the copies which were never rented ({@code SAKILA-INVENTORY-I-02}, this module's own extra, which asks
+     * how many there are: the page's total number of elements; sort by {@link Inventory_#INVENTORY_ID}).
      * <p>
      * A {@link Specification} of one {@code IS EMPTY} on the copy's {@link Inventory_#RENTALS}, which the provider
-     * renders as a {@code NOT EXISTS} on the {@code rental} table, run through
-     * {@link org.springframework.data.jpa.repository.JpaSpecificationExecutor#count(Specification)}.
+     * renders as a {@code NOT EXISTS} on the {@code rental} table; the count query Spring Data runs for the page
+     * counts the copies that pass it, which is the exercise's answer.
      *
-     * @return the number of copies no rental refers to.
+     * @param pageable the page to return, and its sort; must not be {@code null}.
+     * @return a page of the copies no rental refers to.
      */
-    default long countNeverRented() {
+    default Page<Inventory> listNeverRented(final Pageable pageable) {
+        Objects.requireNonNull(pageable, "pageable is null");
         final Specification<Inventory> specification = (r, q, b) -> b.isEmpty(r.get(Inventory_.rentals));
-        return count(specification);
+        return findAll(specification, pageable);
     }
+
+    /**
+     * Selects the five longest times a copy sat on the shelf between two rentals ({@code SAKILA-INVENTORY-A-01},
+     * native-only, which orders by {@code idle_days} descending, then by {@code inventory_id} and by
+     * {@code return_date}, and takes five).
+     * <p>
+     * The next rental of each copy is a window function, {@code LEAD(..) OVER (PARTITION BY ..)}, and the days between
+     * two dates are MySQL's {@code DATEDIFF}; JPQL and the Criteria API have neither, so this is a native query, the
+     * exercise's SQL with its columns aliased with the getters' names of {@link IdleTime}, and it runs on the Sakila
+     * database only, with no slice test. Its order and its {@code LIMIT} are the exercise's own.
+     *
+     * @return a list of the five longest idle times, the longest first.
+     */
+    @NativeQuery("""
+            WITH rentals AS (SELECT r.inventory_id, r.rental_date, r.return_date,
+                                    LEAD(r.rental_date) OVER (PARTITION BY r.inventory_id ORDER BY r.rental_date, r.rental_id) AS next_rental_date
+                             FROM rental r
+                             WHERE r.rental_date < '2006-01-01')
+            SELECT inventory_id AS inventoryId, return_date AS returnDate, next_rental_date AS nextRentalDate,
+                   DATEDIFF(next_rental_date, return_date) AS idleDays
+            FROM rentals
+            WHERE return_date IS NOT NULL
+              AND next_rental_date IS NOT NULL
+            ORDER BY idleDays DESC, inventoryId, returnDate
+            LIMIT 5""")
+    List<IdleTime> selectLongestIdleTimes();
+
+    /**
+     * Selects the films every copy of which was rented at least once, with how many copies they have
+     * ({@code SAKILA-INVENTORY-A-02}, the book's pick, which asks how many such films there are: the page's total
+     * number of elements, beside the total of {@link #selectCopyCountsByFilm(Pageable)}, the films with a copy at all;
+     * sort by {@code filmId}).
+     * <p>
+     * A relational division by double negation: a film qualifies when there is no copy of it that no rental refers
+     * to. The copies are grouped by their film, joined for its id and title, as in
+     * {@link #selectCopyCountsByFilm(Pageable)}, and a {@code NOT EXISTS} drops the films with a copy whose rentals
+     * are empty; a film with no copy has no group, so it is not in the page. The count query counts the films that
+     * have a copy and pass the same {@code NOT EXISTS}.
+     *
+     * @param pageable the page to return, and its sort, by {@code filmId}, {@code title} or {@code copies}; must not
+     *                 be {@code null}.
+     * @return a page of the films whose every copy was rented, with their numbers of copies.
+     */
+    @Query(value = """
+            SELECT f.filmId AS filmId, f.title AS title, COUNT(i) AS copies
+            FROM Inventory i
+            JOIN i.film f
+            WHERE NOT EXISTS (SELECT o
+                              FROM Inventory o
+                              WHERE o.film = f
+                                AND o.rentals IS EMPTY)
+            GROUP BY f.filmId, f.title""",
+           countQuery = """
+                   SELECT COUNT(f)
+                   FROM Film f
+                   WHERE f.inventories IS NOT EMPTY
+                     AND NOT EXISTS (SELECT o
+                                     FROM Inventory o
+                                     WHERE o.film = f
+                                       AND o.rentals IS EMPTY)""")
+    Page<FilmCopyCount> selectCopyCountsOfFilmsEveryCopyRented(Pageable pageable);
 }

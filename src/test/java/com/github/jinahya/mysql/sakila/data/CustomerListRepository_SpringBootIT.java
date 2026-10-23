@@ -1,5 +1,9 @@
 package com.github.jinahya.mysql.sakila.data;
 
+import com.github.jinahya.mysql.sakila.data.CustomerListRepository.CityCountryCustomerCount;
+import com.github.jinahya.mysql.sakila.data.CustomerListRepository.NotesCustomerCount;
+import com.github.jinahya.mysql.sakila.data.CustomerListRepository.RowCounts;
+import com.github.jinahya.mysql.sakila.data.CustomerListRepository.SidCountryCustomerCount;
 import com.github.jinahya.mysql.sakila.data.CustomerListRepository.SidCustomerCount;
 import com.github.jinahya.mysql.sakila.persistence.Address_;
 import com.github.jinahya.mysql.sakila.persistence.City_;
@@ -11,24 +15,27 @@ import com.github.jinahya.mysql.sakila.persistence.Customer_;
 import com.github.jinahya.mysql.sakila.persistence.Store_;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.InvalidDataAccessApiUsageException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.assertj.core.api.Assumptions.assumeThat;
 
@@ -138,61 +145,90 @@ class CustomerListRepository_SpringBootIT
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * Tests {@link CustomerListRepository#listByCountry(String, Pageable)} ({@code SAKILA-CUSTOMER_LIST-B-01}).
+     * Tests {@link CustomerListRepository#findAllByCountryOrderByIdAsc(String)} ({@code SAKILA-CUSTOMER_LIST-B-01}).
      */
     @Nested
-    class ListByCountry_Test {
+    class FindAllByCountryOrderByIdAsc_Test {
 
         private static Stream<String> countries() {
             return CustomerListRepository_SpringBootIT.countries();
         }
 
         /**
-         * Asserts that the country of a selected row lists rows of that country only, by id as the exercise sorts,
-         * with the selected row among them, as many as the {@code customer} table has in that country along its
-         * address chain, and that pages of two walk the same rows in the same order.
+         * Asserts, in one transaction, that the country of the exercise, {@code Japan}, streams the thirty-one rows the
+         * exercise's SQL gives, by id, and that a name no country has streams none.
+         */
+        @Transactional
+        @Test
+        void __Japan() {
+            try (var japan = repositoryInstance().findAllByCountryOrderByIdAsc("Japan")) {
+                final var list = japan.toList();
+                assertThat(list).hasSize(31);
+                assertThat(list)
+                        .extracting(CustomerList::getId, CustomerList::getName)
+                        .startsWith(tuple(1, "MARY SMITH"), tuple(11, "LISA ANDERSON"), tuple(29, "ANGELA HERNANDEZ"))
+                        .endsWith(tuple(574, "JULIAN VEST"));
+            }
+            try (var nonesuch = repositoryInstance().findAllByCountryOrderByIdAsc("Nonesuch")) {
+                assertThat(nonesuch).isEmpty();
+            }
+        }
+
+        /**
+         * Asserts, in one transaction, that the country of a selected row streams rows of that country only, by id as
+         * the query orders them, the selected row among them, as many as the {@code customer} table has in that
+         * country along its address chain.
+         *
+         * @param country the country of one of the rows selected in {@link CustomerListRepository_SpringBootIT#__()}.
+         */
+        @Transactional
+        @MethodSource("countries")
+        @ParameterizedTest
+        void __(final String country) {
+            try (var stream = repositoryInstance().findAllByCountryOrderByIdAsc(country)) {
+                final var list = stream.toList();
+                assertThat(list)
+                        .isNotEmpty()
+                        .allSatisfy(c -> assertThat(c.getCountry()).isEqualToIgnoringCase(country))
+                        .isSortedAccordingTo(Comparator.comparing(CustomerList::getId));
+                assertThat(list).extracting(CustomerList::getId)
+                        .containsAnyElementsOf(entities.stream().map(CustomerList::getId).toList());
+                assertThat((long) list.size()).isEqualTo(countCustomersInCountry(country));
+            }
+        }
+
+        /**
+         * Calls the method with no transaction around the test, and asserts that Spring Data refuses it.
+         * <p>
+         * A stream has to be consumed inside a transaction the caller opened. The repository would open one of its own,
+         * but that one ends when the method returns, so the check runs before the query, and throws
+         * {@link InvalidDataAccessApiUsageException}.
          *
          * @param country the country of one of the rows selected in {@link CustomerListRepository_SpringBootIT#__()}.
          */
         @MethodSource("countries")
         @ParameterizedTest
-        void __(final String country) {
-            final var all = repositoryInstance().listByCountry(country, Pageable.unpaged(BY_ID));
-            assertThat(all.getContent())
-                    .isNotEmpty()
-                    .allSatisfy(c -> assertThat(c.getCountry()).isEqualToIgnoringCase(country))
-                    .isSortedAccordingTo(Comparator.comparing(CustomerList::getId));
-            assertThat(all.getContent()).extracting(CustomerList::getId)
-                    .containsAnyElementsOf(entities.stream().map(CustomerList::getId).toList());
-            assertThat(all.getTotalElements()).isEqualTo(countCustomersInCountry(country));
-            var page = repositoryInstance().listByCountry(country, PageRequest.of(0, 2, BY_ID));
-            assertThat(page.getTotalElements()).isEqualTo(all.getTotalElements());
-            final var walked = new ArrayList<CustomerList>();
-            while (true) {
-                assertPage(page);
-                walked.addAll(page.getContent());
-                if (!page.hasNext()) {
-                    break;
+        void _InvalidDataAccessApiUsageException_NoSurroundingTransaction(final String country) {
+            assertThatThrownBy(() -> {
+                try (var found = repositoryInstance().findAllByCountryOrderByIdAsc(country)) {
+                    found.forEach(c -> {
+                    });
                 }
-                page = repositoryInstance().listByCountry(country, page.nextPageable());
-            }
-            assertThat(walked).containsExactlyElementsOf(all.getContent());
+            }).isInstanceOf(InvalidDataAccessApiUsageException.class);
         }
 
         /**
-         * Asserts that the country of the exercise, {@code Japan}, lists customers, and a name no country has lists
-         * none.
+         * Asserts that a {@code null} country is rejected before any query runs.
          */
-        @ValueSource(strings = {"Japan"})
-        @ParameterizedTest
-        void __Japan(final String country) {
-            final var japan = repositoryInstance().listByCountry(country, PageRequest.of(0, 5, BY_ID));
-            assertPage(japan);
-            assertThat(japan.getContent()).isNotEmpty()
-                    .allSatisfy(c -> assertThat(c.getCountry()).isEqualToIgnoringCase(country));
-            final var nonesuch = repositoryInstance().listByCountry("Nonesuch", PageRequest.of(0, 5, BY_ID));
-            assertThat(nonesuch).isEmpty();
-            assertThat(nonesuch.getTotalElements()).isZero();
+        @Transactional
+        @Test
+        void _IllegalArgumentException_NullCountry() {
+            assertThatThrownBy(() -> {
+                try (var found = repositoryInstance().findAllByCountryOrderByIdAsc(null)) {
+                    found.forEach(c -> {
+                    });
+                }
+            }).isInstanceOf(IllegalArgumentException.class);
         }
     }
 
@@ -250,13 +286,55 @@ class CustomerListRepository_SpringBootIT
     }
 
     /**
-     * Tests {@link CustomerListRepository#selectRowCounts()} ({@code SAKILA-CUSTOMER_LIST-I-01}).
+     * Tests {@link CustomerListRepository#selectNotesCounts()} ({@code SAKILA-CUSTOMER_LIST-B-03}).
+     */
+    @Nested
+    class SelectNotesCounts_Test {
+
+        /**
+         * Asserts that the list holds the two rows the exercise's SQL gives, the empty notes first, as the query
+         * orders them, that the {@code active} count is the number of active customers of the {@code customer} table,
+         * and that the two add up to the rows of the view.
+         */
+        @Test
+        void __() {
+            final var list = repositoryInstance().selectNotesCounts();
+            assertThat(list)
+                    .extracting(NotesCustomerCount::getNotes, NotesCustomerCount::getCustomers)
+                    .containsExactly(tuple("", 15L), tuple("active", 584L));
+            final Specification<Customer> active = (r, q, b) -> b.isTrue(r.get(Customer_.active));
+            assertThat(list.getLast().getCustomers()).isEqualTo(customerRepository.count(active));
+            assertThat(list.stream().mapToLong(NotesCustomerCount::getCustomers).sum())
+                    .isEqualTo(repositoryInstance().count());
+        }
+    }
+
+    /**
+     * Tests {@link CustomerListRepository#selectRowCounts(Pageable)} ({@code SAKILA-CUSTOMER_LIST-I-01}).
      */
     @Nested
     class SelectRowCounts_Test {
 
+        private static final Sort BY_CUSTOMERS = Sort.by("customers");
+
         private static Stream<Integer> sids() {
             return CustomerListRepository_SpringBootIT.sids();
+        }
+
+        /**
+         * Asserts that the one row holds the two counts the exercise's SQL gives, equal, as the exercise checks, and
+         * that a page past it is empty, with the one row in all, which the count query says.
+         */
+        @Test
+        void __() {
+            final var page = repositoryInstance().selectRowCounts(PageRequest.of(0, 1, BY_CUSTOMERS));
+            assertPage(page);
+            assertThat(page.getContent())
+                    .extracting(RowCounts::getCustomerLists, RowCounts::getCustomers)
+                    .containsExactly(tuple(599L, 599L));
+            final var next = repositoryInstance().selectRowCounts(PageRequest.of(1, 1, BY_CUSTOMERS));
+            assertThat(next.getContent()).isEmpty();
+            assertThat(next.getTotalElements()).isEqualTo(1L);
         }
 
         /**
@@ -269,12 +347,114 @@ class CustomerListRepository_SpringBootIT
         @MethodSource("sids")
         @ParameterizedTest
         void __(final int sid) {
-            final var counts = repositoryInstance().selectRowCounts();
+            final var counts = repositoryInstance().selectRowCounts(Pageable.unpaged()).getContent().getFirst();
             assertThat(counts.getCustomerLists()).isPositive().isEqualTo(counts.getCustomers());
             assertThat(counts.getCustomerLists()).isEqualTo(repositoryInstance().count());
             assertThat(counts.getCustomers()).isEqualTo(customerRepository.count());
             final Specification<CustomerList> ofStore = (r, q, b) -> b.equal(r.get(CustomerList_.sid), sid);
             assertThat(repositoryInstance().count(ofStore)).isEqualTo(countCustomersOfStore(sid));
+        }
+
+        /**
+         * Asserts that a {@code null} pageable is rejected before any query runs.
+         */
+        @Test
+        void _IllegalArgumentException_NullPageable() {
+            assertThatThrownBy(() -> repositoryInstance().selectRowCounts(null))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+    }
+
+    /**
+     * Tests {@link CustomerListRepository#selectCitiesWithMoreCustomersThan(long, Pageable)}
+     * ({@code SAKILA-CUSTOMER_LIST-I-02}).
+     */
+    @Nested
+    class SelectCitiesWithMoreCustomersThan_Test {
+
+        private static final Sort BY_CITY_THEN_COUNTRY = Sort.by("city").and(Sort.by("country"));
+
+        /**
+         * Asserts that more than one customer, by {@code city}, then by {@code country}, as the exercise sorts, selects
+         * the two cities the exercise's SQL gives, and that each count is what a {@link Specification} on the city and
+         * the country counts in the view.
+         */
+        @Test
+        void __() {
+            final var page = repositoryInstance().selectCitiesWithMoreCustomersThan(
+                    1L, Pageable.unpaged(BY_CITY_THEN_COUNTRY));
+            assertThat(page.getContent())
+                    .extracting(CityCountryCustomerCount::getCity, CityCountryCustomerCount::getCountry,
+                                CityCountryCustomerCount::getCustomers)
+                    .containsExactly(
+                            tuple("Aurora", "United States", 2L),
+                            tuple("London", "United Kingdom", 2L));
+            assertThat(page.getContent()).allSatisfy(c -> {
+                final Specification<CustomerList> in = (r, q, b) -> b.and(
+                        b.equal(r.get(CustomerList_.city), c.getCity()),
+                        b.equal(r.get(CustomerList_.country), c.getCountry()));
+                assertThat(repositoryInstance().count(in)).isEqualTo(c.getCustomers());
+            });
+        }
+
+        /**
+         * Asserts that pages of one walk the same two cities, two in all, which the count query says, and that no city
+         * has more than two customers.
+         */
+        @Test
+        void __Paged() {
+            final var page0 = repositoryInstance().selectCitiesWithMoreCustomersThan(
+                    1L, PageRequest.of(0, 1, BY_CITY_THEN_COUNTRY));
+            assertThat(page0.getContent()).extracting(CityCountryCustomerCount::getCity).containsExactly("Aurora");
+            assertThat(page0.getTotalElements()).isEqualTo(2L);
+            final var page1 = repositoryInstance().selectCitiesWithMoreCustomersThan(1L, page0.nextPageable());
+            assertThat(page1.getContent()).extracting(CityCountryCustomerCount::getCity).containsExactly("London");
+            assertThat(page1.hasNext()).isFalse();
+            final var none = repositoryInstance().selectCitiesWithMoreCustomersThan(
+                    2L, PageRequest.of(0, 1, BY_CITY_THEN_COUNTRY));
+            assertThat(none).isEmpty();
+            assertThat(none.getTotalElements()).isZero();
+        }
+
+        /**
+         * Asserts that a {@code null} pageable is rejected before any query runs.
+         */
+        @Test
+        void _IllegalArgumentException_NullPageable() {
+            assertThatThrownBy(() -> repositoryInstance().selectCitiesWithMoreCustomersThan(1L, null))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+    }
+
+    /**
+     * Tests {@link CustomerListRepository#selectTopThreeCountriesOfEachStore()} ({@code SAKILA-CUSTOMER_LIST-A-01}).
+     */
+    @Nested
+    class SelectTopThreeCountriesOfEachStore_Test {
+
+        /**
+         * Asserts that the native query gives the six rows the exercise's SQL gives, in its order, and that each count
+         * is what a {@link Specification} on the store and the country counts in the view.
+         */
+        @Test
+        void __() {
+            final var list = repositoryInstance().selectTopThreeCountriesOfEachStore();
+            assertThat(list)
+                    .extracting(SidCountryCustomerCount::getSid, SidCountryCustomerCount::getCountry,
+                                SidCountryCustomerCount::getCustomers)
+                    .containsExactly(
+                            tuple(1, "India", 37L),
+                            tuple(1, "China", 26L),
+                            tuple(1, "United States", 22L),
+                            tuple(2, "China", 27L),
+                            tuple(2, "India", 23L),
+                            tuple(2, "Mexico", 15L));
+            assertThat(list).allSatisfy(c -> {
+                final Specification<CustomerList> in = (r, q, b) -> b.and(
+                        b.equal(r.get(CustomerList_.sid), c.getSid()),
+                        b.equal(r.get(CustomerList_.country), c.getCountry()));
+                assertThat(repositoryInstance().count(in)).isEqualTo(c.getCustomers());
+            });
         }
     }
 

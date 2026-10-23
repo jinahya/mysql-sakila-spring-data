@@ -1,15 +1,24 @@
 package com.github.jinahya.mysql.sakila.data;
 
+import com.github.jinahya.mysql.sakila.data.FilmCategoryRepository.CategoryLongestFilm;
+import com.github.jinahya.mysql.sakila.data.FilmCategoryRepository.CategoryPairFilmCount;
 import com.github.jinahya.mysql.sakila.data.FilmCategoryRepository.FilmCategoryCount;
+import com.github.jinahya.mysql.sakila.persistence.Category;
+import com.github.jinahya.mysql.sakila.persistence.Film;
 import com.github.jinahya.mysql.sakila.persistence.FilmCategory;
 import com.github.jinahya.mysql.sakila.persistence.FilmCategoryId;
+import com.github.jinahya.mysql.sakila.persistence.Film_;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 
+import java.util.List;
+
+import static com.github.jinahya.mysql.sakila.data._Repository_DataJpaTest_Fixtures.randomName;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 
 /**
@@ -26,10 +35,44 @@ class FilmCategoryRepository_DataJpaTest
         extends _Repository_DataJpaTest<FilmCategoryRepository, FilmCategory, FilmCategoryId> {
 
     /**
+     * A sort by the film's id; by the attribute's name, since the metamodel's {@code Film_.filmId} is filled in only
+     * once the context is up, after this class is loaded.
+     */
+    private static final Sort BY_FILM_ID = Sort.by(Sort.Direction.ASC, Film_.FILM_ID);
+
+    /**
      * Creates a new instance.
      */
     FilmCategoryRepository_DataJpaTest() {
         super(FilmCategoryRepository.class, FilmCategory.class, FilmCategoryId.class);
+    }
+
+    // -----------------------------------------------------------------------------------------------------------------
+
+    /**
+     * Saves a category whose name starts with the specified prefix, so that a test can order categories by name.
+     * <p>
+     * The rest of the name is random, and short enough for the {@code 25} characters of the column.
+     *
+     * @param prefix the prefix of the name.
+     * @return the saved category, managed in the test's persistence context.
+     */
+    private Category saveCategory(final String prefix) {
+        final var category = fixtures().category();
+        category.setName(prefix + randomName().substring(0, 13));
+        return category;
+    }
+
+    /**
+     * Saves a film of the specified length, in a language of its own.
+     *
+     * @param length the length of the film, in minutes.
+     * @return the saved film, managed in the test's persistence context.
+     */
+    private Film saveFilm(final int length) {
+        final var film = fixtures().film();
+        film.setLength(length);
+        return film;
     }
 
     // -----------------------------------------------------------------------------------------------------------------
@@ -76,6 +119,67 @@ class FilmCategoryRepository_DataJpaTest
     }
 
     // ----------------------------------------------------------------------------------------------------- exercises
+
+    /**
+     * Tests {@link FilmCategoryRepository#findAllByFilmIdBetweenOrderByFilmId(Integer, Integer)}
+     * ({@code SAKILA-FILM_CATEGORY-B-02}).
+     */
+    @Nested
+    class FindAllByFilmIdBetweenOrderByFilmId_Test {
+
+        /**
+         * Saves a film of a category, and asserts that a range of negative ids, which no film has, finds an empty
+         * list.
+         */
+        @Test
+        void _Empty_Unknown() {
+            fixtures().filmCategory(fixtures().film(), fixtures().category());
+            final var list = repositoryInstance().findAllByFilmIdBetweenOrderByFilmId(Integer.MIN_VALUE, -1);
+            assertThat(list).isEmpty();
+        }
+
+        /**
+         * Saves three films, links the second, the first and the third to a category each, in that order, and asserts
+         * that the range of the first two ids finds their links only, the bounds included, by film id as the exercise
+         * orders.
+         * <p>
+         * The films are saved in order, so their ids ascend in that order; the links are saved in another, so that
+         * the order is the query's, not the insertion's.
+         */
+        @Test
+        void __() {
+            final var film1 = fixtures().film();
+            final var film2 = fixtures().film();
+            final var film3 = fixtures().film();
+            final var category2 = fixtures().category();
+            final var category1 = fixtures().category();
+            fixtures().filmCategory(film2, category2);
+            fixtures().filmCategory(film1, category1);
+            fixtures().filmCategory(film3, fixtures().category());
+            final var list = repositoryInstance().findAllByFilmIdBetweenOrderByFilmId(
+                    film1.getFilmId(), film2.getFilmId());
+            assertThat(list)
+                    .extracting(fc -> fc.getFilm().getFilmId(), fc -> fc.getCategory().getCategoryId())
+                    .containsExactly(
+                            tuple(film1.getFilmId(), category1.getCategoryId()),
+                            tuple(film2.getFilmId(), category2.getCategoryId())
+                    );
+        }
+
+        /**
+         * Asserts that a {@code null} bound is refused, before any query runs.
+         * <p>
+         * The package is {@code @NullMarked}, so Spring Data checks the arguments of every repository method, a
+         * {@code default} one included, and throws {@link IllegalArgumentException} before the method runs.
+         */
+        @Test
+        void _IllegalArgumentException_NullBound() {
+            assertThatThrownBy(() -> repositoryInstance().findAllByFilmIdBetweenOrderByFilmId(null, 10))
+                    .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> repositoryInstance().findAllByFilmIdBetweenOrderByFilmId(1, null))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+    }
 
     /**
      * Tests {@link FilmCategoryRepository#selectFilmsWithMoreCategoriesThan(long, Pageable)}
@@ -131,32 +235,211 @@ class FilmCategoryRepository_DataJpaTest
                     .containsExactly(tuple(one.getFilmId(), 1L));
             assertThat(next.hasNext()).isFalse();
         }
+
+        /**
+         * Asserts that a {@code null} page is refused, before any query runs.
+         * <p>
+         * The package is {@code @NullMarked}, so Spring Data checks the arguments of every repository method, a
+         * {@code default} one included, and throws {@link IllegalArgumentException} before the method runs.
+         */
+        @Test
+        void _IllegalArgumentException_NullPageable() {
+            assertThatThrownBy(() -> repositoryInstance().selectFilmsWithMoreCategoriesThan(1L, null))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
     }
 
     /**
-     * Tests {@link FilmCategoryRepository#countFilmsWithoutCategory()} ({@code SAKILA-FILM_CATEGORY-I-02}).
+     * Tests {@link FilmCategoryRepository#selectFilmsWithoutCategory(Pageable)} ({@code SAKILA-FILM_CATEGORY-I-02}).
      */
     @Nested
-    class CountFilmsWithoutCategory_Test {
+    class SelectFilmsWithoutCategory_Test {
 
         /**
-         * Asserts that, with no film, the count is zero.
+         * Asserts that, with no film, the page is empty, with no elements in all.
          */
         @Test
-        void _Zero_NoFilm() {
-            assertThat(repositoryInstance().countFilmsWithoutCategory()).isZero();
+        void _Empty_NoFilm() {
+            final var page = repositoryInstance().selectFilmsWithoutCategory(PageRequest.of(0, 5, BY_FILM_ID));
+            assertThat(page).isEmpty();
+            assertThat(page.getTotalElements()).isZero();
         }
 
         /**
-         * Saves a film of one category and two of none, and asserts that the two are counted: the films, not the
-         * links, and only those with no link.
+         * Saves a film of one category and two of none, and asserts that the two are selected, the films, not the
+         * links, and only those with no link: two in all, which is the count the exercise asks for, and pages of one
+         * by id split them one and one.
          */
         @Test
         void __() {
             fixtures().filmCategory(fixtures().film(), fixtures().category());
-            fixtures().film();
-            fixtures().film();
-            assertThat(repositoryInstance().countFilmsWithoutCategory()).isEqualTo(2L);
+            final var none1 = fixtures().film();
+            final var none2 = fixtures().film();
+            final var all = repositoryInstance().selectFilmsWithoutCategory(Pageable.unpaged(BY_FILM_ID));
+            assertThat(all.getContent()).containsExactly(none1, none2);
+            assertThat(all.getTotalElements()).isEqualTo(2L);
+            final var page0 = repositoryInstance().selectFilmsWithoutCategory(PageRequest.of(0, 1, BY_FILM_ID));
+            assertThat(page0.getContent()).containsExactly(none1);
+            assertThat(page0.getTotalElements()).isEqualTo(2L);
+            final var page1 = repositoryInstance().selectFilmsWithoutCategory(page0.nextPageable());
+            assertThat(page1.getContent()).containsExactly(none2);
+            assertThat(page1.hasNext()).isFalse();
+        }
+
+        /**
+         * Asserts that a {@code null} page is refused, before any query runs.
+         * <p>
+         * The package is {@code @NullMarked}, so Spring Data checks the arguments of every repository method, a
+         * {@code default} one included, and throws {@link IllegalArgumentException} before the method runs.
+         */
+        @Test
+        void _IllegalArgumentException_NullPageable() {
+            assertThatThrownBy(() -> repositoryInstance().selectFilmsWithoutCategory(null))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+    }
+
+    /**
+     * Tests {@link FilmCategoryRepository#selectLongestFilms(Pageable)} ({@code SAKILA-FILM_CATEGORY-A-01}).
+     */
+    @Nested
+    class SelectLongestFilms_Test {
+
+        private static final Sort BY_NAME = Sort.by("name");
+
+        /**
+         * Saves a category with no film, and asserts that the page is empty, with no elements in all.
+         */
+        @Test
+        void _Empty_NoLink() {
+            fixtures().category();
+            final var page = repositoryInstance().selectLongestFilms(PageRequest.of(0, 5, BY_NAME));
+            assertThat(page).isEmpty();
+            assertThat(page.getTotalElements()).isZero();
+        }
+
+        /**
+         * Saves a category {@code a-...} of films of 100, 120 and 120 minutes, a category {@code b-...} of a film of
+         * 90, and a category of no film, and asserts that the page holds the first two categories, by name as the
+         * exercise orders, each with its longest film, the first of the two of 120 by id, two in all; and that a page
+         * of one holds the first alone, still two in all.
+         */
+        @Test
+        void __() {
+            final var a = saveCategory("a-");
+            final var b = saveCategory("b-");
+            saveCategory("c-");
+            final var a100 = saveFilm(100);
+            final var a120 = saveFilm(120);
+            final var a120too = saveFilm(120);
+            final var b90 = saveFilm(90);
+            fixtures().filmCategory(a100, a);
+            fixtures().filmCategory(a120too, a);
+            fixtures().filmCategory(a120, a);
+            fixtures().filmCategory(b90, b);
+            final var page = repositoryInstance().selectLongestFilms(PageRequest.of(0, 5, BY_NAME));
+            assertThat(page.getContent())
+                    .extracting(CategoryLongestFilm::getName, CategoryLongestFilm::getFilmId,
+                                CategoryLongestFilm::getTitle, CategoryLongestFilm::getLength)
+                    .containsExactly(
+                            tuple(a.getName(), a120.getFilmId(), a120.getTitle(), 120),
+                            tuple(b.getName(), b90.getFilmId(), b90.getTitle(), 90)
+                    );
+            assertThat(page.getTotalElements()).isEqualTo(2L);
+            final var first = repositoryInstance().selectLongestFilms(PageRequest.of(0, 1, BY_NAME));
+            assertThat(first.getContent())
+                    .extracting(CategoryLongestFilm::getName)
+                    .containsExactly(a.getName());
+            assertThat(first.getTotalElements()).isEqualTo(2L);
+            assertThat(first.getTotalPages()).isEqualTo(2);
+        }
+
+        /**
+         * Asserts that a {@code null} page is refused, before any query runs.
+         * <p>
+         * The package is {@code @NullMarked}, so Spring Data checks the arguments of every repository method, a
+         * {@code default} one included, and throws {@link IllegalArgumentException} before the method runs.
+         */
+        @Test
+        void _IllegalArgumentException_NullPageable() {
+            assertThatThrownBy(() -> repositoryInstance().selectLongestFilms(null))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+    }
+
+    /**
+     * Tests {@link FilmCategoryRepository#selectCategoryPairsWithSameFilmCount(Pageable)}
+     * ({@code SAKILA-FILM_CATEGORY-A-02}).
+     */
+    @Nested
+    class SelectCategoryPairsWithSameFilmCount_Test {
+
+        private static final Sort BY_FILMS_DESC_THEN_CATEGORIES =
+                Sort.by(Sort.Direction.DESC, "films").and(Sort.by("category1", "category2"));
+
+        /**
+         * Saves a category of two films and a category of one, and asserts that the page is empty, with no elements
+         * in all.
+         */
+        @Test
+        void _Empty_NoSameCount() {
+            final var a = saveCategory("a-");
+            final var b = saveCategory("b-");
+            fixtures().filmCategory(fixtures().film(), a);
+            fixtures().filmCategory(fixtures().film(), a);
+            fixtures().filmCategory(fixtures().film(), b);
+            final var page = repositoryInstance().selectCategoryPairsWithSameFilmCount(
+                    PageRequest.of(0, 5, BY_FILMS_DESC_THEN_CATEGORIES));
+            assertThat(page).isEmpty();
+            assertThat(page.getTotalElements()).isZero();
+        }
+
+        /**
+         * Saves categories {@code a-...} and {@code b-...} of two films each, {@code c-...} and {@code e-...} of one
+         * each, and {@code d-...} of none, and asserts that the page holds the two pairs of the same count, the
+         * greater count first as the exercise sorts, each pair once with the smaller name first, two in all; that a
+         * category of no film is paired with none; and that a page of one holds the first pair alone, still two in
+         * all.
+         */
+        @Test
+        void __() {
+            final var a = saveCategory("a-");
+            final var b = saveCategory("b-");
+            final var c = saveCategory("c-");
+            saveCategory("d-");
+            final var e = saveCategory("e-");
+            for (final var category : List.of(a, a, b, b, c, e)) {
+                fixtures().filmCategory(fixtures().film(), category);
+            }
+            final var page = repositoryInstance().selectCategoryPairsWithSameFilmCount(
+                    PageRequest.of(0, 5, BY_FILMS_DESC_THEN_CATEGORIES));
+            assertThat(page.getContent())
+                    .extracting(CategoryPairFilmCount::getCategory1, CategoryPairFilmCount::getCategory2,
+                                CategoryPairFilmCount::getFilms)
+                    .containsExactly(
+                            tuple(a.getName(), b.getName(), 2L),
+                            tuple(c.getName(), e.getName(), 1L)
+                    );
+            assertThat(page.getTotalElements()).isEqualTo(2L);
+            final var first = repositoryInstance().selectCategoryPairsWithSameFilmCount(
+                    PageRequest.of(0, 1, BY_FILMS_DESC_THEN_CATEGORIES));
+            assertThat(first.getContent())
+                    .extracting(CategoryPairFilmCount::getCategory1, CategoryPairFilmCount::getCategory2)
+                    .containsExactly(tuple(a.getName(), b.getName()));
+            assertThat(first.getTotalElements()).isEqualTo(2L);
+            assertThat(first.getTotalPages()).isEqualTo(2);
+        }
+
+        /**
+         * Asserts that a {@code null} page is refused, before any query runs.
+         * <p>
+         * The package is {@code @NullMarked}, so Spring Data checks the arguments of every repository method, a
+         * {@code default} one included, and throws {@link IllegalArgumentException} before the method runs.
+         */
+        @Test
+        void _IllegalArgumentException_NullPageable() {
+            assertThatThrownBy(() -> repositoryInstance().selectCategoryPairsWithSameFilmCount(null))
+                    .isInstanceOf(IllegalArgumentException.class);
         }
     }
 }

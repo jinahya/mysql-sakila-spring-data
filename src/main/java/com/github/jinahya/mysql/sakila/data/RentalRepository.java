@@ -9,6 +9,9 @@ import org.springframework.data.jpa.repository.NativeQuery;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -28,19 +31,21 @@ import java.util.Objects;
  * {@code (root, query, builder) -> builder.isNull(root.get(Rental_.returnDate))}.
  * <p>
  * The methods below answer the exercises of upstream's {@code EXERCISES.asciidoc} on the {@code rental} table, one
- * method per exercise, named in each method's javadoc by the exercise's id ({@code SAKILA-RENTAL-B-01}, ...), one or
- * two of each level. The exercises are context, not contract: a method that shows rows takes a {@link Pageable}, the
- * page and the sort, and returns a {@link Page}, so the order the exercise asks for, and its {@code LIMIT}, are the
- * caller's {@code PageRequest}; each method's javadoc says which sort that is. An exercise that counts rows is a
- * {@code default} method, {@code count...}, which builds a {@link Specification} with the Criteria API and counts
+ * method per exercise, named in each method's javadoc by the exercise's id ({@code SAKILA-RENTAL-B-02}, ...) and its
+ * role: the book's pick, this module's own extra, native-only, or not a pick at all. The exercises are context, not
+ * contract. A Basic one is plain, a {@link List} in the order the exercise asks for, written in the query. An
+ * Intermediate or Advanced one takes a {@link Pageable}, the page and the sort, and returns a {@link Page}, so the
+ * order the exercise asks for, and its {@code LIMIT}, are the caller's {@code PageRequest}; each method's javadoc
+ * says which sort that is. An exercise that shows or counts rows of rentals is a {@code default} method,
+ * {@code list...} or {@code count...}, which builds a {@link Specification} with the Criteria API and runs it
  * through {@link org.springframework.data.jpa.repository.JpaSpecificationExecutor}. An exercise that shows columns,
  * grouped and counted, cannot be a {@code Specification}, which only filters; such a method, {@code select...},
- * declares its JPQL with {@link Query}, with a count query of its own since Spring Data cannot derive one from a
- * grouped select, and returns a projection, one of the interfaces declared here, which Spring Data backs with the
- * selected columns, each aliased with the name of the getter it feeds. Those aliases are what the {@code Pageable}
- * sorts by; an interface rather than a record, because Spring Data rewrites a record projection into a constructor
- * expression, which drops the aliases, and the sort with them. An exercise whose SQL is MySQL's own, with no JPQL or
- * criteria form, is a {@link NativeQuery}, which runs on the Sakila database only.
+ * declares its JPQL with {@link Query}, with a count query of its own where it is paged, since Spring Data cannot
+ * derive one from a grouped select, and returns a projection, one of the interfaces declared here, which Spring Data
+ * backs with the selected columns, each aliased with the name of the getter it feeds. Those aliases are what the
+ * {@code Pageable} sorts by; an interface rather than a record, because Spring Data rewrites a record projection into
+ * a constructor expression, which drops the aliases, and the sort with them. An exercise whose SQL is MySQL's own,
+ * with no JPQL or criteria form, is a {@link NativeQuery}, which runs on the Sakila database only.
  *
  * @see Rental
  * @see Rental_
@@ -53,7 +58,7 @@ public interface RentalRepository
 
     /**
      * A month, as a year and a month of it, and how many rentals were made in it: a projection of
-     * {@link #selectMonthlyCounts(Pageable)}, sortable by {@code year}, {@code month} and {@code rentals}.
+     * {@link #selectMonthlyCounts()}.
      */
     interface MonthRentalCount {
 
@@ -80,7 +85,83 @@ public interface RentalRepository
     }
 
     /**
-     * Counts the rentals not returned yet ({@code SAKILA-RENTAL-B-01}).
+     * A store, by id, and how many of the rentals of its copies are not returned yet: a projection of
+     * {@link #selectNotReturnedCountsByStore(Pageable)}, sortable by {@code storeId} and {@code rentals}.
+     */
+    interface StoreRentalCount {
+
+        /**
+         * Returns the id of the store.
+         *
+         * @return the id of the store.
+         */
+        Integer getStoreId();
+
+        /**
+         * Returns the number of rentals of the store's copies not returned yet.
+         *
+         * @return the number of rentals.
+         */
+        long getRentals();
+    }
+
+    /**
+     * A day, and how many of the rentals made on it are not returned yet: a projection of
+     * {@link #selectNotReturnedCountsByDay(Pageable)}, sortable by {@code day} and {@code rentals}.
+     */
+    interface DayRentalCount {
+
+        /**
+         * Returns the day.
+         *
+         * @return the day.
+         */
+        LocalDate getDay();
+
+        /**
+         * Returns the number of rentals made on the day and not returned yet.
+         *
+         * @return the number of rentals.
+         */
+        long getRentals();
+    }
+
+    /**
+     * A wait between two rentals of a customer: a projection of {@link #selectLongestWaitsBetweenRentals()}.
+     */
+    interface RentalWait {
+
+        /**
+         * Returns the id of the customer.
+         *
+         * @return the id of the customer.
+         */
+        Integer getCustomerId();
+
+        /**
+         * Returns the date of the earlier rental.
+         *
+         * @return the date of the previous rental.
+         */
+        LocalDateTime getPreviousRental();
+
+        /**
+         * Returns the date of the later rental.
+         *
+         * @return the date of the rental.
+         */
+        LocalDateTime getRentalDate();
+
+        /**
+         * Returns the number of days between the two, as MySQL's {@code DATEDIFF} counts them.
+         *
+         * @return the number of days.
+         */
+        long getDays();
+    }
+
+    /**
+     * Counts the rentals not returned yet ({@code SAKILA-RENTAL-B-01}, not a pick; a count is not a list).
      * <p>
      * A {@link Specification} of one predicate, {@code isNull} on the rental's {@link Rental_#RETURN_DATE}, counted
      * through {@link org.springframework.data.jpa.repository.JpaSpecificationExecutor#count(Specification)}.
@@ -94,44 +175,157 @@ public interface RentalRepository
 
     /**
      * Selects each month in which a rental was made, with the number of rentals made in it
-     * ({@code SAKILA-RENTAL-B-02}, which orders by the month, that is by {@code year} and then by {@code month}).
+     * ({@code SAKILA-RENTAL-B-02}, the book's pick, which orders by the month, that is by the year and then by the
+     * month).
      * <p>
      * JPQL has no {@code DATE_FORMAT}, so the month the exercise writes as {@code YYYY-MM} is two columns here, the
-     * year and the month {@code EXTRACT}ed from the {@link Rental_#RENTAL_DATE}, and the rentals are grouped by both;
-     * a caller that wants the exercise's string formats the two. The count query counts the distinct months, each
-     * folded into one number, the year times a hundred plus the month.
+     * year and the month {@code EXTRACT}ed from the {@link Rental_#RENTAL_DATE}, and the rentals are grouped and
+     * ordered by both; a caller that wants the exercise's string formats the two.
      *
-     * @param pageable the page to return, and its sort, by {@code year}, {@code month} or {@code rentals}; must not be
-     *                 {@code null}.
-     * @return a page of the months, with their numbers of rentals.
+     * @return a list of the months, with their numbers of rentals, by month.
      */
-    @Query(value = """
+    @Query("""
             SELECT EXTRACT(YEAR FROM r.rentalDate) AS year,
                    EXTRACT(MONTH FROM r.rentalDate) AS month,
                    COUNT(r) AS rentals
             FROM Rental r
-            GROUP BY EXTRACT(YEAR FROM r.rentalDate), EXTRACT(MONTH FROM r.rentalDate)""",
-           countQuery = """
-                   SELECT COUNT(DISTINCT EXTRACT(YEAR FROM r.rentalDate) * 100 + EXTRACT(MONTH FROM r.rentalDate))
-                   FROM Rental r""")
-    Page<MonthRentalCount> selectMonthlyCounts(Pageable pageable);
+            GROUP BY EXTRACT(YEAR FROM r.rentalDate), EXTRACT(MONTH FROM r.rentalDate)
+            ORDER BY EXTRACT(YEAR FROM r.rentalDate), EXTRACT(MONTH FROM r.rentalDate)""")
+    List<MonthRentalCount> selectMonthlyCounts();
 
     /**
-     * Counts the rentals returned later than the film's rental duration allows ({@code SAKILA-RENTAL-A-01}).
+     * Selects each store with a rental not returned yet, with how many ({@code SAKILA-RENTAL-I-01}, the book's pick,
+     * which orders by {@code storeId}).
+     * <p>
+     * The rentals whose {@link Rental_#RETURN_DATE} is {@code null} are joined to their copies, and grouped by the
+     * copy's read-only {@code storeId}, so the {@code store} table is not joined. The count query counts the distinct
+     * stores of those copies.
+     *
+     * @param pageable the page to return, and its sort, by {@code storeId} or {@code rentals}; must not be
+     *                 {@code null}.
+     * @return a page of the stores with a rental not returned yet, with their numbers of such rentals.
+     */
+    @Query(value = """
+            SELECT i.storeId AS storeId, COUNT(r) AS rentals
+            FROM Rental r
+            JOIN r.inventory i
+            WHERE r.returnDate IS NULL
+            GROUP BY i.storeId""",
+           countQuery = """
+                   SELECT COUNT(DISTINCT i.storeId)
+                   FROM Rental r
+                   JOIN r.inventory i
+                   WHERE r.returnDate IS NULL""")
+    Page<StoreRentalCount> selectNotReturnedCountsByStore(Pageable pageable);
+
+    /**
+     * Selects each day on which a rental not returned yet was made, with how many ({@code SAKILA-RENTAL-I-02}, this
+     * module's own extra, which orders by {@code day}).
+     * <p>
+     * JPQL has no {@code DATE()}, but Hibernate's {@code EXTRACT(DATE FROM ..)} takes the date of a
+     * {@link Rental_#RENTAL_DATE}, and the rentals whose {@link Rental_#RETURN_DATE} is {@code null} are grouped by
+     * it. The count query counts the distinct days.
+     *
+     * @param pageable the page to return, and its sort, by {@code day} or {@code rentals}; must not be {@code null}.
+     * @return a page of the days with a rental not returned yet, with their numbers of such rentals.
+     */
+    @Query(value = """
+            SELECT EXTRACT(DATE FROM r.rentalDate) AS day, COUNT(r) AS rentals
+            FROM Rental r
+            WHERE r.returnDate IS NULL
+            GROUP BY EXTRACT(DATE FROM r.rentalDate)""",
+           countQuery = """
+                   SELECT COUNT(DISTINCT EXTRACT(DATE FROM r.rentalDate))
+                   FROM Rental r
+                   WHERE r.returnDate IS NULL""")
+    Page<DayRentalCount> selectNotReturnedCountsByDay(Pageable pageable);
+
+    /**
+     * Lists the rentals returned later than the film's rental duration allows ({@code SAKILA-RENTAL-A-01}, the
+     * book's pick, which asks how many there are: the page's total number of elements; sort by the column
+     * {@code rental_id}).
      * <p>
      * The duration is on the film, so the query goes from the rental through the copy to the film, and compares the
      * return date with the rental date plus that many days. Adding a column's number of days to a date is
      * {@code INTERVAL}, which is MySQL's own: neither JPQL nor the Criteria API can do it, so this is a native query,
-     * which runs on the Sakila database only, and has no slice test.
+     * which runs on the Sakila database only, and has no slice test. The count query is the exercise's SQL itself. The
+     * rows map to {@link Rental}, but the sort is applied to the native SQL as it is, so it names a column of the
+     * {@code rental} table, {@code rental_id}, not an attribute.
      *
-     * @return the number of rentals whose return date is after the rental date plus the film's rental duration in
+     * @param pageable the page to return, and its sort, by a column of the {@code rental} table; must not be
+     *                 {@code null}.
+     * @return a page of the rentals whose return date is after the rental date plus the film's rental duration in
      *         days.
      */
-    @NativeQuery("""
-            SELECT COUNT(*)
+    @NativeQuery(value = """
+            SELECT r.*
             FROM rental r
                      JOIN inventory i ON i.inventory_id = r.inventory_id
                      JOIN film f ON f.film_id = i.film_id
-            WHERE r.return_date > r.rental_date + INTERVAL f.rental_duration DAY""")
-    long countReturnedLate();
+            WHERE r.return_date > r.rental_date + INTERVAL f.rental_duration DAY""",
+                 countQuery = """
+                         SELECT COUNT(*) AS late
+                         FROM rental r
+                                  JOIN inventory i ON i.inventory_id = r.inventory_id
+                                  JOIN film f ON f.film_id = i.film_id
+                         WHERE r.return_date > r.rental_date + INTERVAL f.rental_duration DAY""")
+    Page<Rental> listReturnedLate(Pageable pageable);
+
+    /**
+     * Selects the five longest waits between two rentals of a customer in 2005 ({@code SAKILA-RENTAL-A-02},
+     * native-only, which orders by {@code days} descending, then by {@code customer_id} and by {@code rental_date},
+     * and takes five).
+     * <p>
+     * The previous rental of each customer is a window function, {@code LAG(..) OVER (PARTITION BY ..)}, and the days
+     * between two dates are MySQL's {@code DATEDIFF}; JPQL and the Criteria API have neither, so this is a native
+     * query, the exercise's SQL with its columns aliased with the getters' names of {@link RentalWait}, and it runs on
+     * the Sakila database only, with no slice test. Its order and its {@code LIMIT} are the exercise's own.
+     *
+     * @return a list of the five longest waits, the longest first.
+     */
+    @NativeQuery("""
+            SELECT customer_id AS customerId, previous_rental AS previousRental, rental_date AS rentalDate,
+                   DATEDIFF(rental_date, previous_rental) AS days
+            FROM (SELECT customer_id, rental_date,
+                         LAG(rental_date) OVER (PARTITION BY customer_id ORDER BY rental_date, rental_id) AS previous_rental
+                  FROM rental
+                  WHERE rental_date < '2006-01-01') g
+            WHERE previous_rental IS NOT NULL
+            ORDER BY days DESC, customerId, rentalDate
+            LIMIT 5""")
+    List<RentalWait> selectLongestWaitsBetweenRentals();
+
+    /**
+     * Lists the rentals whose copy was rented out again before they came back ({@code SAKILA-RENTAL-A-03}, this
+     * module's own extra, which asks whether a copy was ever rented out twice at the same time: whether the page's
+     * total number of elements is not zero; sort by {@link Rental_#RENTAL_ID}).
+     * <p>
+     * A {@link Specification} of one {@code EXISTS}, on a subquery of the other rentals {@code b} of the same copy
+     * that began at or after the rental {@code a}, and before it was returned, or at any time if it is not returned
+     * yet; of two rentals that began at the same instant, only the one with the smaller id counts as {@code a}, so a
+     * pair is found once. The exercise counts such pairs; this lists the rentals {@code a}, so a rental overlapped by
+     * two others is listed once. Both are zero on the sample data.
+     *
+     * @param pageable the page to return, and its sort; must not be {@code null}.
+     * @return a page of the rentals another rental of the same copy overlaps.
+     */
+    default Page<Rental> listOverlapping(final Pageable pageable) {
+        Objects.requireNonNull(pageable, "pageable is null");
+        final Specification<Rental> specification = (a, q, cb) -> {
+            final var overlapping = Objects.requireNonNull(q).subquery(Rental.class);
+            final var b = overlapping.from(Rental.class);
+            final var aRentalDate = a.get(Rental_.rentalDate);
+            final var bRentalDate = b.get(Rental_.rentalDate);
+            final var aReturnDate = a.get(Rental_.returnDate);
+            overlapping.select(b)
+                    .where(cb.equal(b.get(Rental_.inventory), a.get(Rental_.inventory)),
+                           cb.notEqual(b.get(Rental_.rentalId), a.get(Rental_.rentalId)),
+                           cb.greaterThanOrEqualTo(bRentalDate, aRentalDate),
+                           cb.or(cb.isNull(aReturnDate), cb.lessThan(bRentalDate, aReturnDate)),
+                           cb.or(cb.greaterThan(bRentalDate, aRentalDate),
+                                 cb.gt(b.get(Rental_.rentalId), a.get(Rental_.rentalId))));
+            return cb.exists(overlapping);
+        };
+        return findAll(specification, pageable);
+    }
 }

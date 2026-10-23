@@ -1,15 +1,11 @@
 package com.github.jinahya.mysql.sakila.data;
 
 import com.github.jinahya.mysql.sakila.persistence.Film;
-import com.github.jinahya.mysql.sakila.persistence.FilmList;
 import com.github.jinahya.mysql.sakila.persistence.NicerButSlowerFilmList;
 import lombok.extern.slf4j.Slf4j;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -19,27 +15,28 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.assertj.core.api.Assumptions.assumeThat;
+import static org.assertj.core.api.Assertions.tuple;
 
 /**
  * Tests {@link NicerButSlowerFilmListRepository} against the Sakila database.
  * <p>
  * The repository is not a Spring Data one, so this does not extend {@link _Repository_SpringBootIT}: it is a plain
  * {@code @SpringBootTest}, over the context of {@link ___Spring_TestContext}, which {@code @Import}s the
- * implementation. There is no {@code @DataJpaTest} for it either: the slice's H2 is generated from the entities, and
- * the view does not exist there. Each repository call runs in a transaction of its own, and nothing here writes.
+ * implementation. There is no {@code @DataJpaTest} for it either: the slice's H2 is generated from the entities, the
+ * view does not exist there, and every exercise method is native-only, running MySQL's own SQL. Each repository call
+ * runs in a transaction of its own, and nothing here writes.
  * <p>
- * The fixture is the first five rows of the view, by {@code FID}, selected once in {@link #__()}; each test tries
- * every one of them, or a few page sizes. The view is {@code film_list} with the actors' names capitalized, so what it
- * says is cross-checked against the same rows of {@code film_list}, through {@link FilmListRepository}.
+ * The exercise methods run the exercises' SQL as it is, so each is asserted against the output upstream records for it,
+ * in {@code src/test/sql/nicer_but_slower_film_list_exercises_0N_<level>.sql}, in the order the exercise asks for. The
+ * view is {@code film_list} with the actors' names capitalized, so what it says is cross-checked, where it is cheap,
+ * against {@code film_list}, through {@link FilmListRepository}.
  * <p>
  * Two reads of the same row are compared ignoring the order of the names in {@code actors}: both views build that
  * string with a {@code GROUP_CONCAT} that has no {@code ORDER BY}, so MySQL may list the names in a different order
@@ -51,42 +48,15 @@ import static org.assertj.core.api.Assumptions.assumeThat;
  * @see NicerButSlowerFilmListRepositoryImpl
  */
 @SpringBootTest
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @Slf4j
 class NicerButSlowerFilmListRepository_SpringBootIT {
 
-    private static List<NicerButSlowerFilmList> rows;
-
     /**
-     * The sort of the exercises: by {@code FID}, which the implementation appends anyway.
+     * A sort by {@code FID}, which the implementation appends anyway.
      */
     private static final Sort BY_FID = Sort.by(Sort.Direction.ASC, NicerButSlowerFilmList.ATTRIBUTE_NAME_FID);
 
-    /**
-     * The same sort, by {@code FID}, for {@link FilmListRepository}.
-     */
-    private static final Sort FILM_LIST_BY_FID = Sort.by(Sort.Direction.ASC, FilmList.ATTRIBUTE_NAME_FID);
-
     // -----------------------------------------------------------------------------------------------------------------
-
-    /**
-     * Selects the first five rows of the view, by {@code FID}, as the fixture for the parameterized tests.
-     * <p>
-     * Runs once per class, which {@link TestInstance.Lifecycle#PER_CLASS} allows to be an instance method, so the
-     * autowired repository is already there; the result goes into a static field so that the static method sources of
-     * the nested classes can reach it. An empty view aborts the tests of this class rather than failing them: it is the
-     * fixture that is missing, not the behaviour under test that is wrong.
-     */
-    @BeforeAll
-    void __() {
-        rows = Collections.unmodifiableList(repository.listAll(PageRequest.of(0, 5, BY_FID)).getContent());
-        rows.forEach(r -> log.debug("row: {}", r));
-        assumeThat(rows).isNotEmpty();
-    }
-
-    private static Stream<NicerButSlowerFilmList> rows() {
-        return rows.stream();
-    }
 
     /**
      * Asserts that the specified page is consistent with itself: no more content than its size, and at least as many
@@ -234,83 +204,155 @@ class NicerButSlowerFilmListRepository_SpringBootIT {
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * Tests {@link NicerButSlowerFilmListRepository#listByFid(Integer, Pageable)}
+     * Tests {@link NicerButSlowerFilmListRepository#listActorsOfFilmOne()}
      * ({@code SAKILA-NICER_BUT_SLOWER_FILM_LIST-B-01}).
      */
     @Nested
-    class ListByFid_Test {
-
-        private static Stream<NicerButSlowerFilmList> rows() {
-            return NicerButSlowerFilmListRepository_SpringBootIT.rows();
-        }
+    class ListActorsOfFilmOne_Test {
 
         /**
-         * Asserts that the {@code FID} of a selected row lists rows of that {@code FID} only, the selected row among
-         * them, and compares them with the same rows of {@code film_list}, as the exercise does: as many, with the
-         * same title, and the same actors, written with only the first letter of each name in upper case.
-         *
-         * @param row one of the rows selected in {@link NicerButSlowerFilmListRepository_SpringBootIT#__()}.
-         */
-        @MethodSource("rows")
-        @ParameterizedTest
-        void __(final NicerButSlowerFilmList row) {
-            final var fid = row.getFid();
-            final var page = repository.listByFid(fid, Pageable.unpaged(BY_FID));
-            assertThat(page.getContent())
-                    .isNotEmpty()
-                    .allSatisfy(r -> assertThat(r.getFid()).isEqualTo(fid))
-                    .anySatisfy(r -> {
-                        assertThat(r).usingRecursiveComparison()
-                                .ignoringFields(NicerButSlowerFilmList.ATTRIBUTE_NAME_ACTORS)
-                                .isEqualTo(row);
-                        assertThat(namesOf(r.getActors()))
-                                .containsExactlyInAnyOrderElementsOf(namesOf(row.getActors()));
-                    });
-            final var filmList = filmListRepository.listByFid(fid, Pageable.unpaged(FILM_LIST_BY_FID));
-            assertThat(filmList.getContent()).hasSameSizeAs(page.getContent());
-            for (int i = 0; i < page.getNumberOfElements(); i++) {
-                final var nicer = page.getContent().get(i);
-                final var other = filmList.getContent().get(i);
-                assertThat(nicer.getTitle()).isEqualTo(other.getTitle());
-                assertThat(nicer.getCategory()).isEqualTo(other.getCategory());
-                assertCapitalized(nicer.getActors(), other.getActors());
-            }
-        }
-
-        /**
-         * Asserts that pages of one, walked one after another, add up to the single unpaged page of the selected
-         * row's {@code FID}, row by row, with the same total.
-         *
-         * @param row one of the rows selected in {@link NicerButSlowerFilmListRepository_SpringBootIT#__()}.
-         */
-        @MethodSource("rows")
-        @ParameterizedTest
-        void __Paged(final NicerButSlowerFilmList row) {
-            final var fid = row.getFid();
-            final var all = repository.listByFid(fid, Pageable.unpaged(BY_FID));
-            assertThat(all.getContent()).isNotEmpty();
-            final var walked = new ArrayList<NicerButSlowerFilmList>();
-            var page = repository.listByFid(fid, PageRequest.of(0, 1, BY_FID));
-            while (true) {
-                assertPage(page);
-                assertThat(page.getTotalElements()).isEqualTo(all.getTotalElements());
-                walked.addAll(page.getContent());
-                if (!page.hasNext()) {
-                    break;
-                }
-                page = repository.listByFid(fid, page.nextPageable());
-            }
-            assertSameRows(walked, all.getContent());
-        }
-
-        /**
-         * Asserts that an {@code FID} no film has lists nothing, with a total of zero.
+         * Asserts that the film {@code 1} has the one row the exercise shows, {@code ACADEMY DINOSAUR} with its ten
+         * actors as this view writes them, in whatever order, and compares it with the same row of {@code film_list},
+         * as the exercise does: the same title, and the same actors, written with only the first letter of each name in
+         * upper case.
          */
         @Test
-        void _Empty_Unknown() {
-            final var page = repository.listByFid(0, PageRequest.of(0, 1, BY_FID));
-            assertThat(page.getContent()).isEmpty();
-            assertThat(page.getTotalElements()).isZero();
+        void __() {
+            final var list = repository.listActorsOfFilmOne();
+            list.forEach(r -> log.debug("row: {}", r));
+            assertThat(list).singleElement().satisfies(r -> {
+                assertThat(r.fid()).isEqualTo(1);
+                assertThat(r.title()).isEqualTo("ACADEMY DINOSAUR");
+                assertThat(namesOf(r.actors())).containsExactlyInAnyOrder(
+                        "Penelope Guiness", "Christian Gable", "Lucille Tracy", "Sandra Peck", "Johnny Cage",
+                        "Mena Temple", "Warren Nolte", "Oprah Kilmer", "Rock Dukakis", "Mary Keitel");
+            });
+            final var filmList = filmListRepository.listActorsOfFilmOne();
+            assertThat(filmList).hasSameSizeAs(list);
+            for (int i = 0; i < list.size(); i++) {
+                assertThat(list.get(i).title()).isEqualTo(filmList.get(i).title());
+                assertCapitalized(list.get(i).actors(), filmList.get(i).actors());
+            }
+        }
+    }
+
+    /**
+     * Tests {@link NicerButSlowerFilmListRepository#countFilmsOfPenelopeGuiness()}
+     * ({@code SAKILA-NICER_BUT_SLOWER_FILM_LIST-B-02}).
+     */
+    @Nested
+    class CountFilmsOfPenelopeGuiness_Test {
+
+        /**
+         * Asserts that the count is the exercise's {@code 19}, and is the number of rows of the view whose actors
+         * name her, counted over the unpaged listing.
+         */
+        @Test
+        void __() {
+            final var count = repository.countFilmsOfPenelopeGuiness();
+            log.debug("films: {}", count);
+            assertThat(count)
+                    .isEqualTo(19L)
+                    .isEqualTo(repository.listAll(Pageable.unpaged(BY_FID)).stream()
+                                       .filter(r -> namesOf(r.getActors()).contains("Penelope Guiness"))
+                                       .count());
+        }
+    }
+
+    /**
+     * Tests {@link NicerButSlowerFilmListRepository#listFilmsWithNoActor()}
+     * ({@code SAKILA-NICER_BUT_SLOWER_FILM_LIST-B-03}).
+     */
+    @Nested
+    class ListFilmsWithNoActor_Test {
+
+        /**
+         * Asserts that the films are the exercise's three, with their categories, by {@code FID}, the same as
+         * {@code film_list}'s.
+         */
+        @Test
+        void __() {
+            final var list = repository.listFilmsWithNoActor();
+            list.forEach(r -> log.debug("row: {}", r));
+            assertThat(list)
+                    .extracting(FilmListRepository.FilmInCategory::fid, FilmListRepository.FilmInCategory::title,
+                                FilmListRepository.FilmInCategory::category)
+                    .containsExactly(
+                            tuple(257, "DRUMLINE CYCLONE", "Travel"),
+                            tuple(323, "FLIGHT LIES", "Sports"),
+                            tuple(803, "SLACKER LIAISONS", "Drama"));
+            assertThat(list).isEqualTo(filmListRepository.listFilmsWithNoActor());
+        }
+    }
+
+    /**
+     * Tests {@link NicerButSlowerFilmListRepository#listFiveLongestCategoriesOnAverage()}
+     * ({@code SAKILA-NICER_BUT_SLOWER_FILM_LIST-I-01}).
+     */
+    @Nested
+    class ListFiveLongestCategoriesOnAverage_Test {
+
+        /**
+         * Asserts that the rows are the exercise's five, with the number of their films and their average lengths.
+         */
+        @Test
+        void __() {
+            final var list = repository.listFiveLongestCategoriesOnAverage();
+            list.forEach(r -> log.debug("row: {}", r));
+            assertThat(list)
+                    .extracting(NicerButSlowerFilmListRepository.CategoryAverageLength::category,
+                                NicerButSlowerFilmListRepository.CategoryAverageLength::films,
+                                NicerButSlowerFilmListRepository.CategoryAverageLength::averageLength)
+                    .containsExactly(
+                            tuple("Sports", 74L, new BigDecimal("128.20")),
+                            tuple("Games", 61L, new BigDecimal("127.84")),
+                            tuple("Foreign", 73L, new BigDecimal("121.70")),
+                            tuple("Drama", 62L, new BigDecimal("120.84")),
+                            tuple("Comedy", 58L, new BigDecimal("115.83")));
+        }
+
+        /**
+         * Asserts that the rows are sorted by the average length, descending, as the exercise asks, and that there are
+         * no more than five.
+         */
+        @Test
+        void __Sorted() {
+            assertThat(repository.listFiveLongestCategoriesOnAverage())
+                    .hasSizeLessThanOrEqualTo(5)
+                    .isSortedAccordingTo(Comparator.comparing(
+                            NicerButSlowerFilmListRepository.CategoryAverageLength::averageLength).reversed());
+        }
+    }
+
+    /**
+     * Tests {@link NicerButSlowerFilmListRepository#countFilmsByLengthBand()}
+     * ({@code SAKILA-NICER_BUT_SLOWER_FILM_LIST-I-02}).
+     */
+    @Nested
+    class CountFilmsByLengthBand_Test {
+
+        /**
+         * Asserts that the rows are the exercise's three bands, by their shortest length, and that their films add up
+         * to every row of the view.
+         */
+        @Test
+        void __() {
+            final var list = repository.countFilmsByLengthBand();
+            list.forEach(r -> log.debug("row: {}", r));
+            assertThat(list)
+                    .extracting(NicerButSlowerFilmListRepository.LengthBand::band,
+                                NicerButSlowerFilmListRepository.LengthBand::films,
+                                NicerButSlowerFilmListRepository.LengthBand::shortest,
+                                NicerButSlowerFilmListRepository.LengthBand::longest)
+                    .containsExactly(
+                            tuple("short", 96L, 46, 59),
+                            tuple("medium", 447L, 60, 120),
+                            tuple("long", 457L, 121, 185));
+            assertThat(list)
+                    .extracting(NicerButSlowerFilmListRepository.LengthBand::shortest)
+                    .isSorted();
+            assertThat(list.stream().mapToLong(NicerButSlowerFilmListRepository.LengthBand::films).sum())
+                    .isEqualTo(repository.listAll(Pageable.unpaged(BY_FID)).getTotalElements());
         }
     }
 
@@ -331,6 +373,75 @@ class NicerButSlowerFilmListRepository_SpringBootIT {
             final var differing = repository.countDifferingFromFilmList();
             log.debug("differing: {}", differing);
             assertThat(differing).isZero();
+        }
+    }
+
+    /**
+     * Tests {@link NicerButSlowerFilmListRepository#listLongestByCategory()}
+     * ({@code SAKILA-NICER_BUT_SLOWER_FILM_LIST-A-02}).
+     */
+    @Nested
+    class ListLongestByCategory_Test {
+
+        /**
+         * Asserts that the rows are the exercise's sixteen, one per category, with its longest length and the number of
+         * its films of that length.
+         */
+        @Test
+        void __() {
+            final var list = repository.listLongestByCategory();
+            list.forEach(r -> log.debug("row: {}", r));
+            assertThat(list)
+                    .extracting(NicerButSlowerFilmListRepository.CategoryLongest::category,
+                                NicerButSlowerFilmListRepository.CategoryLongest::longest,
+                                NicerButSlowerFilmListRepository.CategoryLongest::films)
+                    .containsExactly(
+                            tuple("Action", 185, 2L),
+                            tuple("Animation", 185, 2L),
+                            tuple("Children", 178, 2L),
+                            tuple("Classics", 184, 1L),
+                            tuple("Comedy", 185, 1L),
+                            tuple("Documentary", 183, 2L),
+                            tuple("Drama", 181, 1L),
+                            tuple("Family", 184, 1L),
+                            tuple("Foreign", 184, 2L),
+                            tuple("Games", 185, 1L),
+                            tuple("Horror", 181, 2L),
+                            tuple("Music", 185, 1L),
+                            tuple("New", 183, 1L),
+                            tuple("Sci-Fi", 185, 1L),
+                            tuple("Sports", 184, 1L),
+                            tuple("Travel", 185, 2L));
+        }
+
+        /**
+         * Asserts that the rows are sorted by the category, as the exercise asks; the names are compared ignoring case,
+         * as the database's collation compares them.
+         */
+        @Test
+        void __Sorted() {
+            assertThat(repository.listLongestByCategory())
+                    .extracting(NicerButSlowerFilmListRepository.CategoryLongest::category)
+                    .isSortedAccordingTo(String.CASE_INSENSITIVE_ORDER);
+        }
+    }
+
+    /**
+     * Tests {@link NicerButSlowerFilmListRepository#countMismatchedActors()}
+     * ({@code SAKILA-NICER_BUT_SLOWER_FILM_LIST-A-03}).
+     */
+    @Nested
+    class CountMismatchedActors_Test {
+
+        /**
+         * Asserts that no film is miscounted, as the exercise says, and that {@code film_list} agrees.
+         */
+        @Test
+        void _Zero_() {
+            final var mismatched = repository.countMismatchedActors();
+            log.debug("mismatched: {}", mismatched);
+            assertThat(mismatched).isZero();
+            assertThat(filmListRepository.listFilmsMiscountingActors()).isEmpty();
         }
     }
 

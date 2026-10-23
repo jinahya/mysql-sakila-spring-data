@@ -1,9 +1,11 @@
 package com.github.jinahya.mysql.sakila.data;
 
 import com.github.jinahya.mysql.sakila.data.FilmRepository.FilmRentalCount;
+import com.github.jinahya.mysql.sakila.data.FilmRepository.RatingAverageRentalRate;
 import com.github.jinahya.mysql.sakila.data.FilmRepository.RatingCount;
 import com.github.jinahya.mysql.sakila.persistence.Film;
 import com.github.jinahya.mysql.sakila.persistence.Film_;
+import com.github.jinahya.mysql.sakila.persistence.Inventory;
 import com.github.jinahya.mysql.sakila.persistence.Inventory_;
 import com.github.jinahya.mysql.sakila.persistence.Rental;
 import com.github.jinahya.mysql.sakila.persistence.Rental_;
@@ -15,19 +17,24 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.InvalidDataAccessApiUsageException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.JpaSort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.assertj.core.api.Assumptions.assumeThat;
 
 /**
@@ -115,6 +122,21 @@ class FilmRepository_SpringBootIT
     }
 
     /**
+     * Counts the copies of the film of the specified id, through {@link InventoryRepository}.
+     * <p>
+     * The film's own {@code inventories} is not public upstream, so the copies are counted by a {@link Specification}
+     * over the copy's film.
+     *
+     * @param filmId the id of the film.
+     * @return the number of copies of the film.
+     */
+    private long countCopiesOf(final Integer filmId) {
+        final Specification<Inventory> specification =
+                (r, q, b) -> b.equal(r.get(Inventory_.film).get(Film_.filmId), filmId);
+        return inventoryRepository.count(specification);
+    }
+
+    /**
      * Asserts that the specified page is consistent with itself: no more content than its size, and at least as many
      * elements in all as in its content.
      *
@@ -129,30 +151,41 @@ class FilmRepository_SpringBootIT
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * Tests {@link FilmRepository#selectRatingCounts(Pageable)} ({@code SAKILA-FILM-B-01}).
+     * Tests {@link FilmRepository#selectRatingCounts()} ({@code SAKILA-FILM-B-01}).
      */
     @Nested
     class SelectRatingCounts_Test {
-
-        private static final Sort BY_RATING = Sort.by("rating");
 
         private static Stream<Film> films() {
             return FilmRepository_SpringBootIT.films();
         }
 
         /**
-         * Asserts that a page of the given size, by rating as the exercise sorts, is in the order of the
-         * {@code ENUM}'s values, which is the order of {@link Film.Rating}'s constants, and that each count is the
-         * number of films of that rating.
-         *
-         * @param size the size of the page.
+         * Asserts that the list is the exercise's output, every rating with its count, in the order of the
+         * {@code ENUM}'s values, which is the order of {@link Film.Rating}'s constants, not the alphabetical one.
          */
-        @ValueSource(ints = {1, 5})
-        @ParameterizedTest
-        void __(final int size) {
-            final var page = repositoryInstance().selectRatingCounts(PageRequest.of(0, size, BY_RATING));
-            assertPage(page);
-            assertThat(page.getContent())
+        @Test
+        void __() {
+            final var list = repositoryInstance().selectRatingCounts();
+            assertThat(list)
+                    .extracting(RatingCount::getRating, RatingCount::getFilms)
+                    .containsExactly(
+                            tuple(Film.Rating.G, 178L),
+                            tuple(Film.Rating.PG, 194L),
+                            tuple(Film.Rating.PG_13, 223L),
+                            tuple(Film.Rating.R, 195L),
+                            tuple(Film.Rating.NC_17, 210L)
+                    );
+        }
+
+        /**
+         * Asserts that the list is ordered by rating, and that each count is the number of films of that rating,
+         * counted through a {@link Specification}.
+         */
+        @Test
+        void __Ordered() {
+            final var list = repositoryInstance().selectRatingCounts();
+            assertThat(list)
                     .isNotEmpty()
                     .isSortedAccordingTo(Comparator.comparing(RatingCount::getRating))
                     .allSatisfy(c -> {
@@ -170,15 +203,15 @@ class FilmRepository_SpringBootIT
         @ParameterizedTest
         void __ContainsRatingOfFixture(final Film film) {
             assumeThat(film.getRating()).isNotNull();
-            final var all = repositoryInstance().selectRatingCounts(Pageable.unpaged(BY_RATING));
-            assertThat(all.getContent())
+            final var list = repositoryInstance().selectRatingCounts();
+            assertThat(list)
                     .extracting(RatingCount::getRating)
                     .contains(film.getRating());
         }
     }
 
     /**
-     * Tests {@link FilmRepository#listLongerThan(int, Pageable)} ({@code SAKILA-FILM-B-02}).
+     * Tests {@link FilmRepository#listLongerThan(int, Pageable)} ({@code SAKILA-FILM-B-02}, not a pick).
      */
     @Nested
     class ListLongerThan_Test {
@@ -205,26 +238,109 @@ class FilmRepository_SpringBootIT
             assertThat(ten.getTotalElements()).isEqualTo(page.getTotalElements());
             assertThat(ten.getContent()).startsWith(page.getContent().toArray(new Film[0]));
         }
+
+        /**
+         * Asserts that the first five above 180 minutes are the exercise's output.
+         */
+        @Test
+        void __Expected() {
+            final var sort = JpaSort.of(Sort.Direction.DESC, Film_.length).and(JpaSort.of(Film_.title));
+            final var page = repositoryInstance().listLongerThan(180, PageRequest.of(0, 5, sort));
+            assertThat(page.getContent())
+                    .extracting(Film::getFilmId)
+                    .containsExactly(141, 182, 212, 349, 426);
+        }
     }
 
     /**
-     * Tests {@link FilmRepository#countWithoutInventory()} ({@code SAKILA-FILM-I-01}).
+     * Tests {@link FilmRepository#selectAverageRentalRates()} ({@code SAKILA-FILM-B-03}).
      */
     @Nested
-    class CountWithoutInventory_Test {
+    class SelectAverageRentalRates_Test {
 
         /**
-         * Asserts that the count is the number of all films less the number of films with a copy, which
-         * {@link InventoryRepository#selectCopyCountsByFilm(Pageable)} groups.
+         * Calls the method with no transaction around the test, and asserts that Spring Data refuses it.
+         * <p>
+         * A stream has to be consumed inside a transaction the caller opened. The repository would open one of its own,
+         * but that one ends when the method returns, so the check runs before the query, and throws
+         * {@link InvalidDataAccessApiUsageException}.
          */
         @Test
-        void __() {
-            final var count = repositoryInstance().countWithoutInventory();
-            final var all = repositoryInstance().count();
-            final var withCopies = inventoryRepository.selectCopyCountsByFilm(Pageable.unpaged()).getTotalElements();
-            assertThat(count)
-                    .isNotNegative()
-                    .isEqualTo(all - withCopies);
+        void _InvalidDataAccessApiUsageException_NoSurroundingTransaction() {
+            assertThatThrownBy(() -> {
+                try (var stream = repositoryInstance().selectAverageRentalRates()) {
+                    stream.forEach(r -> {
+                    });
+                }
+            }).isInstanceOf(InvalidDataAccessApiUsageException.class);
+        }
+
+        /**
+         * Asserts, in one transaction, that the stream yields the exercise's output, every rating with the average
+         * rental rate of its films rounded to two places, in the order of the {@code ENUM}'s values.
+         */
+        @Test
+        @Transactional
+        void __Transactional() {
+            try (var stream = repositoryInstance().selectAverageRentalRates()) {
+                assertThat(stream.toList())
+                        .extracting(RatingAverageRentalRate::getRating, RatingAverageRentalRate::getAverageRentalRate)
+                        .containsExactly(
+                                tuple(Film.Rating.G, 2.89d),
+                                tuple(Film.Rating.PG, 3.05d),
+                                tuple(Film.Rating.PG_13, 3.03d),
+                                tuple(Film.Rating.R, 2.94d),
+                                tuple(Film.Rating.NC_17, 2.97d)
+                        );
+            }
+        }
+    }
+
+    /**
+     * Tests {@link FilmRepository#listWithoutInventory(Pageable)} ({@code SAKILA-FILM-I-01}).
+     */
+    @Nested
+    class ListWithoutInventory_Test {
+
+        private static Stream<Film> films() {
+            return FilmRepository_SpringBootIT.films();
+        }
+
+        /**
+         * Asserts that a page of the given size, by id, is ordered so, that its total is the exercise's count,
+         * {@code 42}, whatever the size, and that no film listed has a copy, counted through
+         * {@link InventoryRepository}.
+         *
+         * @param size the size of the page.
+         */
+        @ValueSource(ints = {1, 5, 50})
+        @ParameterizedTest
+        void __(final int size) {
+            final var page = repositoryInstance().listWithoutInventory(PageRequest.of(0, size, BY_FILM_ID));
+            assertPage(page);
+            assertThat(page.getTotalElements()).isEqualTo(42L);
+            assertThat(page.getContent())
+                    .isNotEmpty()
+                    .isSortedAccordingTo(Comparator.comparing(Film::getFilmId))
+                    .allSatisfy(f -> {
+                        assertThat(countCopiesOf(f.getFilmId())).as("copies of film %d", f.getFilmId()).isZero();
+                    });
+        }
+
+        /**
+         * Asserts that a selected film is listed exactly when it has no copy.
+         *
+         * @param film one of the films selected in {@link FilmRepository_SpringBootIT#__()}.
+         */
+        @MethodSource("films")
+        @ParameterizedTest
+        void __Fixture(final Film film) {
+            final var all = repositoryInstance().listWithoutInventory(Pageable.unpaged(BY_FILM_ID));
+            if (countCopiesOf(film.getFilmId()) == 0L) {
+                assertThat(all.getContent()).contains(film);
+            } else {
+                assertThat(all.getContent()).doesNotContain(film);
+            }
         }
     }
 
@@ -236,6 +352,25 @@ class FilmRepository_SpringBootIT
 
         private static final Sort BY_RENTALS_DESC_THEN_FILM_ID =
                 Sort.by(Sort.Direction.DESC, "rentals").and(Sort.by("filmId"));
+
+        /**
+         * Asserts that the first five, the most rented first and then by id as the exercise sorts, are the exercise's
+         * output.
+         */
+        @Test
+        void __Expected() {
+            final var page = repositoryInstance().selectRentalCounts(
+                    PageRequest.of(0, 5, BY_RENTALS_DESC_THEN_FILM_ID));
+            assertThat(page.getContent())
+                    .extracting(FilmRentalCount::getFilmId, FilmRentalCount::getTitle, FilmRentalCount::getRentals)
+                    .containsExactly(
+                            tuple(103, "BUCKET BROTHERHOOD", 34L),
+                            tuple(738, "ROCKETEER MOTHER", 33L),
+                            tuple(331, "FORWARD TEMPLE", 32L),
+                            tuple(382, "GRIT CLOCKWORK", 32L),
+                            tuple(489, "JUGGLER HARDLY", 32L)
+                    );
+        }
 
         /**
          * Asserts that a page of the given size, the most rented first as the exercise sorts, is ordered so, that
@@ -261,6 +396,62 @@ class FilmRepository_SpringBootIT
                                 .isPositive()
                                 .isEqualTo(countRentalsOf(c.getFilmId()));
                     });
+        }
+    }
+
+    /**
+     * Tests {@link FilmRepository#selectRatingCountsOfLongerThanRatingAverage(Pageable)} ({@code SAKILA-FILM-A-01}).
+     */
+    @Nested
+    class SelectRatingCountsOfLongerThanRatingAverage_Test {
+
+        private static final Sort BY_RATING = Sort.by("rating");
+
+        /**
+         * Asserts that all the ratings, by rating as the exercise sorts, are the exercise's output.
+         */
+        @Test
+        void __Expected() {
+            final var page = repositoryInstance().selectRatingCountsOfLongerThanRatingAverage(
+                    Pageable.unpaged(BY_RATING));
+            assertThat(page.getContent())
+                    .extracting(RatingCount::getRating, RatingCount::getFilms)
+                    .containsExactly(
+                            tuple(Film.Rating.G, 83L),
+                            tuple(Film.Rating.PG, 99L),
+                            tuple(Film.Rating.PG_13, 118L),
+                            tuple(Film.Rating.R, 94L),
+                            tuple(Film.Rating.NC_17, 103L)
+                    );
+        }
+
+        /**
+         * Asserts that pages of the given size, by rating, walk the ratings of the unpaged list in the same order,
+         * with the same total, and that each count is less than all films of the rating.
+         *
+         * @param size the size of the page.
+         */
+        @ValueSource(ints = {1, 2, 5})
+        @ParameterizedTest
+        void __Paged(final int size) {
+            final var all = repositoryInstance().selectRatingCountsOfLongerThanRatingAverage(
+                    Pageable.unpaged(BY_RATING));
+            var page = repositoryInstance().selectRatingCountsOfLongerThanRatingAverage(
+                    PageRequest.of(0, size, BY_RATING));
+            assertPage(page);
+            assertThat(page.getTotalElements()).isEqualTo(all.getTotalElements());
+            final var walked = new ArrayList<Film.Rating>();
+            while (true) {
+                page.forEach(c -> {
+                    walked.add(c.getRating());
+                    assertThat(c.getFilms()).isPositive().isLessThan(countByRating(c.getRating()));
+                });
+                if (!page.hasNext()) {
+                    break;
+                }
+                page = repositoryInstance().selectRatingCountsOfLongerThanRatingAverage(page.nextPageable());
+            }
+            assertThat(walked).containsExactlyElementsOf(all.map(RatingCount::getRating).toList());
         }
     }
 

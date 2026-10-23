@@ -1,19 +1,25 @@
 package com.github.jinahya.mysql.sakila.data;
 
+import com.github.jinahya.mysql.sakila.data.FilmRepository.RatingAverageRentalRate;
 import com.github.jinahya.mysql.sakila.data.FilmRepository.RatingCount;
 import com.github.jinahya.mysql.sakila.persistence.Film;
 import com.github.jinahya.mysql.sakila.persistence.Film_;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.InvalidDataAccessApiUsageException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.JpaSort;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.concurrent.ThreadLocalRandom;
 
 import static com.github.jinahya.mysql.sakila.data._Repository_DataJpaTest_Fixtures.randomName;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 
 /**
@@ -74,6 +80,32 @@ class FilmRepository_DataJpaTest
         return film;
     }
 
+    /**
+     * Saves a film with the specified rating and rental rate, in a language of its own.
+     *
+     * @param rating     the rating of the film.
+     * @param rentalRate the rental rate of the film, as a decimal string.
+     * @return the saved film, managed in the test's persistence context.
+     */
+    private Film saveFilm(final Film.Rating rating, final String rentalRate) {
+        final var film = saveFilm(rating);
+        film.setRentalRate(new BigDecimal(rentalRate));
+        return film;
+    }
+
+    /**
+     * Saves a film with the specified rating and length, in a language of its own.
+     *
+     * @param rating the rating of the film.
+     * @param length the length of the film, in minutes.
+     * @return the saved film, managed in the test's persistence context.
+     */
+    private Film saveFilm(final Film.Rating rating, final int length) {
+        final var film = saveFilm(rating);
+        film.setLength(length);
+        return film;
+    }
+
     // -----------------------------------------------------------------------------------------------------------------
 
     /**
@@ -114,53 +146,56 @@ class FilmRepository_DataJpaTest
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * Tests {@link FilmRepository#selectRatingCounts(Pageable)} ({@code SAKILA-FILM-B-01}).
+     * Tests {@link FilmRepository#selectRatingCounts()} ({@code SAKILA-FILM-B-01}).
      */
     @Nested
     class SelectRatingCounts_Test {
 
-        private static final Sort BY_RATING = Sort.by("rating");
-
         /**
-         * Asserts that, with no film, the page is empty, with no elements in all.
+         * Asserts that, with no film, the list is empty.
          */
         @Test
         void _Empty_NoFilm() {
-            final var page = repositoryInstance().selectRatingCounts(PageRequest.of(0, 5, BY_RATING));
-            assertThat(page).isEmpty();
-            assertThat(page.getTotalElements()).isZero();
+            final var list = repositoryInstance().selectRatingCounts();
+            assertThat(list).isEmpty();
         }
 
         /**
-         * Saves two films rated {@code G}, one rated {@code PG} and one with no rating, and asserts that the page
-         * holds the two ratings with their counts, {@code G} first as the exercise sorts, two in all, and that the
-         * film with no rating is left out.
+         * Saves one film rated {@code PG}, two rated {@code G} and one with no rating, and asserts that the list holds
+         * the two ratings with their counts, and that the film with no rating is left out.
+         */
+        @Test
+        void __() {
+            saveFilm(Film.Rating.PG);
+            saveFilm(Film.Rating.G);
+            saveFilm(Film.Rating.G);
+            saveFilm(null);
+            final var list = repositoryInstance().selectRatingCounts();
+            assertThat(list)
+                    .extracting(RatingCount::getRating, RatingCount::getFilms)
+                    .containsExactlyInAnyOrder(tuple(Film.Rating.G, 2L), tuple(Film.Rating.PG, 1L));
+        }
+
+        /**
+         * Saves films rated {@code PG} and {@code G}, in that order, and asserts that the list is by rating, {@code G}
+         * first, as the query orders.
          * <p>
          * {@code G} comes first by the {@code ENUM}'s order and by the alphabetical one alike, so the assertion holds
          * whichever the H2 applies.
          */
         @Test
-        void __() {
-            saveFilm(Film.Rating.G);
-            saveFilm(Film.Rating.G);
+        void __Ordered() {
             saveFilm(Film.Rating.PG);
-            saveFilm(null);
-            final var page = repositoryInstance().selectRatingCounts(PageRequest.of(0, 5, BY_RATING));
-            assertThat(page.getContent())
-                    .extracting(RatingCount::getRating, RatingCount::getFilms)
-                    .containsExactly(tuple(Film.Rating.G, 2L), tuple(Film.Rating.PG, 1L));
-            assertThat(page.getTotalElements()).isEqualTo(2L);
-            final var first = repositoryInstance().selectRatingCounts(PageRequest.of(0, 1, BY_RATING));
-            assertThat(first.getContent())
+            saveFilm(Film.Rating.G);
+            final var list = repositoryInstance().selectRatingCounts();
+            assertThat(list)
                     .extracting(RatingCount::getRating)
-                    .containsExactly(Film.Rating.G);
-            assertThat(first.getTotalElements()).isEqualTo(2L);
-            assertThat(first.getTotalPages()).isEqualTo(2);
+                    .containsExactly(Film.Rating.G, Film.Rating.PG);
         }
     }
 
     /**
-     * Tests {@link FilmRepository#listLongerThan(int, Pageable)} ({@code SAKILA-FILM-B-02}).
+     * Tests {@link FilmRepository#listLongerThan(int, Pageable)} ({@code SAKILA-FILM-B-02}, not a pick).
      */
     @Nested
     class ListLongerThan_Test {
@@ -206,33 +241,123 @@ class FilmRepository_DataJpaTest
             assertThat(page1.getContent()).containsExactly(c190);
             assertThat(page1.hasNext()).isFalse();
         }
+
+        /**
+         * Asserts that a {@code null} page is refused, before any query runs.
+         * <p>
+         * The package is {@code @NullMarked}, so Spring Data checks the arguments of every repository method, a
+         * {@code default} one included, and throws {@link IllegalArgumentException} before the method runs.
+         */
+        @Test
+        void _IllegalArgumentException_NullPageable() {
+            assertThatThrownBy(() -> repositoryInstance().listLongerThan(180, null))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
     }
 
     /**
-     * Tests {@link FilmRepository#countWithoutInventory()} ({@code SAKILA-FILM-I-01}).
+     * Tests {@link FilmRepository#selectAverageRentalRates()} ({@code SAKILA-FILM-B-03}).
      */
     @Nested
-    class CountWithoutInventory_Test {
+    class SelectAverageRentalRates_Test {
 
         /**
-         * Asserts that, with no film, the count is zero.
+         * Asserts that, with no film, the stream is empty.
          */
         @Test
-        void _Zero_NoFilm() {
-            assertThat(repositoryInstance().countWithoutInventory()).isZero();
+        void _Empty_NoFilm() {
+            try (var stream = repositoryInstance().selectAverageRentalRates()) {
+                assertThat(stream).isEmpty();
+            }
         }
 
         /**
-         * Saves two films, and asserts that both are counted.
-         * <p>
-         * No copy can be persisted into the H2, so every film is a film with no copy; what the test proves is that
-         * the {@code IS EMPTY} runs, and counts the films, not the copies.
+         * Saves films rated {@code PG} renting at {@code 0.99}, {@code 1.00} and {@code 1.00}, films rated {@code G}
+         * renting at {@code 1.00} and {@code 2.00}, and a film with no rating, and asserts that the stream yields the
+         * two ratings by rating, {@code G} first, with their averages rounded to two places, {@code 1.50} and
+         * {@code 1.00} (from {@code 0.9966...}), and leaves the film with no rating out.
          */
         @Test
         void __() {
-            fixtures().film();
-            fixtures().film();
-            assertThat(repositoryInstance().countWithoutInventory()).isEqualTo(2L);
+            saveFilm(Film.Rating.PG, "0.99");
+            saveFilm(Film.Rating.PG, "1.00");
+            saveFilm(Film.Rating.PG, "1.00");
+            saveFilm(Film.Rating.G, "1.00");
+            saveFilm(Film.Rating.G, "2.00");
+            saveFilm(null, "4.99");
+            try (var stream = repositoryInstance().selectAverageRentalRates()) {
+                assertThat(stream.toList())
+                        .extracting(RatingAverageRentalRate::getRating, RatingAverageRentalRate::getAverageRentalRate)
+                        .containsExactly(tuple(Film.Rating.G, 1.50d), tuple(Film.Rating.PG, 1.00d));
+            }
+        }
+
+        /**
+         * Runs the query with the test's transaction suspended, and asserts that Spring Data refuses it.
+         * <p>
+         * A stream has to be consumed inside a transaction the caller opened. The repository would open one of its own,
+         * but that one ends when the method returns, so the check runs before the query, and throws
+         * {@link InvalidDataAccessApiUsageException}.
+         */
+        @Transactional(propagation = Propagation.NOT_SUPPORTED)
+        @Test
+        void _InvalidDataAccessApiUsageException_NoSurroundingTransaction() {
+            assertThatThrownBy(() -> {
+                try (var stream = repositoryInstance().selectAverageRentalRates()) {
+                    stream.forEach(r -> {
+                    });
+                }
+            }).isInstanceOf(InvalidDataAccessApiUsageException.class);
+        }
+    }
+
+    /**
+     * Tests {@link FilmRepository#listWithoutInventory(Pageable)} ({@code SAKILA-FILM-I-01}).
+     */
+    @Nested
+    class ListWithoutInventory_Test {
+
+        /**
+         * Asserts that, with no film, the page is empty, with no elements in all.
+         */
+        @Test
+        void _Empty_NoFilm() {
+            final var page = repositoryInstance().listWithoutInventory(PageRequest.of(0, 5, BY_FILM_ID));
+            assertThat(page).isEmpty();
+            assertThat(page.getTotalElements()).isZero();
+        }
+
+        /**
+         * Saves three films, and asserts that pages of two by id list them two and one, three in all, which is the
+         * count the exercise asks for.
+         * <p>
+         * No copy can be persisted into the H2, so every film is a film with no copy; what the test proves is that
+         * the {@code IS EMPTY} runs, and lists the films, not the copies.
+         */
+        @Test
+        void __() {
+            final var film1 = fixtures().film();
+            final var film2 = fixtures().film();
+            final var film3 = fixtures().film();
+            final var page0 = repositoryInstance().listWithoutInventory(PageRequest.of(0, 2, BY_FILM_ID));
+            assertThat(page0.getContent()).containsExactly(film1, film2);
+            assertThat(page0.getTotalElements()).isEqualTo(3L);
+            assertThat(page0.getTotalPages()).isEqualTo(2);
+            final var page1 = repositoryInstance().listWithoutInventory(page0.nextPageable());
+            assertThat(page1.getContent()).containsExactly(film3);
+            assertThat(page1.hasNext()).isFalse();
+        }
+
+        /**
+         * Asserts that a {@code null} page is refused, before any query runs.
+         * <p>
+         * The package is {@code @NullMarked}, so Spring Data checks the arguments of every repository method, a
+         * {@code default} one included, and throws {@link IllegalArgumentException} before the method runs.
+         */
+        @Test
+        void _IllegalArgumentException_NullPageable() {
+            assertThatThrownBy(() -> repositoryInstance().listWithoutInventory(null))
+                    .isInstanceOf(IllegalArgumentException.class);
         }
     }
 
@@ -258,6 +383,97 @@ class FilmRepository_DataJpaTest
                     PageRequest.of(0, 5, BY_RENTALS_DESC_THEN_FILM_ID));
             assertThat(page).isEmpty();
             assertThat(page.getTotalElements()).isZero();
+        }
+
+        /**
+         * Asserts that a {@code null} page is refused, before any query runs.
+         * <p>
+         * The package is {@code @NullMarked}, so Spring Data checks the arguments of every repository method, a
+         * {@code default} one included, and throws {@link IllegalArgumentException} before the method runs.
+         */
+        @Test
+        void _IllegalArgumentException_NullPageable() {
+            assertThatThrownBy(() -> repositoryInstance().selectRentalCounts(null))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+    }
+
+    /**
+     * Tests {@link FilmRepository#selectRatingCountsOfLongerThanRatingAverage(Pageable)} ({@code SAKILA-FILM-A-01}).
+     */
+    @Nested
+    class SelectRatingCountsOfLongerThanRatingAverage_Test {
+
+        private static final Sort BY_RATING = Sort.by("rating");
+
+        /**
+         * Asserts that, with no film, the page is empty, with no elements in all.
+         */
+        @Test
+        void _Empty_NoFilm() {
+            final var page = repositoryInstance().selectRatingCountsOfLongerThanRatingAverage(
+                    PageRequest.of(0, 5, BY_RATING));
+            assertThat(page).isEmpty();
+            assertThat(page.getTotalElements()).isZero();
+        }
+
+        /**
+         * Saves films rated {@code G} of 100, 120 and 140 minutes, rated {@code PG-13} of 10 and 30, and rated
+         * {@code PG} of 50 and 50, and asserts that each of the first two ratings counts its one film longer than its
+         * own average (120 and 20), and that {@code PG}, whose films are all as long as their average, is left out.
+         */
+        @Test
+        void __() {
+            saveFilm(Film.Rating.G, 100);
+            saveFilm(Film.Rating.G, 120);
+            saveFilm(Film.Rating.G, 140);
+            saveFilm(Film.Rating.PG_13, 10);
+            saveFilm(Film.Rating.PG_13, 30);
+            saveFilm(Film.Rating.PG, 50);
+            saveFilm(Film.Rating.PG, 50);
+            final var page = repositoryInstance().selectRatingCountsOfLongerThanRatingAverage(
+                    PageRequest.of(0, 5, BY_RATING));
+            assertThat(page.getContent())
+                    .extracting(RatingCount::getRating, RatingCount::getFilms)
+                    .containsExactlyInAnyOrder(tuple(Film.Rating.G, 1L), tuple(Film.Rating.PG_13, 1L));
+            assertThat(page.getTotalElements()).isEqualTo(2L);
+        }
+
+        /**
+         * Saves the same films, and asserts that a page of one, by rating as the exercise sorts, holds {@code G}, two
+         * in all, and the next page {@code PG-13}.
+         * <p>
+         * {@code G} comes before {@code PG-13} by the {@code ENUM}'s order and by the alphabetical one alike.
+         */
+        @Test
+        void __Paged() {
+            saveFilm(Film.Rating.G, 100);
+            saveFilm(Film.Rating.G, 140);
+            saveFilm(Film.Rating.PG_13, 10);
+            saveFilm(Film.Rating.PG_13, 30);
+            final var page0 = repositoryInstance().selectRatingCountsOfLongerThanRatingAverage(
+                    PageRequest.of(0, 1, BY_RATING));
+            assertThat(page0.getContent())
+                    .extracting(RatingCount::getRating)
+                    .containsExactly(Film.Rating.G);
+            assertThat(page0.getTotalElements()).isEqualTo(2L);
+            assertThat(page0.getTotalPages()).isEqualTo(2);
+            final var page1 = repositoryInstance().selectRatingCountsOfLongerThanRatingAverage(page0.nextPageable());
+            assertThat(page1.getContent())
+                    .extracting(RatingCount::getRating)
+                    .containsExactly(Film.Rating.PG_13);
+        }
+
+        /**
+         * Asserts that a {@code null} page is refused, before any query runs.
+         * <p>
+         * The package is {@code @NullMarked}, so Spring Data checks the arguments of every repository method, a
+         * {@code default} one included, and throws {@link IllegalArgumentException} before the method runs.
+         */
+        @Test
+        void _IllegalArgumentException_NullPageable() {
+            assertThatThrownBy(() -> repositoryInstance().selectRatingCountsOfLongerThanRatingAverage(null))
+                    .isInstanceOf(IllegalArgumentException.class);
         }
     }
 }

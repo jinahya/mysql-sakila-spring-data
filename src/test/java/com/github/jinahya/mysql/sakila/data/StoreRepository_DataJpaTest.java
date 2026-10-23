@@ -11,6 +11,7 @@ import org.springframework.data.domain.Sort;
 import java.util.concurrent.ThreadLocalRandom;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Tests {@link StoreRepository} in a JPA slice, over an embedded H2, through {@link _Repository_DataJpaTest}.
@@ -18,8 +19,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * See that class for how the slice is configured. No store can be persisted into the H2: a store names its manager, a
  * staff member, who works at a store, both {@code NOT NULL}, so neither of the two can be saved first (see
  * {@link _Repository_DataJpaTest_Fixtures}). Each test here runs its query against an empty {@code store} table, and
- * asserts an empty page; that still proves that the JPQL, or the criteria query, is valid and runs on the H2, with
- * the sort the exercise asks for.
+ * asserts an empty list or page; that still proves that the derived query, the JPQL, or the criteria query, is valid
+ * and runs on the H2, with the sort the exercise asks for.
  *
  * @see StoreRepository_SpringBootIT
  */
@@ -63,6 +64,23 @@ class StoreRepository_DataJpaTest
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
+     * Tests {@link StoreRepository#findAllByOrderByStoreIdAsc()} ({@code SAKILA-STORE-B-01}).
+     */
+    @Nested
+    class FindAllByOrderByStoreIdAsc_Test {
+
+        /**
+         * Asserts that the derived query, ordered by id as the exercise orders, runs on the empty table and finds an
+         * empty list.
+         */
+        @Test
+        void _Empty_NoStores() {
+            final var found = repositoryInstance().findAllByOrderByStoreIdAsc();
+            assertThat(found).isEmpty();
+        }
+    }
+
+    /**
      * Tests {@link StoreRepository#listWithManagerAndCity(Pageable)} ({@code SAKILA-STORE-I-01}).
      */
     @Nested
@@ -79,6 +97,19 @@ class StoreRepository_DataJpaTest
             final var page = repositoryInstance().listWithManagerAndCity(PageRequest.of(0, 5, BY_STORE_ID));
             assertThat(page).isEmpty();
             assertThat(page.getTotalElements()).isZero();
+        }
+
+        /**
+         * Asserts that a {@code null} pageable is rejected before the method builds its query.
+         * <p>
+         * The package is {@code @NullMarked}, so Spring Data checks the argument even of a {@code default} method, and
+         * throws {@link IllegalArgumentException} before the method's own {@code requireNonNull} is reached.
+         */
+        @SuppressWarnings({"DataFlowIssue", "NullAway"})
+        @Test
+        void _IllegalArgumentException_NullPageable() {
+            assertThatThrownBy(() -> repositoryInstance().listWithManagerAndCity(null))
+                    .isInstanceOf(IllegalArgumentException.class);
         }
     }
 
@@ -112,6 +143,19 @@ class StoreRepository_DataJpaTest
             assertThat(page).isEmpty();
             assertThat(page.getTotalElements()).isZero();
         }
+
+        /**
+         * Asserts that a {@code null} pageable is rejected before any query runs.
+         * <p>
+         * The package is {@code @NullMarked}, so Spring Data checks the argument, and throws
+         * {@link IllegalArgumentException}.
+         */
+        @SuppressWarnings({"DataFlowIssue", "NullAway"})
+        @Test
+        void _IllegalArgumentException_NullPageable() {
+            assertThatThrownBy(() -> repositoryInstance().selectCounts(null))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
     }
 
     /**
@@ -131,6 +175,54 @@ class StoreRepository_DataJpaTest
             final var page = repositoryInstance().selectFilmCounts(PageRequest.of(0, 5, BY_STORE_ID));
             assertThat(page).isEmpty();
             assertThat(page.getTotalElements()).isZero();
+        }
+
+        /**
+         * Asserts that a {@code null} pageable is rejected before any query runs.
+         * <p>
+         * The package is {@code @NullMarked}, so Spring Data checks the argument, and throws
+         * {@link IllegalArgumentException}.
+         */
+        @SuppressWarnings({"DataFlowIssue", "NullAway"})
+        @Test
+        void _IllegalArgumentException_NullPageable() {
+            assertThatThrownBy(() -> repositoryInstance().selectFilmCounts(null))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+    }
+
+    /**
+     * Tests {@link StoreRepository#selectMonthlyRentalShares(Pageable)} ({@code SAKILA-STORE-A-02}).
+     */
+    @Nested
+    class SelectMonthlyRentalShares_Test {
+
+        private static final Sort BY_MONTH_THEN_STORE_ID = Sort.by("rentalYear", "rentalMonth", "storeId");
+
+        /**
+         * Asserts that the grouped select, with its window function over the groups, and its count query, sorted by
+         * the month and then the store as the exercise sorts, run on the empty tables and select an empty page, with
+         * no months in all.
+         */
+        @Test
+        void _Empty_NoRentals() {
+            final var page = repositoryInstance().selectMonthlyRentalShares(
+                    PageRequest.of(0, 5, BY_MONTH_THEN_STORE_ID));
+            assertThat(page).isEmpty();
+            assertThat(page.getTotalElements()).isZero();
+        }
+
+        /**
+         * Asserts that a {@code null} pageable is rejected before any query runs.
+         * <p>
+         * The package is {@code @NullMarked}, so Spring Data checks the argument, and throws
+         * {@link IllegalArgumentException}.
+         */
+        @SuppressWarnings({"DataFlowIssue", "NullAway"})
+        @Test
+        void _IllegalArgumentException_NullPageable() {
+            assertThatThrownBy(() -> repositoryInstance().selectMonthlyRentalShares(null))
+                    .isInstanceOf(IllegalArgumentException.class);
         }
     }
 }

@@ -2,6 +2,7 @@ package com.github.jinahya.mysql.sakila.data;
 
 import com.github.jinahya.mysql.sakila.data.StoreRepository.StoreCounts;
 import com.github.jinahya.mysql.sakila.data.StoreRepository.StoreFilmCounts;
+import com.github.jinahya.mysql.sakila.data.StoreRepository.StoreMonthlyRentalShare;
 import com.github.jinahya.mysql.sakila.persistence.Customer;
 import com.github.jinahya.mysql.sakila.persistence.Customer_;
 import com.github.jinahya.mysql.sakila.persistence.Inventory;
@@ -25,6 +26,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 
+import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -35,6 +38,7 @@ import java.util.Set;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.assertj.core.api.Assumptions.assumeThat;
 
 /**
@@ -160,6 +164,54 @@ class StoreRepository_SpringBootIT
     }
 
     // ----------------------------------------------------------------------------------------------------- exercises
+
+    /**
+     * Tests {@link StoreRepository#findAllByOrderByStoreIdAsc()} ({@code SAKILA-STORE-B-01}).
+     */
+    @Nested
+    class FindAllByOrderByStoreIdAsc_Test {
+
+        private static Stream<Store> stores() {
+            return StoreRepository_SpringBootIT.stores();
+        }
+
+        /**
+         * Asserts that the list, by id as the exercise orders, is ordered so, holds as many stores as the table, with
+         * a selected one among them, and that the ids of each one's manager and address are readable with no
+         * transaction: an uninitialized proxy carries its id.
+         *
+         * @param store one of the stores selected in {@link StoreRepository_SpringBootIT#__()}.
+         */
+        @MethodSource("stores")
+        @ParameterizedTest
+        void __(final Store store) {
+            final var found = repositoryInstance().findAllByOrderByStoreIdAsc();
+            assertThat(found)
+                    .hasSize((int) repositoryInstance().count())
+                    .contains(store)
+                    .isSortedAccordingTo(Comparator.comparing(Store::getStoreId))
+                    .allSatisfy(st -> {
+                        assertThat(st.getManagerStaff().getStaffId()).isNotNull();
+                        assertThat(st.getAddress().getAddressId()).isNotNull();
+                    });
+        }
+
+        /**
+         * Asserts that the list starts with the rows the exercise shows, on the sample data: the id of each store, of
+         * its manager and of its address.
+         */
+        @Test
+        void __Expected() {
+            final var found = repositoryInstance().findAllByOrderByStoreIdAsc();
+            assertThat(found)
+                    .extracting(Store::getStoreId, st -> st.getManagerStaff().getStaffId(),
+                                st -> st.getAddress().getAddressId())
+                    .startsWith(
+                            tuple(1, 1, 1),
+                            tuple(2, 2, 2)
+                    );
+        }
+    }
 
     /**
      * Tests {@link StoreRepository#listWithManagerAndCity(Pageable)} ({@code SAKILA-STORE-I-01}).
@@ -310,12 +362,117 @@ class StoreRepository_SpringBootIT
         }
     }
 
+    /**
+     * Tests {@link StoreRepository#selectMonthlyRentalShares(Pageable)} ({@code SAKILA-STORE-A-02}).
+     */
+    @Nested
+    class SelectMonthlyRentalShares_Test {
+
+        private static final Sort BY_MONTH_THEN_STORE_ID = Sort.by("rentalYear", "rentalMonth", "storeId");
+
+        private static Stream<Store> stores() {
+            return StoreRepository_SpringBootIT.stores();
+        }
+
+        /**
+         * Asserts that all the rows, by the month and then the store as the exercise sorts, are the rows the exercise
+         * shows, on the sample data: the year and the month, the store, its rentals and its share of the month.
+         */
+        @Test
+        void __Expected() {
+            final var page = repositoryInstance().selectMonthlyRentalShares(Pageable.unpaged(BY_MONTH_THEN_STORE_ID));
+            assertThat(page.getContent())
+                    .extracting(StoreMonthlyRentalShare::getRentalYear, StoreMonthlyRentalShare::getRentalMonth,
+                                StoreMonthlyRentalShare::getStoreId, StoreMonthlyRentalShare::getRentals,
+                                m -> m.getPercent().doubleValue())
+                    .containsExactly(
+                            tuple(2005, 5, 1, 575L, 49.74d),
+                            tuple(2005, 5, 2, 581L, 50.26d),
+                            tuple(2005, 6, 1, 1121L, 48.51d),
+                            tuple(2005, 6, 2, 1190L, 51.49d),
+                            tuple(2005, 7, 1, 3334L, 49.69d),
+                            tuple(2005, 7, 2, 3375L, 50.31d),
+                            tuple(2005, 8, 1, 2801L, 49.26d),
+                            tuple(2005, 8, 2, 2885L, 50.74d),
+                            tuple(2006, 2, 1, 92L, 50.55d),
+                            tuple(2006, 2, 2, 90L, 49.45d)
+                    );
+            assertThat(page.getTotalElements()).isEqualTo(page.getNumberOfElements());
+        }
+
+        /**
+         * Asserts that the rentals of every row add up to the number of all rentals, read through
+         * {@link RentalRepository}, every rental being of one copy of one store, and that the shares of each month add
+         * up to a hundred, give or take the rounding.
+         */
+        @Test
+        void __AddUp() {
+            final var all = repositoryInstance().selectMonthlyRentalShares(Pageable.unpaged(BY_MONTH_THEN_STORE_ID));
+            final var rentals = all.getContent().stream().mapToLong(StoreMonthlyRentalShare::getRentals).sum();
+            assertThat(rentals).isEqualTo(rentalRepository.count());
+            final var percents = new HashMap<Integer, BigDecimal>();
+            for (final var m : all) {
+                percents.merge(m.getRentalYear() * 100 + m.getRentalMonth(), m.getPercent(), BigDecimal::add);
+            }
+            assertThat(percents.values()).allSatisfy(p -> {
+                assertThat(p.doubleValue()).isBetween(99.98d, 100.02d);
+            });
+        }
+
+        /**
+         * Asserts that a selected store has a row in every month the sample data has a rental of its copies in.
+         *
+         * @param store one of the stores selected in {@link StoreRepository_SpringBootIT#__()}.
+         */
+        @MethodSource("stores")
+        @ParameterizedTest
+        void __(final Store store) {
+            final var all = repositoryInstance().selectMonthlyRentalShares(Pageable.unpaged(BY_MONTH_THEN_STORE_ID));
+            assertThat(all.getContent())
+                    .filteredOn(m -> m.getStoreId().equals(store.getStoreId()))
+                    .isNotEmpty()
+                    .allSatisfy(m -> {
+                        assertThat(m.getRentals()).isPositive();
+                        assertThat(m.getPercent()).isPositive();
+                    });
+        }
+
+        /**
+         * Asserts that pages of the given size walk the same rows, in the same order, as the unpaged page, and that
+         * the count query counts as many rows as there are.
+         *
+         * @param size the size of the page.
+         */
+        @ValueSource(ints = {3, 4})
+        @ParameterizedTest
+        void __Paged(final int size) {
+            final var all = repositoryInstance().selectMonthlyRentalShares(Pageable.unpaged(BY_MONTH_THEN_STORE_ID));
+            var page = repositoryInstance().selectMonthlyRentalShares(PageRequest.of(0, size, BY_MONTH_THEN_STORE_ID));
+            assertThat(page.getTotalElements()).isEqualTo(all.getNumberOfElements());
+            final var walked = new ArrayList<String>();
+            while (true) {
+                assertPage(page);
+                page.forEach(m -> walked.add(m.getRentalYear() + "-" + m.getRentalMonth() + "/" + m.getStoreId()));
+                if (!page.hasNext()) {
+                    break;
+                }
+                page = repositoryInstance().selectMonthlyRentalShares(page.nextPageable());
+            }
+            assertThat(walked).containsExactlyElementsOf(
+                    all.stream().map(m -> m.getRentalYear() + "-" + m.getRentalMonth() + "/" + m.getStoreId())
+                            .toList());
+        }
+    }
+
     // -----------------------------------------------------------------------------------------------------------------
     @Autowired
     private CustomerRepository customerRepository;
 
     @Autowired
     private InventoryRepository inventoryRepository;
+
+    @Autowired
+    private RentalRepository rentalRepository;
 
     @Autowired
     private StaffRepository staffRepository;

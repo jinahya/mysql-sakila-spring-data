@@ -8,7 +8,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
-import java.util.Objects;
+import java.util.List;
 
 /**
  * A repository for {@link StaffList}, the {@code staff_list} view of the Sakila database.
@@ -26,15 +26,15 @@ import java.util.Objects;
  * {@code (root, query, builder) -> builder.equal(root.get(StaffList_.sid), sid)}.
  * <p>
  * The methods below answer the exercises of upstream's {@code EXERCISES.asciidoc} on the {@code staff_list} view, one
- * method per exercise, named in each method's javadoc by the exercise's id ({@code SAKILA-STAFF_LIST-B-01}, ...), one
- * of each level, which is all the section has. The exercises are context, not contract: a method that lists rows
- * takes a {@link Pageable}, the page and the sort, and returns a {@link Page}, so the order the exercise asks for is
- * the caller's {@code PageRequest}; each method's javadoc says which sort that is. An exercise that shows rows is a
- * {@code default} method, {@code list...}, which builds a {@link Specification} with the Criteria API and runs it
- * through {@link org.springframework.data.jpa.repository.JpaSpecificationExecutor}. An exercise that shows counts of
- * two tables cannot be a {@code Specification}, which only filters; such a method, {@code select...}, declares its
- * JPQL with {@link Query} and returns a projection, one of the interfaces declared here, which Spring Data backs with
- * the selected columns, each aliased with the name of the getter it feeds.
+ * method per exercise, named in each method's javadoc by the exercise's id ({@code SAKILA-STAFF_LIST-B-01}, ...) and
+ * its role: the book's pick, or this module's own extra; the section has no more. A Basic exercise is plain: its
+ * method takes no {@link Pageable}, the order the exercise asks for is written in the query, and it returns a
+ * {@link List}. An Intermediate exercise that lists rows takes a {@link Pageable}, the page and the sort, and returns a
+ * {@link Page}, so the order the exercise asks for is the caller's {@code PageRequest}; each method's javadoc says
+ * which sort that is. An exercise that shows columns of other entities, or counts of two tables, cannot be a
+ * {@link Specification}, which only filters; such a method, {@code select...}, declares its JPQL with {@link Query} and
+ * returns a projection, one of the interfaces declared here, which Spring Data backs with the selected columns, each
+ * aliased with the name of the getter it feeds. Those aliases are what the {@code Pageable} sorts by.
  *
  * @see StaffList
  * @see StaffList_
@@ -67,24 +67,56 @@ public interface StaffListRepository
     }
 
     /**
-     * Lists every row of the view ({@code SAKILA-STAFF_LIST-B-01}, which orders by {@link StaffList_#ID}).
-     * <p>
-     * A {@link Specification} that restricts nothing, {@link Specification#unrestricted()}, run through
-     * {@link org.springframework.data.jpa.repository.JpaSpecificationExecutor}, so that the page and the sort are the
-     * caller's, as for the other exercises. The sample data has two staff members, so one page by id holds them both.
-     *
-     * @param pageable the page to return, and its sort; must not be {@code null}.
-     * @return a page of every row of the view.
+     * A row of the view, by id and name, with the city the staff member lives in and the city of the store the staff
+     * member works at: a projection of {@link #selectCities(Pageable)}, sortable by {@code id}, {@code name},
+     * {@code livesIn} and {@code worksIn}.
      */
-    default Page<StaffList> listAll(final Pageable pageable) {
-        Objects.requireNonNull(pageable, "pageable is null");
-        final Specification<StaffList> specification = Specification.unrestricted();
-        return findAll(specification, pageable);
+    interface StaffCities {
+
+        /**
+         * Returns the id of the staff member.
+         *
+         * @return the id of the staff member.
+         */
+        Integer getId();
+
+        /**
+         * Returns the name of the staff member, the first name and the last name as one.
+         *
+         * @return the name of the staff member.
+         */
+        String getName();
+
+        /**
+         * Returns the city of the staff member's own address.
+         *
+         * @return the city the staff member lives in.
+         */
+        String getLivesIn();
+
+        /**
+         * Returns the city of the address of the store the staff member works at.
+         *
+         * @return the city the staff member works in.
+         */
+        String getWorksIn();
     }
 
     /**
+     * Finds every row of the view ({@code SAKILA-STAFF_LIST-B-01}, the book's pick, which orders by
+     * {@link StaffList_#ID}).
+     * <p>
+     * The query is derived from the method name, whose {@code OrderBy} is the exercise's order. The sample data has
+     * two staff members, so the list holds two rows.
+     *
+     * @return a list of every row of the view, by id; empty if there is none.
+     */
+    List<StaffList> findAllByOrderByIdAsc();
+
+    /**
      * Selects how many rows the view has, next to how many staff members the {@code staff} table has
-     * ({@code SAKILA-STAFF_LIST-I-01}, which checks that the two are equal; one row, so no sort).
+     * ({@code SAKILA-STAFF_LIST-I-01}, this module's own extra, which checks that the two are equal; one row, so
+     * no sort).
      * <p>
      * The view uses inner joins, so a staff member whose address chain is broken would be missing from it; the two
      * counts should be equal. The second count is a subquery in the select, on another entity, which a
@@ -98,4 +130,32 @@ public interface StaffListRepository
             SELECT COUNT(v) AS staffLists, (SELECT COUNT(s) FROM Staff s) AS staffs
             FROM StaffList v""")
     RowCounts selectRowCounts();
+
+    /**
+     * Selects each row of the view, by id and name, with the city the staff member lives in, the view's own
+     * {@link StaffList_#CITY}, and the city of the store the staff member works at ({@code SAKILA-STAFF_LIST-I-02}, the
+     * book's pick, which orders by {@code id}).
+     * <p>
+     * The view names the store by its id only, {@link StaffList_#SID}, which is no association, so the store is a
+     * second root, joined by that id in the {@code WHERE}, and its address and city are joined from it. The columns
+     * come from two roots, which a {@link Specification} of this one cannot select; hence a {@link Query} and a
+     * projection. The count query counts the rows the same join keeps.
+     *
+     * @param pageable the page to return, and its sort, by {@code id}, {@code name}, {@code livesIn} or
+     *                 {@code worksIn}; must not be {@code null}.
+     * @return a page of the rows of the view, with the two cities.
+     */
+    @Query(value = """
+            SELECT l.id AS id, l.name AS name, l.city AS livesIn, ci.city AS worksIn
+            FROM StaffList l, Store st
+            JOIN st.address a
+            JOIN a.city ci
+            WHERE st.storeId = l.sid""",
+           countQuery = """
+                   SELECT COUNT(l)
+                   FROM StaffList l, Store st
+                   JOIN st.address a
+                   JOIN a.city ci
+                   WHERE st.storeId = l.sid""")
+    Page<StaffCities> selectCities(Pageable pageable);
 }

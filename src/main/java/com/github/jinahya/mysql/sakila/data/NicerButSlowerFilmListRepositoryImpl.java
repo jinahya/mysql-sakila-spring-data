@@ -11,6 +11,7 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -29,12 +30,14 @@ import java.util.function.LongSupplier;
  * the name of the {@link Film.Rating} constant, so the mapper converts it by
  * {@link Film.Rating#valueOfColumnValue(String)}.
  * <p>
- * {@link #countDifferingFromFilmList()} reads its statement from
- * {@code NICER_BUT_SLOWER_FILM_LIST_COUNT_DIFFERING_FROM_FILM_LIST.sql} beside this class; the others write theirs in
- * place. A page is selected as {@link FilmListRepositoryImpl} selects one: an {@code ORDER BY} built from the
- * {@link Pageable}'s {@link Sort} through {@link #COLUMNS}, with {@code FID} last, {@code LIMIT ... OFFSET ...} from
- * the page unless the {@code Pageable} is unpaged, and a {@code COUNT(*)} of the same {@code WHERE} for the total, run
- * only when the page needs it.
+ * The exercise methods read their statements from {@code .sql} resources beside this class, named
+ * {@code NICER_BUT_SLOWER_FILM_LIST_<METHOD>.sql} after the method
+ * ({@code NICER_BUT_SLOWER_FILM_LIST_COUNT_DIFFERING_FROM_FILM_LIST.sql}, ...), each exercise's statement as
+ * {@code EXERCISES.asciidoc} has it; {@link #listAll(Pageable)} writes its own in place. A page is selected as
+ * {@link FilmListRepositoryImpl} selects one: an {@code ORDER BY} built from the {@link Pageable}'s {@link Sort}
+ * through {@link #COLUMNS}, with {@code FID} last, {@code LIMIT ... OFFSET ...} from the page unless the
+ * {@code Pageable} is unpaged, and a {@code COUNT(*)} of the same {@code WHERE} for the total, run only when the page
+ * needs it.
  *
  * @see NicerButSlowerFilmListRepository
  * @see FilmListRepositoryImpl
@@ -90,11 +93,56 @@ public class NicerButSlowerFilmListRepositoryImpl
                                          + " FROM " + NicerButSlowerFilmList.TABLE_NAME;
 
     /**
-     * The statement of {@link #countDifferingFromFilmList()}.
+     * The statement of {@link #listActorsOfFilmOne()}, {@code SAKILA-NICER_BUT_SLOWER_FILM_LIST-B-01}.
+     */
+    private static final String SQL_LIST_ACTORS_OF_FILM_ONE =
+            sql(NicerButSlowerFilmListRepositoryImpl.class, "NICER_BUT_SLOWER_FILM_LIST_LIST_ACTORS_OF_FILM_ONE.sql");
+
+    /**
+     * The statement of {@link #countFilmsOfPenelopeGuiness()}, {@code SAKILA-NICER_BUT_SLOWER_FILM_LIST-B-02}.
+     */
+    private static final String SQL_COUNT_FILMS_OF_PENELOPE_GUINESS =
+            sql(NicerButSlowerFilmListRepositoryImpl.class,
+                "NICER_BUT_SLOWER_FILM_LIST_COUNT_FILMS_OF_PENELOPE_GUINESS.sql");
+
+    /**
+     * The statement of {@link #listFilmsWithNoActor()}, {@code SAKILA-NICER_BUT_SLOWER_FILM_LIST-B-03}.
+     */
+    private static final String SQL_LIST_FILMS_WITH_NO_ACTOR =
+            sql(NicerButSlowerFilmListRepositoryImpl.class, "NICER_BUT_SLOWER_FILM_LIST_LIST_FILMS_WITH_NO_ACTOR.sql");
+
+    /**
+     * The statement of {@link #listFiveLongestCategoriesOnAverage()}, {@code SAKILA-NICER_BUT_SLOWER_FILM_LIST-I-01}.
+     */
+    private static final String SQL_LIST_FIVE_LONGEST_CATEGORIES_ON_AVERAGE =
+            sql(NicerButSlowerFilmListRepositoryImpl.class,
+                "NICER_BUT_SLOWER_FILM_LIST_LIST_FIVE_LONGEST_CATEGORIES_ON_AVERAGE.sql");
+
+    /**
+     * The statement of {@link #countFilmsByLengthBand()}, {@code SAKILA-NICER_BUT_SLOWER_FILM_LIST-I-02}.
+     */
+    private static final String SQL_COUNT_FILMS_BY_LENGTH_BAND =
+            sql(NicerButSlowerFilmListRepositoryImpl.class,
+                "NICER_BUT_SLOWER_FILM_LIST_COUNT_FILMS_BY_LENGTH_BAND.sql");
+
+    /**
+     * The statement of {@link #countDifferingFromFilmList()}, {@code SAKILA-NICER_BUT_SLOWER_FILM_LIST-A-01}.
      */
     private static final String SQL_COUNT_DIFFERING_FROM_FILM_LIST =
             sql(NicerButSlowerFilmListRepositoryImpl.class,
                 "NICER_BUT_SLOWER_FILM_LIST_COUNT_DIFFERING_FROM_FILM_LIST.sql");
+
+    /**
+     * The statement of {@link #listLongestByCategory()}, {@code SAKILA-NICER_BUT_SLOWER_FILM_LIST-A-02}.
+     */
+    private static final String SQL_LIST_LONGEST_BY_CATEGORY =
+            sql(NicerButSlowerFilmListRepositoryImpl.class, "NICER_BUT_SLOWER_FILM_LIST_LIST_LONGEST_BY_CATEGORY.sql");
+
+    /**
+     * The statement of {@link #countMismatchedActors()}, {@code SAKILA-NICER_BUT_SLOWER_FILM_LIST-A-03}.
+     */
+    private static final String SQL_COUNT_MISMATCHED_ACTORS =
+            sql(NicerButSlowerFilmListRepositoryImpl.class, "NICER_BUT_SLOWER_FILM_LIST_COUNT_MISMATCHED_ACTORS.sql");
 
     /**
      * Builds the {@code ORDER BY} clause of the specified sort, with {@code FID} appended as the last key unless the
@@ -180,17 +228,67 @@ public class NicerButSlowerFilmListRepositoryImpl
 
     // ----------------------------------------------------------------------------------------------------- exercises
     @Override
-    public Page<NicerButSlowerFilmList> listByFid(final Integer fid, final Pageable pageable) {
-        Objects.requireNonNull(fid, "fid is null");
-        Objects.requireNonNull(pageable, "pageable is null");
-        final var where = NicerButSlowerFilmList.COLUMN_NAME_FID + " = :fid";
-        final var params = Map.of("fid", fid);
-        return select(where, params, pageable, () -> count(where, params));
+    public List<FilmListRepository.FilmActors> listActorsOfFilmOne() {
+        return jdbcClient().sql(SQL_LIST_ACTORS_OF_FILM_ONE)
+                .query(FilmListRepositoryImpl.FILM_ACTORS_ROW_MAPPER)
+                .list();
+    }
+
+    @Override
+    public long countFilmsOfPenelopeGuiness() {
+        return jdbcClient().sql(SQL_COUNT_FILMS_OF_PENELOPE_GUINESS)
+                .query(Long.class)
+                .single();
+    }
+
+    @Override
+    public List<FilmListRepository.FilmInCategory> listFilmsWithNoActor() {
+        return jdbcClient().sql(SQL_LIST_FILMS_WITH_NO_ACTOR)
+                .query(FilmListRepositoryImpl.FILM_IN_CATEGORY_ROW_MAPPER)
+                .list();
+    }
+
+    @Override
+    public List<CategoryAverageLength> listFiveLongestCategoriesOnAverage() {
+        return jdbcClient().sql(SQL_LIST_FIVE_LONGEST_CATEGORIES_ON_AVERAGE)
+                .query((rs, rowNum) -> new CategoryAverageLength(
+                        rs.getString(NicerButSlowerFilmList.COLUMN_NAME_CATEGORY),
+                        rs.getLong("films"),
+                        rs.getBigDecimal("average_length")))
+                .list();
+    }
+
+    @Override
+    public List<LengthBand> countFilmsByLengthBand() {
+        return jdbcClient().sql(SQL_COUNT_FILMS_BY_LENGTH_BAND)
+                .query((rs, rowNum) -> new LengthBand(
+                        rs.getString("band"),
+                        rs.getLong("films"),
+                        rs.getObject("shortest", Integer.class),
+                        rs.getObject("longest", Integer.class)))
+                .list();
     }
 
     @Override
     public long countDifferingFromFilmList() {
         return jdbcClient().sql(SQL_COUNT_DIFFERING_FROM_FILM_LIST)
+                .query(Long.class)
+                .single();
+    }
+
+    @Override
+    public List<CategoryLongest> listLongestByCategory() {
+        return jdbcClient().sql(SQL_LIST_LONGEST_BY_CATEGORY)
+                .query((rs, rowNum) -> new CategoryLongest(
+                        rs.getString(NicerButSlowerFilmList.COLUMN_NAME_CATEGORY),
+                        rs.getObject("longest", Integer.class),
+                        rs.getLong("films")))
+                .list();
+    }
+
+    @Override
+    public long countMismatchedActors() {
+        return jdbcClient().sql(SQL_COUNT_MISMATCHED_ACTORS)
                 .query(Long.class)
                 .single();
     }

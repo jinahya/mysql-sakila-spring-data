@@ -37,17 +37,19 @@ import java.util.stream.Stream;
  * <p>
  * The methods after the first two answer the exercises of upstream's {@code EXERCISES.asciidoc} on the {@code actor}
  * table, one method per exercise, named in each method's javadoc by the exercise's id ({@code SAKILA-ACTOR-B-01},
- * ...), one or two of each level. The exercises are context, not contract: each method takes a {@link Pageable},
- * the page and the sort, and returns a {@link Page}, so the order the exercise asks for, and its {@code LIMIT}, are
- * the caller's {@code PageRequest}; each method's javadoc says which sort that is. An exercise that shows rows is a
- * {@code default} method, {@code list...}, which builds a {@link Specification} with the Criteria API and runs it
- * through {@link org.springframework.data.jpa.repository.JpaSpecificationExecutor}. An exercise that shows columns,
- * grouped and counted, cannot be a {@code Specification}, which only filters; such a method, {@code select...},
- * declares its JPQL with {@link Query}, with a count query of its own since Spring Data cannot derive one from a
- * grouped select, and returns a projection, one of the interfaces declared here, which Spring Data backs with the
- * selected columns, each aliased with the name of the getter it feeds. Those aliases are what the {@code Pageable}
- * sorts by; an interface rather than a record, because Spring Data rewrites a record projection into a constructor
- * expression, which drops the aliases, and the sort with them.
+ * ...), with its role: the book's pick, or this module's own extra. The exercises are context, not contract. A Basic
+ * exercise is a derived query, with the order the exercise asks for in its name, and returns a {@link List} (the
+ * book's pick) or a {@link Stream} (this module's own extra), with no {@link Pageable}. An Intermediate or Advanced
+ * one takes a {@link Pageable}, the page and the sort, and returns a {@link Page}, so the order the exercise asks
+ * for, and its {@code LIMIT}, are the caller's {@code PageRequest}; each method's javadoc says which sort that is. An
+ * exercise that shows rows is a {@code default} method, {@code list...}, which builds a {@link Specification} with the
+ * Criteria API and runs it through {@link org.springframework.data.jpa.repository.JpaSpecificationExecutor}. An
+ * exercise that shows columns, grouped and counted, or taken from other entities, cannot be a {@code Specification},
+ * which only filters; such a method, {@code select...}, declares its JPQL with {@link Query}, with a count query of
+ * its own since Spring Data cannot derive one from a grouped select, and returns a projection, one of the interfaces
+ * declared here, which Spring Data backs with the selected columns, each aliased with the name of the getter it
+ * feeds. Those aliases are what the {@code Pageable} sorts by; an interface rather than a record, because Spring Data
+ * rewrites a record projection into a constructor expression, which drops the aliases, and the sort with them.
  *
  * @see Actor
  * @see Actor_
@@ -156,44 +158,81 @@ public interface ActorRepository
     }
 
     /**
-     * Lists the actors whose value of {@link Actor_#LAST_NAME} attribute is equal to the specified value
-     * ({@code SAKILA-ACTOR-B-01}, which orders by {@link Actor_#ACTOR_ID}).
-     * <p>
-     * A {@link Specification} of one equality; no join.
-     *
-     * @param lastName the value of the {@link Actor_#LAST_NAME} attribute to match; must not be {@code null}.
-     * @param pageable the page to return, and its sort; must not be {@code null}.
-     * @return a page of the actors whose last name is {@code lastName}.
+     * An actor, by id and names, and a film of the actor's of the longest length: a projection of
+     * {@link #selectLongestFilmsOfActorIdsBetween(int, int, Pageable)}, sortable by {@code actorId}, {@code firstName},
+     * {@code lastName}, {@code title} and {@code length}.
      */
-    default Page<Actor> listByLastName(final String lastName, final Pageable pageable) {
-        Objects.requireNonNull(lastName, "lastName is null");
-        Objects.requireNonNull(pageable, "pageable is null");
-        final Specification<Actor> specification = (r, q, b) -> b.equal(r.get(Actor_.lastName), lastName);
-        return findAll(specification, pageable);
+    interface ActorLongestFilm {
+
+        /**
+         * Returns the id of the actor.
+         *
+         * @return the id of the actor.
+         */
+        Integer getActorId();
+
+        /**
+         * Returns the first name of the actor.
+         *
+         * @return the first name of the actor.
+         */
+        String getFirstName();
+
+        /**
+         * Returns the last name of the actor.
+         *
+         * @return the last name of the actor.
+         */
+        String getLastName();
+
+        /**
+         * Returns the title of the film.
+         *
+         * @return the title of the film.
+         */
+        String getTitle();
+
+        /**
+         * Returns the length of the film, in minutes, which is the longest of the actor's films.
+         *
+         * @return the length of the film.
+         */
+        Integer getLength();
     }
 
     /**
-     * Lists the actors whose value of {@link Actor_#FIRST_NAME} attribute starts with the specified prefix
-     * ({@code SAKILA-ACTOR-B-02}, which orders by {@link Actor_#FIRST_NAME}, then by {@link Actor_#ACTOR_ID} so that
-     * the order is the same every time).
+     * Finds the actors whose value of {@link Actor_#LAST_NAME} attribute is equal to the specified value, by
+     * {@link Actor_#ACTOR_ID} ({@code SAKILA-ACTOR-B-01}, the book's pick, which orders by {@link Actor_#ACTOR_ID}).
      * <p>
-     * A {@link Specification} of one {@code LIKE}, with the trailing {@code %} added here, so the caller passes the
-     * prefix alone.
+     * The query, and its order, are derived from the method name; the comparison is the database's, as in
+     * {@link #findAllByFirstName(String, Pageable)}. The match is the whole list, which the exercise bounds by its
+     * filter, so there is no {@link Pageable}.
      *
-     * @param prefix   the prefix of the {@link Actor_#FIRST_NAME} attribute to match; must not be {@code null}.
-     * @param pageable the page to return, and its sort; must not be {@code null}.
-     * @return a page of the actors whose first name starts with {@code prefix}.
+     * @param lastName the value of the {@link Actor_#LAST_NAME} attribute to match; must not be {@code null}.
+     * @return a list of the actors whose last name is {@code lastName}, by id; empty if there is none.
      */
-    default Page<Actor> listByFirstNameStartingWith(final String prefix, final Pageable pageable) {
-        Objects.requireNonNull(prefix, "prefix is null");
-        Objects.requireNonNull(pageable, "pageable is null");
-        final Specification<Actor> specification = (r, q, b) -> b.like(r.get(Actor_.firstName), prefix + '%');
-        return findAll(specification, pageable);
-    }
+    List<Actor> findAllByLastNameOrderByActorIdAsc(String lastName);
+
+    /**
+     * Finds the actors whose value of {@link Actor_#FIRST_NAME} attribute starts with the specified prefix, as a
+     * stream, by {@link Actor_#FIRST_NAME} and then by {@link Actor_#ACTOR_ID} ({@code SAKILA-ACTOR-B-02}, this
+     * module's own extra, which orders by {@link Actor_#FIRST_NAME}, then by {@link Actor_#ACTOR_ID} so that the order
+     * is the same every time).
+     * <p>
+     * The query, and its order, are derived from the method name. {@code StartingWith} is a {@code LIKE} with the
+     * trailing {@code %} added by Spring Data, which escapes any wildcard in the prefix, so the caller passes the
+     * prefix alone. The stream is to be consumed inside a transaction the caller opened, and closed, as the one of
+     * {@link #findAllByLastName(String, Pageable)}.
+     *
+     * @param prefix the prefix of the {@link Actor_#FIRST_NAME} attribute to match; must not be {@code null}.
+     * @return a stream of the actors whose first name starts with {@code prefix}, by first name and then by id, to be
+     *         closed by the caller; empty if there is none.
+     */
+    Stream<Actor> findAllByFirstNameStartingWithOrderByFirstNameAscActorIdAsc(String prefix);
 
     /**
      * Selects the last names shared by more than the specified number of actors, with their counts
-     * ({@code SAKILA-ACTOR-I-01}, which orders by {@code actors} descending, then by {@code lastName}).
+     * ({@code SAKILA-ACTOR-I-01}, this module's own extra, which orders by {@code actors} descending, then by {@code lastName}).
      * <p>
      * The actors are grouped by last name and counted; the filter is on the groups, so it is a {@code HAVING}, not a
      * {@code WHERE}, and a {@link Specification}, which filters rows, cannot do it. The count query counts the names
@@ -219,7 +258,7 @@ public interface ActorRepository
     Page<LastNameCount> selectLastNamesSharedByMoreThan(long actors, Pageable pageable);
 
     /**
-     * Selects the actors who appear in at least one film, with how many ({@code SAKILA-ACTOR-I-02}, which takes the
+     * Selects the actors who appear in at least one film, with how many ({@code SAKILA-ACTOR-I-02}, the book's pick, which takes the
      * first five by {@code films} descending, then by {@code actorId}, so that the five are always the same five).
      * <p>
      * The films are counted through the actor's {@link Actor_#FILM_ACTORS} links, by an inner join, so an actor with
@@ -241,7 +280,7 @@ public interface ActorRepository
     Page<ActorFilmCount> selectFilmCounts(Pageable pageable);
 
     /**
-     * Lists the actors who appear in a film of every rating ({@code SAKILA-ACTOR-A-01}, which takes the first five
+     * Lists the actors who appear in a film of every rating ({@code SAKILA-ACTOR-A-01}, the book's pick, which takes the first five
      * by {@link Actor_#ACTOR_ID}).
      * <p>
      * A relational division, as a {@link Specification} of two subqueries: an actor qualifies when the distinct
@@ -265,4 +304,43 @@ public interface ActorRepository
         };
         return findAll(specification, pageable);
     }
+
+    /**
+     * Selects, for each actor whose id is in the specified range, the actor's films of the longest length
+     * ({@code SAKILA-ACTOR-A-03}, this module's own extra, which takes the actors {@code 1} to {@code 5}, and orders by
+     * {@code actorId}, then by {@code title}).
+     * <p>
+     * A correlated subquery finds the longest length of the films of the actor of each row, and the outer query keeps
+     * the films of that length; two films that tie are two rows. The select takes columns of two entities, the actor
+     * and the film, which a {@link Specification} of actors cannot select; hence a {@link Query} and a projection. The
+     * count query counts the same rows.
+     *
+     * @param minActorId the lowest {@link Actor_#ACTOR_ID} of the range, inclusive.
+     * @param maxActorId the highest {@link Actor_#ACTOR_ID} of the range, inclusive.
+     * @param pageable   the page to return, and its sort, by {@code actorId}, {@code firstName}, {@code lastName},
+     *                   {@code title} or {@code length}; must not be {@code null}.
+     * @return a page of the actors whose ids are in the range, each with a longest film of theirs.
+     */
+    @Query(value = """
+            SELECT a.actorId AS actorId, a.firstName AS firstName, a.lastName AS lastName,
+                   f.title AS title, f.length AS length
+            FROM Actor a
+                     JOIN a.filmActors fa
+                     JOIN fa.film f
+            WHERE a.actorId BETWEEN :minActorId AND :maxActorId
+              AND f.length = (SELECT MAX(f2.length)
+                              FROM FilmActor fa2
+                                       JOIN fa2.film f2
+                              WHERE fa2.actor = a)""",
+           countQuery = """
+                   SELECT COUNT(fa)
+                   FROM Actor a
+                            JOIN a.filmActors fa
+                            JOIN fa.film f
+                   WHERE a.actorId BETWEEN :minActorId AND :maxActorId
+                     AND f.length = (SELECT MAX(f2.length)
+                                     FROM FilmActor fa2
+                                              JOIN fa2.film f2
+                                     WHERE fa2.actor = a)""")
+    Page<ActorLongestFilm> selectLongestFilmsOfActorIdsBetween(int minActorId, int maxActorId, Pageable pageable);
 }

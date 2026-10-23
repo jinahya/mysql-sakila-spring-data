@@ -1,10 +1,12 @@
 package com.github.jinahya.mysql.sakila.data;
 
 import com.github.jinahya.mysql.sakila.persistence.SalesByStore;
+import org.jspecify.annotations.Nullable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 /**
  * A repository for {@link SalesByStore}, the {@code sales_by_store} view of the Sakila database.
@@ -16,7 +18,7 @@ import java.math.BigDecimal;
  * {@link SalesByStoreRepositoryImpl}, over a {@code JdbcClient}, and nothing registers that bean on its own: a consumer
  * component-scans this package or {@code @Import}s the class, and injects it by this interface.
  * <p>
- * A method that returns rows takes a {@link Pageable}, the page and the sort, and returns a {@link Page}. The sort
+ * {@link #listAll(Pageable)} takes a {@link Pageable}, the page and the sort, and returns a {@link Page}. The sort
  * names the attributes of {@link SalesByStore} ({@link SalesByStore#ATTRIBUTE_NAME_STORE},
  * {@link SalesByStore#ATTRIBUTE_NAME_MANAGER}, {@link SalesByStore#ATTRIBUTE_NAME_TOTAL_SALES}), which the
  * implementation maps to the columns of the view; a property the view has no column for is rejected. The
@@ -24,11 +26,12 @@ import java.math.BigDecimal;
  * neither repeat nor skip a row whatever the caller sorts by. An unpaged {@code Pageable} returns every row in one
  * page.
  * <p>
- * The methods answer the exercises of upstream's {@code EXERCISES.asciidoc} on the {@code sales_by_store} view, one
- * method per exercise, named in each method's javadoc by the exercise's id ({@code SAKILA-SALES_BY_STORE-B-01}, ...).
- * The exercises are context, not contract: an exercise that shows rows is a {@code list...} method, which leaves the
- * order, and the {@code LIMIT}, to the caller's {@code PageRequest}, and an exercise that sums is a {@code sum...}
- * method.
+ * The methods after {@link #sumTotalSales()} answer the exercises of upstream's {@code EXERCISES.asciidoc} on the
+ * {@code sales_by_store} view, one method per exercise, in the order of their ids, each named in its javadoc
+ * ({@code SAKILA-SALES_BY_STORE-B-01}, ...). The view has no entity, so every one of them is native-only: it runs the
+ * exercise's SQL as {@code EXERCISES.asciidoc} has it, its {@code ORDER BY} included, from a {@code .sql} resource
+ * beside the implementation, and returns a single value, the rows of the view, or the exercise's columns as one of the
+ * records nested here.
  *
  * @see SalesByStore
  * @see SalesByStoreRepositoryImpl
@@ -36,13 +39,35 @@ import java.math.BigDecimal;
 public interface SalesByStoreRepository
         extends _NonEntityRepository<SalesByStore> {
 
-    // ----------------------------------------------------------------------------------------------------- exercises
+    /**
+     * The sum of the stores' sales next to the sum of the payments which have a rental.
+     *
+     * @param byStore     the sum of the {@code total_sales} of the view; {@code by_store}.
+     * @param withARental the sum of the {@code amount} of the payments with a rental; {@code with_a_rental}.
+     */
+    record ByStoreAndWithARental(BigDecimal byStore, BigDecimal withARental) {
+
+    }
 
     /**
-     * Lists every row of the view ({@code SAKILA-SALES_BY_STORE-B-01}, which shows every store's sales: the
-     * {@code store}, the {@code manager} and the {@code total_sales}, in the order the view defines, by country and
-     * then by city, which the {@code store} column, {@code city,country}, does not reproduce; sort by
-     * {@link SalesByStore#ATTRIBUTE_NAME_STORE} for a stable order).
+     * A row of the view next to the sum of the payments its manager took, at whichever store.
+     *
+     * @param store          the store, as its city and country.
+     * @param manager        the manager of the store, as a first and a last name.
+     * @param totalSales     the sales of the store; {@code total_sales}.
+     * @param takenByManager the sum of the {@code amount} of the payments the manager took; {@code taken_by_manager}.
+     */
+    record SalesAndTakenByManager(String store, String manager, BigDecimal totalSales, BigDecimal takenByManager) {
+
+    }
+
+    // -----------------------------------------------------------------------------------------------------------------
+
+    /**
+     * Lists every row of the view.
+     * <p>
+     * Not an exercise; the view's plain listing, which the tests select their fixture rows with and page through.
+     * {@link #listSales()} lists the same rows, as {@code SAKILA-SALES_BY_STORE-B-01} asks.
      *
      * @param pageable the page to return, and its sort; must not be {@code null}.
      * @return a page of the rows of the view, one per store.
@@ -50,14 +75,54 @@ public interface SalesByStoreRepository
     Page<SalesByStore> listAll(Pageable pageable);
 
     /**
-     * Sums the {@link SalesByStore#COLUMN_NAME_TOTAL_SALES total_sales} of every row of the view
-     * ({@code SAKILA-SALES_BY_STORE-I-01}, which checks that the stores' sales add up to every payment with a rental).
+     * Sums the {@link SalesByStore#COLUMN_NAME_TOTAL_SALES total_sales} of every row of the view.
      * <p>
-     * The view reaches a store through the payment's rental, so a payment without one cannot be in it. The exercise
-     * shows this sum next to the sum of the {@code amount} of the payments which have a rental, which the caller sums
-     * for itself, through the repository of {@code payment}; the two are the same.
+     * Not an exercise; {@link #sumByStoreAndWithARental()} sums the same, next to what it is checked against.
      *
      * @return the sum of the {@code total_sales} of the stores; {@code 0} when the view has no row.
      */
     BigDecimal sumTotalSales();
+
+    // ----------------------------------------------------------------------------------------------------- exercises
+
+    /**
+     * Lists every store's sales ({@code SAKILA-SALES_BY_STORE-B-01}; native-only; no sort, the rows in the order the
+     * view defines, by country and then by city, which the {@code store} column, {@code city,country}, does not
+     * reproduce).
+     *
+     * @return the rows of the view, one per store: the {@code store}, the {@code manager} and the {@code total_sales}.
+     */
+    List<SalesByStore> listSales();
+
+    /**
+     * Selects how far apart the stores' sales are ({@code SAKILA-SALES_BY_STORE-B-02}; native-only; no sort, a single
+     * value).
+     *
+     * @return the largest {@code total_sales} less the smallest; {@code difference}; {@code null} when the view has no
+     *         row.
+     */
+    @Nullable
+    BigDecimal selectSalesDifference();
+
+    /**
+     * Sums the stores' sales next to every payment with a rental ({@code SAKILA-SALES_BY_STORE-I-01}; native-only; no
+     * sort, a single row), to check that the two add up.
+     * <p>
+     * The view reaches a store through the payment's rental, so a payment without one cannot be in it; the two sums are
+     * the same.
+     *
+     * @return the sum of the stores' sales and the sum of the payments which have a rental.
+     */
+    ByStoreAndWithARental sumByStoreAndWithARental();
+
+    /**
+     * Lists each store's sales, next to what its manager took ({@code SAKILA-SALES_BY_STORE-I-02}; native-only; sorted
+     * by {@code store}).
+     * <p>
+     * The manager is joined to {@code staff} by the full name the view writes, and the payments of that staff member
+     * are summed, at whichever store they were taken; so the two sums differ, while adding up to the same total.
+     *
+     * @return a row per store, with its sales and the sum of the payments its manager took, by store.
+     */
+    List<SalesAndTakenByManager> listSalesAndTakenByManager();
 }

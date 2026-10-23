@@ -4,13 +4,17 @@ import com.github.jinahya.mysql.sakila.persistence.Customer;
 import com.github.jinahya.mysql.sakila.persistence.Customer_;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.InvalidDataAccessApiUsageException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.concurrent.ThreadLocalRandom;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Tests {@link CustomerRepository} in a JPA slice, over an embedded H2, through {@link _Repository_DataJpaTest}.
@@ -18,8 +22,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  * See that class for how the slice is configured. No customer can be persisted into the H2: a customer belongs to a
  * store, which names its manager, a staff member, who works at a store, both {@code NOT NULL}, so neither of the two
  * can be saved first, nor a customer after them (see {@link _Repository_DataJpaTest_Fixtures}). Each test here runs
- * its query against an empty {@code customer} table, and asserts an empty page or a zero; that still proves that the
- * JPQL, or the criteria query, is valid and runs on the H2, with the sort the exercise asks for.
+ * its query against an empty {@code customer} table, and asserts an empty page, list or stream; that still proves
+ * that the JPQL, the criteria query, or the native SQL, is valid and runs on the H2, with the sort the exercise asks
+ * for.
  *
  * @see CustomerRepository_SpringBootIT
  */
@@ -63,42 +68,55 @@ class CustomerRepository_DataJpaTest
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * Tests {@link CustomerRepository#selectActiveCounts(Pageable)} ({@code SAKILA-CUSTOMER-B-01}).
+     * Tests {@link CustomerRepository#selectActiveCounts()} ({@code SAKILA-CUSTOMER-B-01}).
      */
     @Nested
     class SelectActiveCounts_Test {
 
-        private static final Sort BY_ACTIVE = Sort.by("active");
-
         /**
-         * Asserts that the grouped select, sorted by the flag as the exercise sorts, runs on the empty table and
-         * selects an empty page, with no groups in all.
+         * Asserts that the grouped select, ordered by the flag in the query, runs on the empty table, inside the
+         * test's transaction, and streams nothing.
          */
         @Test
         void _Empty_NoCustomers() {
-            final var page = repositoryInstance().selectActiveCounts(PageRequest.of(0, 5, BY_ACTIVE));
-            assertThat(page).isEmpty();
-            assertThat(page.getTotalElements()).isZero();
+            try (var stream = repositoryInstance().selectActiveCounts()) {
+                assertThat(stream).isEmpty();
+            }
+        }
+
+        /**
+         * Runs the select with the test's transaction suspended, and asserts that Spring Data refuses it.
+         * <p>
+         * A stream has to be consumed inside a transaction the caller opened. The repository would open one of its own,
+         * but that one ends when the method returns, so the check runs before the query, and throws
+         * {@link InvalidDataAccessApiUsageException}, whatever the table holds.
+         */
+        @Transactional(propagation = Propagation.NOT_SUPPORTED)
+        @Test
+        void _InvalidDataAccessApiUsageException_NoSurroundingTransaction() {
+            assertThatThrownBy(() -> {
+                try (var stream = repositoryInstance().selectActiveCounts()) {
+                    stream.forEach(c -> {
+                    });
+                }
+            }).isInstanceOf(InvalidDataAccessApiUsageException.class);
         }
     }
 
     /**
-     * Tests {@link CustomerRepository#selectStoreCounts(Pageable)} ({@code SAKILA-CUSTOMER-B-02}).
+     * Tests {@link CustomerRepository#selectStoreCounts()} ({@code SAKILA-CUSTOMER-B-02}).
      */
     @Nested
     class SelectStoreCounts_Test {
 
-        private static final Sort BY_STORE_ID = Sort.by("storeId");
-
         /**
-         * Asserts that the grouped select, sorted by the store as the exercise sorts, runs on the empty table and
-         * selects an empty page, with no groups in all.
+         * Asserts that the grouped select, ordered by the store in the query, runs on the empty table and selects an
+         * empty list.
          */
         @Test
         void _Empty_NoCustomers() {
-            final var page = repositoryInstance().selectStoreCounts(PageRequest.of(0, 5, BY_STORE_ID));
-            assertThat(page).isEmpty();
-            assertThat(page.getTotalElements()).isZero();
+            final var list = repositoryInstance().selectStoreCounts();
+            assertThat(list).isEmpty();
         }
     }
 
@@ -122,6 +140,16 @@ class CustomerRepository_DataJpaTest
             assertThat(page).isEmpty();
             assertThat(page.getTotalElements()).isZero();
         }
+
+        /**
+         * Asserts that a {@code null} pageable is rejected before any query runs: the package is
+         * {@code @NullMarked}, so Spring Data checks the arguments, and throws {@link IllegalArgumentException}.
+         */
+        @Test
+        void _IllegalArgumentException_NullPageable() {
+            assertThatThrownBy(() -> repositoryInstance().selectPaidTotals(null))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
     }
 
     /**
@@ -139,6 +167,74 @@ class CustomerRepository_DataJpaTest
             final var page = repositoryInstance().listNeverRented(PageRequest.of(0, 5, BY_CUSTOMER_ID));
             assertThat(page).isEmpty();
             assertThat(page.getTotalElements()).isZero();
+        }
+
+        /**
+         * Asserts that a {@code null} pageable is rejected before any query runs: the package is
+         * {@code @NullMarked}, so Spring Data checks the arguments, and throws {@link IllegalArgumentException}.
+         */
+        @Test
+        void _IllegalArgumentException_NullPageable() {
+            assertThatThrownBy(() -> repositoryInstance().listNeverRented(null))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+    }
+
+    /**
+     * Tests {@link CustomerRepository#selectTopThreePayersOfEachStore()} ({@code SAKILA-CUSTOMER-A-01}).
+     */
+    @Nested
+    class SelectTopThreePayersOfEachStore_Test {
+
+        /**
+         * Asserts that the native query, a {@code ROW_NUMBER()} over the grouped sums, runs on the H2 too, and selects
+         * nothing from the empty tables.
+         */
+        @Test
+        void _Empty_NoCustomers() {
+            final var list = repositoryInstance().selectTopThreePayersOfEachStore();
+            assertThat(list).isEmpty();
+        }
+    }
+
+    /**
+     * Tests {@link CustomerRepository#selectAboveAveragePayerCounts(Pageable)} ({@code SAKILA-CUSTOMER-A-02}).
+     */
+    @Nested
+    class SelectAboveAveragePayerCounts_Test {
+
+        private static final Sort BY_STORE_ID = Sort.by("storeId");
+
+        /**
+         * Asserts that the select, with its correlated sums, sorted by the store as the exercise sorts, runs on the
+         * empty tables and selects an empty page, with no stores in all.
+         */
+        @Test
+        void _Empty_NoCustomers() {
+            final var page = repositoryInstance().selectAboveAveragePayerCounts(PageRequest.of(0, 5, BY_STORE_ID));
+            assertThat(page).isEmpty();
+            assertThat(page.getTotalElements()).isZero();
+        }
+
+        /**
+         * Asserts that a page past the first, which makes Spring Data run the count query, is empty too, with no
+         * stores in all; that runs the count query on the H2.
+         */
+        @Test
+        void _Empty_Paged() {
+            final var page = repositoryInstance().selectAboveAveragePayerCounts(PageRequest.of(1, 1, BY_STORE_ID));
+            assertThat(page).isEmpty();
+            assertThat(page.getTotalElements()).isZero();
+        }
+
+        /**
+         * Asserts that a {@code null} pageable is rejected before any query runs: the package is
+         * {@code @NullMarked}, so Spring Data checks the arguments, and throws {@link IllegalArgumentException}.
+         */
+        @Test
+        void _IllegalArgumentException_NullPageable() {
+            assertThatThrownBy(() -> repositoryInstance().selectAboveAveragePayerCounts(null))
+                    .isInstanceOf(IllegalArgumentException.class);
         }
     }
 }
