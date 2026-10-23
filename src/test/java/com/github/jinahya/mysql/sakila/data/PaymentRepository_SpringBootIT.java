@@ -1,13 +1,10 @@
 package com.github.jinahya.mysql.sakila.data;
 
-import com.github.jinahya.mysql.sakila.data.PaymentRepository.CustomerPaymentTotal;
-import com.github.jinahya.mysql.sakila.data.PaymentRepository.MonthPaymentTotal;
-import com.github.jinahya.mysql.sakila.data.PaymentRepository.PaymentDayRun;
-import com.github.jinahya.mysql.sakila.data.PaymentRepository.PaymentRunningTotal;
-import com.github.jinahya.mysql.sakila.data.PaymentRepository.StaffPaymentTotal;
+import com.github.jinahya.mysql.sakila.persistence.Customer;
 import com.github.jinahya.mysql.sakila.persistence.Customer_;
 import com.github.jinahya.mysql.sakila.persistence.Payment;
 import com.github.jinahya.mysql.sakila.persistence.Payment_;
+import com.github.jinahya.mysql.sakila.persistence.Staff;
 import com.github.jinahya.mysql.sakila.persistence.Staff_;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Nested;
@@ -170,10 +167,10 @@ class PaymentRepository_SpringBootIT
             try (var stream = repositoryInstance().selectTotalsByStaff()) {
                 final var list = stream.toList();
                 assertThat(list)
-                        .extracting(StaffPaymentTotal::getStaffId, StaffPaymentTotal::getPayments)
+                        .extracting(column("staff", Staff.class, Staff::getStaffId), column("payments", Long.class))
                         .containsExactly(tuple(1, 8054L), tuple(2, 7990L));
                 assertThat(list)
-                        .extracting(t -> t.getTotal().toPlainString())
+                        .extracting(t -> t.get("total", BigDecimal.class).toPlainString())
                         .containsExactly("33482.50", "33924.06");
             }
         }
@@ -188,14 +185,15 @@ class PaymentRepository_SpringBootIT
             try (var stream = repositoryInstance().selectTotalsByStaff()) {
                 final var list = stream.toList();
                 assertThat(list)
-                        .isSortedAccordingTo(Comparator.comparing(StaffPaymentTotal::getStaffId))
+                        .isSortedAccordingTo(Comparator.comparing(column("staff", Staff.class, Staff::getStaffId)))
                         .allSatisfy(t -> {
-                            final Specification<Payment> takenBy =
-                                    (r, q, b) -> b.equal(r.get(Payment_.staff).get(Staff_.staffId), t.getStaffId());
-                            assertThat(t.getPayments()).isEqualTo(repositoryInstance().count(takenBy));
-                            assertThat(t.getTotal()).isEqualByComparingTo(sum(takenBy));
+                            final var staffId = t.get("staff", Staff.class).getStaffId();
+                            final Specification<Payment> takenBy = (r, q, b) -> b.equal(
+                                    r.get(Payment_.staff).get(Staff_.staffId), staffId);
+                            assertThat(t.get("payments", Long.class)).isEqualTo(repositoryInstance().count(takenBy));
+                            assertThat(t.get("total", BigDecimal.class)).isEqualByComparingTo(sum(takenBy));
                         });
-                assertThat(list.stream().mapToLong(StaffPaymentTotal::getPayments).sum())
+                assertThat(list.stream().mapToLong(t -> t.get("payments", Long.class)).sum())
                         .isEqualTo(repositoryInstance().count());
             }
         }
@@ -233,9 +231,9 @@ class PaymentRepository_SpringBootIT
         void __() {
             final var list = repositoryInstance().selectMonthlyTotals();
             assertThat(list)
-                    .extracting(t -> "%d-%02d".formatted(t.getYear(), t.getMonth()),
-                                MonthPaymentTotal::getPayments,
-                                t -> t.getTotal().toPlainString())
+                    .extracting(t -> "%d-%02d".formatted(t.get("year", Integer.class), t.get("month", Integer.class)),
+                                column("payments", Long.class),
+                                t -> t.get("total", BigDecimal.class).toPlainString())
                     .containsExactly(tuple("2005-05", 1156L, "4823.44"),
                                      tuple("2005-06", 2311L, "9629.89"),
                                      tuple("2005-07", 6709L, "28368.91"),
@@ -252,16 +250,18 @@ class PaymentRepository_SpringBootIT
         void __Ordered() {
             final var list = repositoryInstance().selectMonthlyTotals();
             assertThat(list)
-                    .isSortedAccordingTo(Comparator.comparing(MonthPaymentTotal::getYear)
-                                                 .thenComparing(MonthPaymentTotal::getMonth))
+                    .isSortedAccordingTo(Comparator.comparing(column("year", Integer.class))
+                                                 .thenComparing(column("month", Integer.class)))
                     .allSatisfy(c -> {
-                        final var paidIn = paidIn(c.getYear(), c.getMonth());
-                        assertThat(c.getPayments()).as("payments in %d-%02d", c.getYear(), c.getMonth())
+                        final var year = c.get("year", Integer.class);
+                        final var month = c.get("month", Integer.class);
+                        final var paidIn = paidIn(year, month);
+                        assertThat(c.get("payments", Long.class)).as("payments in %d-%02d", year, month)
                                 .isEqualTo(repositoryInstance().count(paidIn));
-                        assertThat(c.getTotal()).as("total of %d-%02d", c.getYear(), c.getMonth())
+                        assertThat(c.get("total", BigDecimal.class)).as("total of %d-%02d", year, month)
                                 .isEqualByComparingTo(sum(paidIn));
                     });
-            assertThat(list.stream().mapToLong(MonthPaymentTotal::getPayments).sum())
+            assertThat(list.stream().mapToLong(t -> t.get("payments", Long.class)).sum())
                     .isEqualTo(repositoryInstance().count());
         }
 
@@ -277,8 +277,8 @@ class PaymentRepository_SpringBootIT
             final var paymentDate = payment.getPaymentDate();
             assertThat(list)
                     .anySatisfy(c -> {
-                        assertThat(c.getYear()).isEqualTo(paymentDate.getYear());
-                        assertThat(c.getMonth()).isEqualTo(paymentDate.getMonthValue());
+                        assertThat(c.get("year", Integer.class)).isEqualTo(paymentDate.getYear());
+                        assertThat(c.get("month", Integer.class)).isEqualTo(paymentDate.getMonthValue());
                     });
         }
     }
@@ -388,7 +388,7 @@ class PaymentRepository_SpringBootIT
     class SelectCustomersWhoPaidMoreThan_Test {
 
         private static final Sort BY_TOTAL_DESC_THEN_CUSTOMER_ID =
-                Sort.by(Sort.Direction.DESC, "total").and(Sort.by("customerId"));
+                Sort.by(Sort.Direction.DESC, "total").and(Sort.by("c.customerId"));
 
         /**
          * Asserts that more than {@code 180}, sorted the exercise's way, selects the exercise's recorded output, six
@@ -399,8 +399,10 @@ class PaymentRepository_SpringBootIT
             final var page = repositoryInstance().selectCustomersWhoPaidMoreThan(
                     BigDecimal.valueOf(180L), PageRequest.of(0, 10, BY_TOTAL_DESC_THEN_CUSTOMER_ID));
             assertThat(page.getContent())
-                    .extracting(CustomerPaymentTotal::getCustomerId, CustomerPaymentTotal::getFirstName,
-                                CustomerPaymentTotal::getLastName, t -> t.getTotal().toPlainString())
+                    .extracting(column("customer", Customer.class, Customer::getCustomerId),
+                                column("customer", Customer.class, Customer::getFirstName),
+                                column("customer", Customer.class, Customer::getLastName),
+                                t -> t.get("total", BigDecimal.class).toPlainString())
                     .containsExactly(tuple(526, "KARL", "SEAL", "221.55"),
                                      tuple(148, "ELEANOR", "HUNT", "216.54"),
                                      tuple(144, "CLARA", "SHAW", "195.58"),
@@ -426,13 +428,15 @@ class PaymentRepository_SpringBootIT
             assertPage(page);
             assertThat(page.getContent())
                     .isNotEmpty()
-                    .isSortedAccordingTo(Comparator.comparing(CustomerPaymentTotal::getTotal).reversed()
-                                                 .thenComparing(CustomerPaymentTotal::getCustomerId))
+                    .isSortedAccordingTo(Comparator.comparing(column("total", BigDecimal.class)).reversed()
+                                                 .thenComparing(column("customer", Customer.class,
+                                                                       Customer::getCustomerId)))
                     .allSatisfy(t -> {
-                        assertThat(t.getTotal()).isGreaterThan(threshold);
+                        assertThat(t.get("total", BigDecimal.class)).isGreaterThan(threshold);
+                        final var customerId = t.get("customer", Customer.class).getCustomerId();
                         final Specification<Payment> paidBy = (r, q, b) -> b.equal(
-                                r.get(Payment_.customer).get(Customer_.customerId), t.getCustomerId());
-                        assertThat(t.getTotal()).isEqualByComparingTo(sum(paidBy));
+                                r.get(Payment_.customer).get(Customer_.customerId), customerId);
+                        assertThat(t.get("total", BigDecimal.class)).isEqualByComparingTo(sum(paidBy));
                     });
         }
 
@@ -448,14 +452,14 @@ class PaymentRepository_SpringBootIT
                     threshold, PageRequest.of(0, 4, BY_TOTAL_DESC_THEN_CUSTOMER_ID));
             assertThat(page.getTotalElements()).isEqualTo(all.getTotalElements());
             assertThat(page.getTotalPages()).isEqualTo(2);
-            final var walked = new ArrayList<Integer>();
-            page.forEach(t -> walked.add(t.getCustomerId()));
+            final var walked = new ArrayList<Customer>();
+            page.forEach(t -> walked.add(t.get("customer", Customer.class)));
             while (page.hasNext()) {
                 page = repositoryInstance().selectCustomersWhoPaidMoreThan(threshold, page.nextPageable());
-                page.forEach(t -> walked.add(t.getCustomerId()));
+                page.forEach(t -> walked.add(t.get("customer", Customer.class)));
             }
             assertThat(walked).containsExactlyElementsOf(
-                    all.getContent().stream().map(CustomerPaymentTotal::getCustomerId).toList());
+                    all.getContent().stream().map(column("customer", Customer.class)).toList());
         }
     }
 
@@ -465,7 +469,7 @@ class PaymentRepository_SpringBootIT
     @Nested
     class SelectRunningTotals_Test {
 
-        private static final Sort BY_PAYMENT_DATE_THEN_PAYMENT_ID = Sort.by("paymentDate", "paymentId");
+        private static final Sort BY_PAYMENT_DATE_THEN_PAYMENT_ID = Sort.by("p.paymentDate", "p.paymentId");
 
         private static Stream<Payment> payments() {
             return PaymentRepository_SpringBootIT.payments();
@@ -480,9 +484,9 @@ class PaymentRepository_SpringBootIT
             final var page = repositoryInstance().selectRunningTotals(
                     1, PageRequest.of(0, 10, BY_PAYMENT_DATE_THEN_PAYMENT_ID));
             assertThat(page.getContent())
-                    .extracting(PaymentRunningTotal::getPaymentId,
-                                t -> t.getAmount().toPlainString(),
-                                t -> t.getRunningTotal().toPlainString())
+                    .extracting(column("payment", Payment.class, Payment::getPaymentId),
+                                column("payment", Payment.class, p -> p.getAmount().toPlainString()),
+                                t -> t.get("runningTotal", BigDecimal.class).toPlainString())
                     .containsExactly(tuple(1, "2.99", "2.99"),
                                      tuple(2, "0.99", "3.98"),
                                      tuple(3, "5.99", "9.97"),
@@ -512,12 +516,15 @@ class PaymentRepository_SpringBootIT
                     customerId, Pageable.unpaged(BY_PAYMENT_DATE_THEN_PAYMENT_ID));
             assertThat(all.getContent())
                     .isNotEmpty()
-                    .isSortedAccordingTo(Comparator.comparing(PaymentRunningTotal::getPaymentDate)
-                                                 .thenComparing(PaymentRunningTotal::getPaymentId));
+                    .isSortedAccordingTo(
+                            Comparator.comparing(column("payment", Payment.class, Payment::getPaymentDate))
+                                    .thenComparing(column("payment", Payment.class, Payment::getPaymentId)));
             var running = BigDecimal.ZERO;
             for (final var t : all) {
-                running = running.add(t.getAmount());
-                assertThat(t.getRunningTotal()).as("running total at %d", t.getPaymentId())
+                final var p = t.get("payment", Payment.class);
+                running = running.add(p.getAmount());
+                assertThat(t.get("runningTotal", BigDecimal.class))
+                        .as("running total at %d", p.getPaymentId())
                         .isEqualByComparingTo(running);
             }
             final Specification<Payment> paidBy = (r, q, b) -> b.equal(
@@ -539,11 +546,13 @@ class PaymentRepository_SpringBootIT
             assertThat(second.getTotalElements()).isEqualTo(all.getTotalElements());
             final var expected = all.getContent().subList(10, Math.min(20, all.getContent().size()));
             assertThat(second.getContent())
-                    .extracting(PaymentRunningTotal::getPaymentId, t -> t.getRunningTotal().toPlainString())
-                    .containsExactlyElementsOf(expected.stream()
-                                                       .map(t -> tuple(t.getPaymentId(),
-                                                                       t.getRunningTotal().toPlainString()))
-                                                       .toList());
+                    .extracting(column("payment", Payment.class),
+                                t -> t.get("runningTotal", BigDecimal.class).toPlainString())
+                    .containsExactlyElementsOf(
+                            expected.stream()
+                                    .map(t -> tuple(t.get("payment", Payment.class),
+                                                    t.get("runningTotal", BigDecimal.class).toPlainString()))
+                                    .toList());
         }
     }
 
@@ -560,7 +569,8 @@ class PaymentRepository_SpringBootIT
         void __() {
             final var list = repositoryInstance().selectRunsOfConsecutiveDays();
             assertThat(list)
-                    .extracting(PaymentDayRun::getFirstDay, PaymentDayRun::getLastDay, PaymentDayRun::getDays)
+                    .extracting(column("firstDay", LocalDate.class), column("lastDay", LocalDate.class),
+                                longColumn("days"))
                     .containsExactly(tuple(LocalDate.of(2005, 5, 24), LocalDate.of(2005, 5, 31), 8L),
                                      tuple(LocalDate.of(2005, 6, 14), LocalDate.of(2005, 6, 21), 8L),
                                      tuple(LocalDate.of(2005, 7, 5), LocalDate.of(2005, 7, 12), 8L),
@@ -577,11 +587,13 @@ class PaymentRepository_SpringBootIT
         void __Ordered() {
             final var list = repositoryInstance().selectRunsOfConsecutiveDays();
             assertThat(list)
-                    .isSortedAccordingTo(Comparator.comparing(PaymentDayRun::getFirstDay))
-                    .allSatisfy(r -> assertThat(r.getDays())
-                            .isEqualTo(ChronoUnit.DAYS.between(r.getFirstDay(), r.getLastDay()) + 1L));
+                    .isSortedAccordingTo(Comparator.comparing(column("firstDay", LocalDate.class)))
+                    .allSatisfy(r -> assertThat(r.get("days", Number.class).longValue())
+                            .isEqualTo(ChronoUnit.DAYS.between(r.get("firstDay", LocalDate.class),
+                                                               r.get("lastDay", LocalDate.class)) + 1L));
             for (int i = 1; i < list.size(); i++) {
-                assertThat(list.get(i).getFirstDay()).isAfter(list.get(i - 1).getLastDay().plusDays(1L));
+                assertThat(list.get(i).get("firstDay", LocalDate.class))
+                        .isAfter(list.get(i - 1).get("lastDay", LocalDate.class).plusDays(1L));
             }
         }
     }

@@ -30,8 +30,9 @@ import java.util.List;
  * {@code sales_by_store} view, one method per exercise, in the order of their ids, each named in its javadoc
  * ({@code SAKILA-SALES_BY_STORE-B-01}, ...). The view has no entity, so every one of them is native-only: it runs the
  * exercise's SQL as {@code EXERCISES.asciidoc} has it, its {@code ORDER BY} included, from a {@code .sql} resource
- * beside the implementation, and returns a single value, the rows of the view, or the exercise's columns as one of the
- * records nested here.
+ * beside the implementation. A method whose statement selects whole rows of the view, with {@code v.*}, returns them
+ * as {@link SalesByStore}s, next to the value it computes, if any, in one of the records nested here; one that sums
+ * returns a single value, or its columns as such a record.
  *
  * @see SalesByStore
  * @see SalesByStoreRepositoryImpl
@@ -52,12 +53,10 @@ public interface SalesByStoreRepository
     /**
      * A row of the view next to the sum of the payments its manager took, at whichever store.
      *
-     * @param store          the store, as its city and country.
-     * @param manager        the manager of the store, as a first and a last name.
-     * @param totalSales     the sales of the store; {@code total_sales}.
+     * @param sales          the row of the view: the {@code store}, its {@code manager} and its {@code total_sales}.
      * @param takenByManager the sum of the {@code amount} of the payments the manager took; {@code taken_by_manager}.
      */
-    record SalesAndTakenByManager(String store, String manager, BigDecimal totalSales, BigDecimal takenByManager) {
+    record SalesAndTakenByManager(SalesByStore sales, BigDecimal takenByManager) {
 
     }
 
@@ -88,9 +87,9 @@ public interface SalesByStoreRepository
     /**
      * Lists every store's sales ({@code SAKILA-SALES_BY_STORE-B-01}; native-only; no sort, the rows in the order the
      * view defines, by country and then by city, which the {@code store} column, {@code city,country}, does not
-     * reproduce).
+     * reproduce), selecting the whole rows.
      *
-     * @return the rows of the view, one per store: the {@code store}, the {@code manager} and the {@code total_sales}.
+     * @return the rows of the view, one per store.
      */
     List<SalesByStore> listSales();
 
@@ -117,12 +116,13 @@ public interface SalesByStoreRepository
 
     /**
      * Lists each store's sales, next to what its manager took ({@code SAKILA-SALES_BY_STORE-I-02}; native-only; sorted
-     * by {@code store}).
+     * by {@code store}), selecting the whole rows next to the computed {@code taken_by_manager}.
      * <p>
-     * The manager is joined to {@code staff} by the full name the view writes, and the payments of that staff member
-     * are summed, at whichever store they were taken; so the two sums differ, while adding up to the same total.
+     * The view has no key, so the rows are grouped by all three of its columns. The manager is joined to
+     * {@code staff} by the full name the view writes, and the payments of that staff member are summed, at whichever
+     * store they were taken; so the two sums differ, while adding up to the same total.
      *
-     * @return a row per store, with its sales and the sum of the payments its manager took, by store.
+     * @return a row per store, the row of the view next to the sum of the payments its manager took, by store.
      */
     List<SalesAndTakenByManager> listSalesAndTakenByManager();
 }

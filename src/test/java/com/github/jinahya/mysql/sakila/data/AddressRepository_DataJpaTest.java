@@ -1,8 +1,5 @@
 package com.github.jinahya.mysql.sakila.data;
 
-import com.github.jinahya.mysql.sakila.data.AddressRepository.AddressPair;
-import com.github.jinahya.mysql.sakila.data.AddressRepository.CountryDistrictCount;
-import com.github.jinahya.mysql.sakila.data.AddressRepository.DistrictCountryCount;
 import com.github.jinahya.mysql.sakila.persistence.Address;
 import com.github.jinahya.mysql.sakila.persistence.Address_;
 import com.github.jinahya.mysql.sakila.persistence.City;
@@ -281,17 +278,17 @@ class AddressRepository_DataJpaTest
             final var aboveOne = repositoryInstance().selectDistrictsInMoreCountriesThan(
                     1L, PageRequest.of(0, 1, BY_COUNTRIES_DESC_THEN_DISTRICT));
             assertThat(aboveOne.getContent())
-                    .extracting(DistrictCountryCount::getDistrict, DistrictCountryCount::getCountries)
+                    .extracting(column("district", String.class), column("countries", Long.class))
                     .containsExactly(tuple(three, 3L));
             assertThat(aboveOne.getTotalElements()).isEqualTo(2L);
             final var next = repositoryInstance().selectDistrictsInMoreCountriesThan(1L, aboveOne.nextPageable());
             assertThat(next.getContent())
-                    .extracting(DistrictCountryCount::getDistrict, DistrictCountryCount::getCountries)
+                    .extracting(column("district", String.class), column("countries", Long.class))
                     .containsExactly(tuple(two, 2L));
             final var aboveTwo = repositoryInstance().selectDistrictsInMoreCountriesThan(
                     2L, Pageable.unpaged(BY_COUNTRIES_DESC_THEN_DISTRICT));
             assertThat(aboveTwo.getContent())
-                    .extracting(DistrictCountryCount::getDistrict)
+                    .extracting(column("district", String.class))
                     .containsExactly(three);
         }
 
@@ -304,7 +301,7 @@ class AddressRepository_DataJpaTest
             saveAddress(fixtures().city(), "");
             saveAddress(fixtures().city(), "");
             final var page = repositoryInstance().selectDistrictsInMoreCountriesThan(1L, Pageable.unpaged());
-            assertThat(page.getContent()).extracting(DistrictCountryCount::getDistrict).doesNotContain("");
+            assertThat(page.getContent()).extracting(column("district", String.class)).doesNotContain("");
         }
     }
 
@@ -348,11 +345,11 @@ class AddressRepository_DataJpaTest
     @Nested
     class SelectPairsSharingPostalCode_Test {
 
-        private static final Sort BY_ADDRESS_ID_THEN_OTHER = Sort.by("addressId", "otherAddressId");
+        private static final Sort BY_ADDRESS_ID_THEN_OTHER = Sort.by("a1.addressId", "a2.addressId");
 
         /**
-         * Saves three addresses of one postal code, and one of another, and asserts that the three make three pairs,
-         * each once, the lower id first, by the two ids, and that the fourth is in none.
+         * Saves three addresses of one postal code, and one of another, and asserts that the three make three pairs of
+         * the addresses themselves, each once, the lower id first, by the two ids, and that the fourth is in none.
          */
         @Test
         void __() {
@@ -367,16 +364,16 @@ class AddressRepository_DataJpaTest
             final var page = repositoryInstance().selectPairsSharingPostalCode(
                     Pageable.unpaged(BY_ADDRESS_ID_THEN_OTHER));
             assertThat(page.getContent())
-                    .filteredOn(p -> postalCode.equals(p.getPostalCode()))
-                    .extracting(AddressPair::getAddressId, AddressPair::getOtherAddressId)
+                    .filteredOn(p -> postalCode.equals(p.get("address", Address.class).getPostalCode()))
+                    .extracting(column("address", Address.class), column("otherAddress", Address.class))
                     .containsExactly(
-                            tuple(addresses[0].getAddressId(), addresses[1].getAddressId()),
-                            tuple(addresses[0].getAddressId(), addresses[2].getAddressId()),
-                            tuple(addresses[1].getAddressId(), addresses[2].getAddressId())
+                            tuple(addresses[0], addresses[1]),
+                            tuple(addresses[0], addresses[2]),
+                            tuple(addresses[1], addresses[2])
                     );
             assertThat(page.getContent())
-                    .noneMatch(p -> p.getAddressId().equals(other.getAddressId())
-                                    || p.getOtherAddressId().equals(other.getAddressId()));
+                    .noneMatch(p -> p.get("address", Address.class).equals(other)
+                                    || p.get("otherAddress", Address.class).equals(other));
         }
 
         /**
@@ -390,7 +387,9 @@ class AddressRepository_DataJpaTest
             final var address2 = fixtures().address();
             address2.setPostalCode("");
             final var page = repositoryInstance().selectPairsSharingPostalCode(Pageable.unpaged());
-            assertThat(page.getContent()).extracting(AddressPair::getPostalCode).doesNotContain("");
+            assertThat(page.getContent())
+                    .extracting(column("address", Address.class, Address::getPostalCode))
+                    .doesNotContain("");
         }
 
         /**
@@ -436,9 +435,9 @@ class AddressRepository_DataJpaTest
             saveAddress(city, prefix + "d");
             final var list = repositoryInstance().selectTopThreeDistrictsOfIndiaChinaAndUnitedStates();
             assertThat(list)
-                    .filteredOn(c -> c.getDistrict().startsWith(prefix))
-                    .extracting(CountryDistrictCount::getCountry, CountryDistrictCount::getDistrict,
-                                CountryDistrictCount::getAddresses)
+                    .filteredOn(c -> c.get("district", String.class).startsWith(prefix))
+                    .extracting(column("country", String.class), column("district", String.class),
+                                longColumn("addresses"))
                     .containsExactly(
                             tuple("India", prefix + "b", 2L),
                             tuple("India", prefix + "a", 1L),

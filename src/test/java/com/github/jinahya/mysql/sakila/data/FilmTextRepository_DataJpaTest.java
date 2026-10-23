@@ -132,8 +132,8 @@ class FilmTextRepository_DataJpaTest
         @Test
         void _Zeros_NoFilm() {
             final var counts = repositoryInstance().selectRowCounts();
-            assertThat(counts.getFilmTexts()).isZero();
-            assertThat(counts.getFilms()).isZero();
+            assertThat(counts.get("filmTexts", Long.class)).isZero();
+            assertThat(counts.get("films", Long.class)).isZero();
         }
 
         /**
@@ -147,8 +147,8 @@ class FilmTextRepository_DataJpaTest
             fixtures().film();
             fixtures().film();
             final var counts = repositoryInstance().selectRowCounts();
-            assertThat(counts.getFilmTexts()).isZero();
-            assertThat(counts.getFilms()).isEqualTo(2L);
+            assertThat(counts.get("filmTexts", Long.class)).isZero();
+            assertThat(counts.get("films", Long.class)).isEqualTo(2L);
         }
     }
 

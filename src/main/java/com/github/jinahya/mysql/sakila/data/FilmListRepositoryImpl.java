@@ -32,7 +32,8 @@ import java.util.function.LongSupplier;
  * <p>
  * {@link #countAll()} and the exercise methods read their statements from {@code .sql} resources beside this class,
  * named {@code FILM_LIST_<METHOD>.sql} after the method ({@code FILM_LIST_COUNT_ALL.sql}, ...), each exercise's
- * statement as {@code EXERCISES.asciidoc} has it; {@link #listAll(Pageable)} writes its own in place. A page is
+ * statement as {@code EXERCISES.asciidoc} has it; the exercises that select whole rows map them by {@link #ROW_MAPPER}
+ * too. {@link #listAll(Pageable)} writes its own statement in place. A page is
  * selected with an {@code ORDER BY} built from the {@link Pageable}'s {@link Sort}, each property mapped to a column of
  * the view through {@link #COLUMNS}, and {@code FID} last, and with {@code LIMIT ... OFFSET ...} from the page, unless
  * the {@code Pageable} is unpaged; the total comes from a {@code COUNT(*)} of the same {@code WHERE}, run only when the
@@ -88,26 +89,6 @@ public class FilmListRepositoryImpl
                                                                  FilmList.COLUMN_NAME_RATING,
                                                                  FilmList.COLUMN_NAME_ACTORS)
                                          + " FROM " + FilmList.TABLE_NAME;
-
-    /**
-     * Maps a row of {@code FID}, {@code title} and {@code actors} into a {@link FilmActors}; shared with
-     * {@link NicerButSlowerFilmListRepositoryImpl}, whose rows of the same columns map alike.
-     */
-    static final RowMapper<FilmActors> FILM_ACTORS_ROW_MAPPER = (rs, rowNum) -> new FilmActors(
-            rs.getObject(FilmList.COLUMN_NAME_FID, Integer.class),
-            rs.getString(FilmList.COLUMN_NAME_TITLE),
-            rs.getString(FilmList.COLUMN_NAME_ACTORS)
-    );
-
-    /**
-     * Maps a row of {@code FID}, {@code title} and {@code category} into a {@link FilmInCategory}; shared with
-     * {@link NicerButSlowerFilmListRepositoryImpl}, whose rows of the same columns map alike.
-     */
-    static final RowMapper<FilmInCategory> FILM_IN_CATEGORY_ROW_MAPPER = (rs, rowNum) -> new FilmInCategory(
-            rs.getObject(FilmList.COLUMN_NAME_FID, Integer.class),
-            rs.getString(FilmList.COLUMN_NAME_TITLE),
-            rs.getString(FilmList.COLUMN_NAME_CATEGORY)
-    );
 
     /**
      * The statement of {@link #countAll()}.
@@ -243,26 +224,23 @@ public class FilmListRepositoryImpl
     }
 
     @Override
-    public List<FilmActors> listActorsOfFilmOne() {
+    public List<FilmList> listActorsOfFilmOne() {
         return jdbcClient().sql(SQL_LIST_ACTORS_OF_FILM_ONE)
-                .query(FILM_ACTORS_ROW_MAPPER)
+                .query(ROW_MAPPER)
                 .list();
     }
 
     @Override
-    public List<FilmLength> listChildrenFilmsRatedG() {
+    public List<FilmList> listChildrenFilmsRatedG() {
         return jdbcClient().sql(SQL_LIST_CHILDREN_FILMS_RATED_G)
-                .query((rs, rowNum) -> new FilmLength(
-                        rs.getObject(FilmList.COLUMN_NAME_FID, Integer.class),
-                        rs.getString(FilmList.COLUMN_NAME_TITLE),
-                        rs.getObject(FilmList.COLUMN_NAME_LENGTH, Integer.class)))
+                .query(ROW_MAPPER)
                 .list();
     }
 
     @Override
-    public List<FilmInCategory> listFilmsWithNoActor() {
+    public List<FilmList> listFilmsWithNoActor() {
         return jdbcClient().sql(SQL_LIST_FILMS_WITH_NO_ACTOR)
-                .query(FILM_IN_CATEGORY_ROW_MAPPER)
+                .query(ROW_MAPPER)
                 .list();
     }
 
@@ -287,11 +265,9 @@ public class FilmListRepositoryImpl
     }
 
     @Override
-    public List<FilmTitle> listFilmsMiscountingActors() {
+    public List<FilmList> listFilmsMiscountingActors() {
         return jdbcClient().sql(SQL_LIST_FILMS_MISCOUNTING_ACTORS)
-                .query((rs, rowNum) -> new FilmTitle(
-                        rs.getObject(FilmList.COLUMN_NAME_FID, Integer.class),
-                        rs.getString(FilmList.COLUMN_NAME_TITLE)))
+                .query(ROW_MAPPER)
                 .list();
     }
 

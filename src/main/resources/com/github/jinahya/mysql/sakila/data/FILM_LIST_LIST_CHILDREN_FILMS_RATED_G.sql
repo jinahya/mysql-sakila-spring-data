@@ -1,6 +1,6 @@
-SELECT FID, title, length
-FROM film_list
-WHERE category = 'Children'
-  AND rating = 'G'
-ORDER BY title, FID
+SELECT l.*
+FROM film_list l
+WHERE l.category = 'Children'
+  AND l.rating = 'G'
+ORDER BY l.title, l.FID
 ;

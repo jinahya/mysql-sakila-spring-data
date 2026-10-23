@@ -1,7 +1,9 @@
 package com.github.jinahya.mysql.sakila.data;
 
+import com.github.jinahya.mysql.sakila.persistence.City;
 import com.github.jinahya.mysql.sakila.persistence.StaffList;
 import com.github.jinahya.mysql.sakila.persistence.StaffList_;
+import jakarta.persistence.Tuple;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -32,9 +34,15 @@ import java.util.List;
  * {@link List}. An Intermediate exercise that lists rows takes a {@link Pageable}, the page and the sort, and returns a
  * {@link Page}, so the order the exercise asks for is the caller's {@code PageRequest}; each method's javadoc says
  * which sort that is. An exercise that shows columns of other entities, or counts of two tables, cannot be a
- * {@link Specification}, which only filters; such a method, {@code select...}, declares its JPQL with {@link Query} and
- * returns a projection, one of the interfaces declared here, which Spring Data backs with the selected columns, each
- * aliased with the name of the getter it feeds. Those aliases are what the {@code Pageable} sorts by.
+ * {@link Specification}, which only filters; such a method, {@code select...}, declares its JPQL with {@link Query}.
+ * Such a query selects entities, not their columns: a row of the view is selected whole
+ * ({@code SELECT l AS staffList}), and so is the city of the store it names, beside it; what is computed, a count,
+ * is a column of its own. A result that is a single entity is that entity; any other comes back as a
+ * {@link jakarta.persistence.Tuple}, each element read by its alias, with its type
+ * ({@code tuple.get("staffList", StaffList.class)}, {@code tuple.get("staffs", Long.class)}). The {@code Pageable}
+ * sorts a computed column by its alias, and an attribute of a selected entity by its path from the query's
+ * identification variable ({@code Sort.by("l.id")}); each method's javadoc names its aliases and identification
+ * variables. A query whose select has no entity, only counts, stays as it is.
  *
  * @see StaffList
  * @see StaffList_
@@ -44,63 +52,6 @@ public interface StaffListRepository
         extends _Repository<StaffList, Integer> {
 
     // ----------------------------------------------------------------------------------------------------- exercises
-
-    /**
-     * How many rows the view has, and how many staff members the {@code staff} table has: a projection of
-     * {@link #selectRowCounts()}.
-     */
-    interface RowCounts {
-
-        /**
-         * Returns the number of rows of the {@code staff_list} view.
-         *
-         * @return the number of rows of the view.
-         */
-        long getStaffLists();
-
-        /**
-         * Returns the number of rows of the {@code staff} table.
-         *
-         * @return the number of staff members.
-         */
-        long getStaffs();
-    }
-
-    /**
-     * A row of the view, by id and name, with the city the staff member lives in and the city of the store the staff
-     * member works at: a projection of {@link #selectCities(Pageable)}, sortable by {@code id}, {@code name},
-     * {@code livesIn} and {@code worksIn}.
-     */
-    interface StaffCities {
-
-        /**
-         * Returns the id of the staff member.
-         *
-         * @return the id of the staff member.
-         */
-        Integer getId();
-
-        /**
-         * Returns the name of the staff member, the first name and the last name as one.
-         *
-         * @return the name of the staff member.
-         */
-        String getName();
-
-        /**
-         * Returns the city of the staff member's own address.
-         *
-         * @return the city the staff member lives in.
-         */
-        String getLivesIn();
-
-        /**
-         * Returns the city of the address of the store the staff member works at.
-         *
-         * @return the city the staff member works in.
-         */
-        String getWorksIn();
-    }
 
     /**
      * Finds every row of the view ({@code SAKILA-STAFF_LIST-B-01}, the book's pick, which orders by
@@ -120,33 +71,35 @@ public interface StaffListRepository
      * <p>
      * The view uses inner joins, so a staff member whose address chain is broken would be missing from it; the two
      * counts should be equal. The second count is a subquery in the select, on another entity, which a
-     * {@link Specification} of this one cannot select; hence a {@link Query} and a projection. The select aggregates
+     * {@link Specification} of this one cannot select; hence a {@link Query} and a tuple. The select aggregates
      * every row of the view into one, so it always has exactly one row, even when the view is empty, and takes no
      * {@link Pageable}.
      *
-     * @return the two counts.
+     * @return the two counts, as a tuple of {@code staffLists} and {@code staffs} ({@link Long}).
      */
     @Query("""
             SELECT COUNT(v) AS staffLists, (SELECT COUNT(s) FROM Staff s) AS staffs
             FROM StaffList v""")
-    RowCounts selectRowCounts();
+    Tuple selectRowCounts();
 
     /**
-     * Selects each row of the view, by id and name, with the city the staff member lives in, the view's own
-     * {@link StaffList_#CITY}, and the city of the store the staff member works at ({@code SAKILA-STAFF_LIST-I-02}, the
-     * book's pick, which orders by {@code id}).
+     * Selects each row of the view, which carries the city the staff member lives in, the view's own
+     * {@link StaffList_#CITY}, with the city of the store the staff member works at ({@code SAKILA-STAFF_LIST-I-02},
+     * the book's pick, which orders by {@code l.id}).
      * <p>
      * The view names the store by its id only, {@link StaffList_#SID}, which is no association, so the store is a
-     * second root, joined by that id in the {@code WHERE}, and its address and city are joined from it. The columns
-     * come from two roots, which a {@link Specification} of this one cannot select; hence a {@link Query} and a
-     * projection. The count query counts the rows the same join keeps.
+     * second root, joined by that id in the {@code WHERE}, and its address and city are joined from it. The row and
+     * the store's city are selected whole; they come from two roots, which a {@link Specification} of this one cannot
+     * select; hence a {@link Query} and a tuple. The count query counts the rows the same join keeps.
      *
-     * @param pageable the page to return, and its sort, by {@code id}, {@code name}, {@code livesIn} or
-     *                 {@code worksIn}; must not be {@code null}.
-     * @return a page of the rows of the view, with the two cities.
+     * @param pageable the page to return, and its sort, by an attribute of the row through {@code l} ({@code l.id},
+     *                 {@code l.name}, {@code l.city}, ...) or of the store's city through {@code ci}
+     *                 ({@code ci.city}, ...); must not be {@code null}.
+     * @return a page of the rows of the view, with the cities of the stores, each a tuple of {@code staffList}
+     *         ({@link StaffList}) and {@code city} ({@link City}).
      */
     @Query(value = """
-            SELECT l.id AS id, l.name AS name, l.city AS livesIn, ci.city AS worksIn
+            SELECT l AS staffList, ci AS city
             FROM StaffList l, Store st
             JOIN st.address a
             JOIN a.city ci
@@ -157,5 +110,5 @@ public interface StaffListRepository
                    JOIN st.address a
                    JOIN a.city ci
                    WHERE st.storeId = l.sid""")
-    Page<StaffCities> selectCities(Pageable pageable);
+    Page<Tuple> selectCities(Pageable pageable);
 }

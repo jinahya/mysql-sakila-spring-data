@@ -2,6 +2,7 @@ package com.github.jinahya.mysql.sakila.data;
 
 import com.github.jinahya.mysql.sakila.persistence.CustomerList;
 import com.github.jinahya.mysql.sakila.persistence.CustomerList_;
+import jakarta.persistence.Tuple;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -36,15 +37,16 @@ import java.util.stream.Stream;
  * the order the exercise asks for, and its {@code LIMIT}, are the caller's {@code PageRequest}; each method's javadoc
  * says which sort that is. An exercise that shows columns, grouped and counted, or counts of two tables, cannot be a
  * {@link Specification}, which only filters; such a method, {@code select...}, declares its JPQL with {@link Query},
- * with a count query of its own where it is paged, since Spring Data cannot derive one from a grouped select, and
- * returns a projection, one of the interfaces declared here, which Spring Data backs with the selected columns, each
- * aliased with the name of the getter it feeds. Those aliases are what the {@code Pageable} sorts by; an interface
- * rather than a record, because Spring Data rewrites a record projection into a constructor expression, which drops
- * the aliases, and the sort with them.
+ * with a count query of its own where it is paged, since Spring Data cannot derive one from a grouped select. A query
+ * selects entities, not their columns, wherever it groups by an entity; every query here groups by a value of the
+ * view, not by an entity (the {@code SID}, the notes, a city and its country), or counts only, so it still selects
+ * those values. Such a result comes back as a {@link jakarta.persistence.Tuple}, each element aliased in the select
+ * and read by that alias, with its type ({@code tuple.get("customers", Long.class)}); the aliases are also what the
+ * {@code Pageable} sorts by ({@code Sort.by(DESC, "customers")}). Each method's javadoc names its aliases.
  * <p>
  * An exercise only native SQL can answer, here a top three of each store, which takes a window function JPQL does
- * not have, is a {@link NativeQuery} of the exercise's own SQL, with its order and its limit, returning a list of a
- * projection whose getters name the select's aliases.
+ * not have, is a {@link NativeQuery} of the exercise's own SQL, with its order and its limit, returning a list of
+ * tuples read by the select's aliases.
  *
  * @see CustomerList
  * @see CustomerList_
@@ -54,125 +56,6 @@ public interface CustomerListRepository
         extends _Repository<CustomerList, Integer> {
 
     // ----------------------------------------------------------------------------------------------------- exercises
-
-    /**
-     * A store's id, as the view's {@code SID} says it, and how many customers the view puts in that store: a
-     * projection of {@link #selectCustomerCountsBySid(Pageable)}, sortable by {@code sid} and {@code customers}.
-     */
-    interface SidCustomerCount {
-
-        /**
-         * Returns the id of the store.
-         *
-         * @return the id of the store.
-         */
-        Integer getSid();
-
-        /**
-         * Returns the number of customers of the store.
-         *
-         * @return the number of customers.
-         */
-        long getCustomers();
-    }
-
-    /**
-     * How many rows the view has, and how many customers the {@code customer} table has: a projection of
-     * {@link #selectRowCounts(Pageable)}, sortable by {@code customerLists} and {@code customers}.
-     */
-    interface RowCounts {
-
-        /**
-         * Returns the number of rows of the {@code customer_list} view.
-         *
-         * @return the number of rows of the view.
-         */
-        long getCustomerLists();
-
-        /**
-         * Returns the number of rows of the {@code customer} table.
-         *
-         * @return the number of customers.
-         */
-        long getCustomers();
-    }
-
-    /**
-     * A value of the view's {@code notes}, and how many customers have it: a row of {@link #selectNotesCounts()}.
-     */
-    interface NotesCustomerCount {
-
-        /**
-         * Returns the value of the {@code notes} column: {@code active}, or an empty string.
-         *
-         * @return the notes.
-         */
-        String getNotes();
-
-        /**
-         * Returns the number of customers whose row has the notes.
-         *
-         * @return the number of customers.
-         */
-        long getCustomers();
-    }
-
-    /**
-     * A city, its country, and how many customers the view puts there: a projection of
-     * {@link #selectCitiesWithMoreCustomersThan(long, Pageable)}, sortable by {@code city}, {@code country} and
-     * {@code customers}.
-     */
-    interface CityCountryCustomerCount {
-
-        /**
-         * Returns the name of the city.
-         *
-         * @return the name of the city.
-         */
-        String getCity();
-
-        /**
-         * Returns the name of the country of the city.
-         *
-         * @return the name of the country.
-         */
-        String getCountry();
-
-        /**
-         * Returns the number of customers in the city.
-         *
-         * @return the number of customers.
-         */
-        long getCustomers();
-    }
-
-    /**
-     * A store's id, as the view's {@code SID} says it, a country, and how many customers of the store live there: a row
-     * of {@link #selectTopThreeCountriesOfEachStore()}.
-     */
-    interface SidCountryCustomerCount {
-
-        /**
-         * Returns the id of the store.
-         *
-         * @return the id of the store.
-         */
-        Integer getSid();
-
-        /**
-         * Returns the name of the country.
-         *
-         * @return the name of the country.
-         */
-        String getCountry();
-
-        /**
-         * Returns the number of customers of the store in the country.
-         *
-         * @return the number of customers.
-         */
-        long getCustomers();
-    }
 
     /**
      * Finds the rows whose value of {@link CustomerList_#COUNTRY} attribute is equal to the specified value, ordered
@@ -204,7 +87,8 @@ public interface CustomerListRepository
      * the {@code customer} table itself, by store.
      *
      * @param pageable the page to return, and its sort, by {@code sid} or {@code customers}; must not be {@code null}.
-     * @return a page of the store ids with their numbers of customers.
+     * @return a page of the store ids with their numbers of customers, each a tuple of {@code sid} ({@link Integer})
+     *         and {@code customers} ({@link Long}).
      */
     @Query(value = """
             SELECT v.sid AS sid, COUNT(v) AS customers
@@ -213,7 +97,7 @@ public interface CustomerListRepository
            countQuery = """
                    SELECT COUNT(DISTINCT v.sid)
                    FROM CustomerList v""")
-    Page<SidCustomerCount> selectCustomerCountsBySid(Pageable pageable);
+    Page<Tuple> selectCustomerCountsBySid(Pageable pageable);
 
     /**
      * Selects each value of the view's {@link CustomerList_#NOTES} with the number of customers who have it
@@ -222,14 +106,15 @@ public interface CustomerListRepository
      * The view writes {@code active} for an active customer and an empty string for an inactive one, so the rows are
      * grouped by that and counted, in the order of the notes, written in the query; the empty string sorts first.
      *
-     * @return a list of the values of the notes, with their numbers of customers, by the notes.
+     * @return a list of the values of the notes, with their numbers of customers, by the notes, each a tuple of
+     *         {@code notes} ({@link String}) and {@code customers} ({@link Long}).
      */
     @Query("""
             SELECT v.notes AS notes, COUNT(v) AS customers
             FROM CustomerList v
             GROUP BY v.notes
             ORDER BY v.notes""")
-    List<NotesCustomerCount> selectNotesCounts();
+    List<Tuple> selectNotesCounts();
 
     /**
      * Selects how many rows the view has, next to how many customers the {@code customer} table has
@@ -238,12 +123,13 @@ public interface CustomerListRepository
      * <p>
      * The view uses inner joins, so a customer whose address chain is broken would be missing from it; the two counts
      * should be equal. The second count is a subquery in the select, on another entity, which a {@link Specification}
-     * of this one cannot select; hence a {@link Query} and a projection. The select aggregates every row of the view
+     * of this one cannot select; hence a {@link Query} and a tuple. The select aggregates every row of the view
      * into one, so it always has exactly one row, even when the view is empty; the count query says so, by counting
      * the one row of the same aggregate.
      *
      * @param pageable the page to return, and its sort; must not be {@code null}.
-     * @return a page of the one row of the two counts.
+     * @return a page of the one row of the two counts, a tuple of {@code customerLists} and {@code customers}
+     *         ({@link Long}).
      */
     @Query(value = """
             SELECT COUNT(v) AS customerLists, (SELECT COUNT(c) FROM Customer c) AS customers
@@ -252,7 +138,7 @@ public interface CustomerListRepository
                    SELECT COUNT(*)
                    FROM (SELECT COUNT(v) AS customerLists
                          FROM CustomerList v) t""")
-    Page<RowCounts> selectRowCounts(Pageable pageable);
+    Page<Tuple> selectRowCounts(Pageable pageable);
 
     /**
      * Selects the cities, with their countries, where the view puts more than the specified number of customers
@@ -266,7 +152,8 @@ public interface CustomerListRepository
      * @param customers the number of customers a city has to have more than.
      * @param pageable  the page to return, and its sort, by {@code city}, {@code country} or {@code customers}; must
      *                  not be {@code null}.
-     * @return a page of the cities with more than {@code customers} customers, with their countries and counts.
+     * @return a page of the cities with more than {@code customers} customers, with their countries and counts, each
+     *         a tuple of {@code city} and {@code country} ({@link String}), and {@code customers} ({@link Long}).
      */
     @Query(value = """
             SELECT v.city AS city, v.country AS country, COUNT(v) AS customers
@@ -282,7 +169,7 @@ public interface CustomerListRepository
                      AND (SELECT COUNT(v3)
                           FROM CustomerList v3
                           WHERE v3.city = v.city AND v3.country = v.country) > :customers""")
-    Page<CityCountryCustomerCount> selectCitiesWithMoreCustomersThan(long customers, Pageable pageable);
+    Page<Tuple> selectCitiesWithMoreCustomersThan(long customers, Pageable pageable);
 
     /**
      * Selects the three countries with the most customers of each store ({@code SAKILA-CUSTOMER_LIST-A-01},
@@ -291,10 +178,11 @@ public interface CustomerListRepository
      * <p>
      * The rows are grouped by store and country and counted, and the countries numbered within their store by
      * {@code ROW_NUMBER()}, the most customers first, ties broken by the name; the first three of each store are kept.
-     * JPQL has no window function, so this is the exercise's own SQL, with the aliases named after the getters of
-     * {@link SidCountryCustomerCount}.
+     * JPQL has no window function, so this is the exercise's own SQL, with each column aliased.
      *
-     * @return a list of the three countries with the most customers of each store, store by store.
+     * @return a list of the three countries with the most customers of each store, store by store, each a tuple of
+     *         {@code sid} (a number, as the JDBC driver types it), {@code country} ({@link String}) and
+     *         {@code customers} ({@link Long}).
      */
     @NativeQuery("""
             SELECT SID AS sid, country, customers
@@ -304,5 +192,5 @@ public interface CustomerListRepository
                   GROUP BY SID, country) t
             WHERE n <= 3
             ORDER BY SID, n""")
-    List<SidCountryCustomerCount> selectTopThreeCountriesOfEachStore();
+    List<Tuple> selectTopThreeCountriesOfEachStore();
 }

@@ -1,8 +1,5 @@
 package com.github.jinahya.mysql.sakila.data;
 
-import com.github.jinahya.mysql.sakila.data.FilmRepository.FilmRentalCount;
-import com.github.jinahya.mysql.sakila.data.FilmRepository.RatingAverageRentalRate;
-import com.github.jinahya.mysql.sakila.data.FilmRepository.RatingCount;
 import com.github.jinahya.mysql.sakila.persistence.Film;
 import com.github.jinahya.mysql.sakila.persistence.Film_;
 import com.github.jinahya.mysql.sakila.persistence.Inventory;
@@ -168,7 +165,7 @@ class FilmRepository_SpringBootIT
         void __() {
             final var list = repositoryInstance().selectRatingCounts();
             assertThat(list)
-                    .extracting(RatingCount::getRating, RatingCount::getFilms)
+                    .extracting(column("rating", Film.Rating.class), column("films", Long.class))
                     .containsExactly(
                             tuple(Film.Rating.G, 178L),
                             tuple(Film.Rating.PG, 194L),
@@ -187,10 +184,10 @@ class FilmRepository_SpringBootIT
             final var list = repositoryInstance().selectRatingCounts();
             assertThat(list)
                     .isNotEmpty()
-                    .isSortedAccordingTo(Comparator.comparing(RatingCount::getRating))
+                    .isSortedAccordingTo(Comparator.comparing(column("rating", Film.Rating.class)))
                     .allSatisfy(c -> {
-                        assertThat(c.getFilms()).as("films rated %s", c.getRating())
-                                .isEqualTo(countByRating(c.getRating()));
+                        assertThat(c.get("films", Long.class)).as("films rated %s", c.get("rating", Film.Rating.class))
+                                .isEqualTo(countByRating(c.get("rating", Film.Rating.class)));
                     });
         }
 
@@ -205,7 +202,7 @@ class FilmRepository_SpringBootIT
             assumeThat(film.getRating()).isNotNull();
             final var list = repositoryInstance().selectRatingCounts();
             assertThat(list)
-                    .extracting(RatingCount::getRating)
+                    .extracting(column("rating", Film.Rating.class))
                     .contains(film.getRating());
         }
     }
@@ -284,7 +281,7 @@ class FilmRepository_SpringBootIT
         void __Transactional() {
             try (var stream = repositoryInstance().selectAverageRentalRates()) {
                 assertThat(stream.toList())
-                        .extracting(RatingAverageRentalRate::getRating, RatingAverageRentalRate::getAverageRentalRate)
+                        .extracting(column("rating", Film.Rating.class), column("averageRentalRate", Double.class))
                         .containsExactly(
                                 tuple(Film.Rating.G, 2.89d),
                                 tuple(Film.Rating.PG, 3.05d),
@@ -351,7 +348,7 @@ class FilmRepository_SpringBootIT
     class SelectRentalCounts_Test {
 
         private static final Sort BY_RENTALS_DESC_THEN_FILM_ID =
-                Sort.by(Sort.Direction.DESC, "rentals").and(Sort.by("filmId"));
+                Sort.by(Sort.Direction.DESC, "rentals").and(Sort.by("f.filmId"));
 
         /**
          * Asserts that the first five, the most rented first and then by id as the exercise sorts, are the exercise's
@@ -362,7 +359,8 @@ class FilmRepository_SpringBootIT
             final var page = repositoryInstance().selectRentalCounts(
                     PageRequest.of(0, 5, BY_RENTALS_DESC_THEN_FILM_ID));
             assertThat(page.getContent())
-                    .extracting(FilmRentalCount::getFilmId, FilmRentalCount::getTitle, FilmRentalCount::getRentals)
+                    .extracting(column("film", Film.class, Film::getFilmId), column("film", Film.class, Film::getTitle),
+                                column("rentals", Long.class))
                     .containsExactly(
                             tuple(103, "BUCKET BROTHERHOOD", 34L),
                             tuple(738, "ROCKETEER MOTHER", 33L),
@@ -374,7 +372,7 @@ class FilmRepository_SpringBootIT
 
         /**
          * Asserts that a page of the given size, the most rented first as the exercise sorts, is ordered so, that
-         * each title is the film's, and that each count is the number of rentals of the film's copies, counted
+         * each film is the one of its id, and that each count is the number of rentals of the film's copies, counted
          * through {@link RentalRepository}.
          *
          * @param size the size of the page.
@@ -387,14 +385,15 @@ class FilmRepository_SpringBootIT
             assertPage(page);
             assertThat(page.getContent())
                     .isNotEmpty()
-                    .isSortedAccordingTo(Comparator.comparingLong(FilmRentalCount::getRentals).reversed()
-                                                 .thenComparing(FilmRentalCount::getFilmId))
+                    .isSortedAccordingTo(Comparator.comparing(column("rentals", Long.class)).reversed()
+                                                 .thenComparing(column("film", Film.class, Film::getFilmId)))
                     .allSatisfy(c -> {
-                        final var film = repositoryInstance().findById(c.getFilmId()).orElseThrow();
-                        assertThat(film.getTitle()).isEqualTo(c.getTitle());
-                        assertThat(c.getRentals()).as("rentals of film %d", c.getFilmId())
+                        final var film = c.get("film", Film.class);
+                        assertThat(repositoryInstance().findById(film.getFilmId())).hasValue(film);
+                        assertThat(c.get("rentals", Long.class))
+                                .as("rentals of film %d", film.getFilmId())
                                 .isPositive()
-                                .isEqualTo(countRentalsOf(c.getFilmId()));
+                                .isEqualTo(countRentalsOf(film.getFilmId()));
                     });
         }
     }
@@ -415,7 +414,7 @@ class FilmRepository_SpringBootIT
             final var page = repositoryInstance().selectRatingCountsOfLongerThanRatingAverage(
                     Pageable.unpaged(BY_RATING));
             assertThat(page.getContent())
-                    .extracting(RatingCount::getRating, RatingCount::getFilms)
+                    .extracting(column("rating", Film.Rating.class), column("films", Long.class))
                     .containsExactly(
                             tuple(Film.Rating.G, 83L),
                             tuple(Film.Rating.PG, 99L),
@@ -443,15 +442,16 @@ class FilmRepository_SpringBootIT
             final var walked = new ArrayList<Film.Rating>();
             while (true) {
                 page.forEach(c -> {
-                    walked.add(c.getRating());
-                    assertThat(c.getFilms()).isPositive().isLessThan(countByRating(c.getRating()));
+                    walked.add(c.get("rating", Film.Rating.class));
+                    assertThat(c.get("films", Long.class)).isPositive()
+                            .isLessThan(countByRating(c.get("rating", Film.Rating.class)));
                 });
                 if (!page.hasNext()) {
                     break;
                 }
                 page = repositoryInstance().selectRatingCountsOfLongerThanRatingAverage(page.nextPageable());
             }
-            assertThat(walked).containsExactlyElementsOf(all.map(RatingCount::getRating).toList());
+            assertThat(walked).containsExactlyElementsOf(all.map(column("rating", Film.Rating.class)).toList());
         }
     }
 

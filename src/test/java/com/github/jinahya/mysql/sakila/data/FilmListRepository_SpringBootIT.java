@@ -254,13 +254,13 @@ class FilmListRepository_SpringBootIT {
             final var list = repository.listActorsOfFilmOne();
             list.forEach(r -> log.debug("row: {}", r));
             assertThat(list).singleElement().satisfies(r -> {
-                assertThat(r.fid()).isEqualTo(1);
-                assertThat(r.title()).isEqualTo("ACADEMY DINOSAUR");
-                assertThat(namesOf(r.actors())).containsExactlyInAnyOrder(
+                assertThat(r.getFid()).isEqualTo(1);
+                assertThat(r.getTitle()).isEqualTo("ACADEMY DINOSAUR");
+                assertThat(namesOf(r.getActors())).containsExactlyInAnyOrder(
                         "PENELOPE GUINESS", "CHRISTIAN GABLE", "LUCILLE TRACY", "SANDRA PECK", "JOHNNY CAGE",
                         "MENA TEMPLE", "WARREN NOLTE", "OPRAH KILMER", "ROCK DUKAKIS", "MARY KEITEL");
-                final var film = filmRepository.findById(r.fid()).orElseThrow();
-                assertThat(namesOf(r.actors())).hasSize((int) countActorsOf(film));
+                final var film = filmRepository.findById(r.getFid()).orElseThrow();
+                assertThat(namesOf(r.getActors())).hasSize((int) countActorsOf(film));
             });
         }
     }
@@ -272,15 +272,15 @@ class FilmListRepository_SpringBootIT {
     class ListChildrenFilmsRatedG_Test {
 
         /**
-         * Asserts that the films are the exercise's ten, with their lengths.
+         * Asserts that the films are the exercise's ten, with their lengths, and that every row is of the
+         * {@code Children} category and rated {@code G}.
          */
         @Test
         void __() {
             final var list = repository.listChildrenFilmsRatedG();
             list.forEach(r -> log.debug("row: {}", r));
             assertThat(list)
-                    .extracting(FilmListRepository.FilmLength::fid, FilmListRepository.FilmLength::title,
-                                FilmListRepository.FilmLength::length)
+                    .extracting(FilmList::getFid, FilmList::getTitle, FilmList::getLength)
                     .containsExactly(
                             tuple(238, "DOCTOR GRAIL", 57),
                             tuple(280, "EMPIRE MALKOVICH", 177),
@@ -292,6 +292,9 @@ class FilmListRepository_SpringBootIT {
                             tuple(853, "STRANGER STRANGERS", 139),
                             tuple(873, "SWEETHEARTS SUSPECTS", 108),
                             tuple(959, "WARLOCK WEREWOLF", 83));
+            assertThat(list)
+                    .extracting(FilmList::getCategory, FilmList::getRating)
+                    .containsOnly(tuple("Children", Film.Rating.G));
         }
 
         /**
@@ -301,9 +304,8 @@ class FilmListRepository_SpringBootIT {
         @Test
         void __Sorted() {
             assertThat(repository.listChildrenFilmsRatedG())
-                    .isSortedAccordingTo(Comparator.comparing(FilmListRepository.FilmLength::title,
-                                                              String.CASE_INSENSITIVE_ORDER)
-                                                 .thenComparing(FilmListRepository.FilmLength::fid));
+                    .isSortedAccordingTo(Comparator.comparing(FilmList::getTitle, String.CASE_INSENSITIVE_ORDER)
+                                                 .thenComparing(FilmList::getFid));
         }
     }
 
@@ -322,14 +324,14 @@ class FilmListRepository_SpringBootIT {
             final var list = repository.listFilmsWithNoActor();
             list.forEach(r -> log.debug("row: {}", r));
             assertThat(list)
-                    .extracting(FilmListRepository.FilmInCategory::fid, FilmListRepository.FilmInCategory::title,
-                                FilmListRepository.FilmInCategory::category)
+                    .extracting(FilmList::getFid, FilmList::getTitle, FilmList::getCategory)
                     .containsExactly(
                             tuple(257, "DRUMLINE CYCLONE", "Travel"),
                             tuple(323, "FLIGHT LIES", "Sports"),
                             tuple(803, "SLACKER LIAISONS", "Drama"));
+            assertThat(list).extracting(FilmList::getActors).containsOnlyNulls();
             for (final var r : list) {
-                final var film = filmRepository.findById(r.fid()).orElseThrow();
+                final var film = filmRepository.findById(r.getFid()).orElseThrow();
                 assertThat(countActorsOf(film)).isZero();
             }
         }

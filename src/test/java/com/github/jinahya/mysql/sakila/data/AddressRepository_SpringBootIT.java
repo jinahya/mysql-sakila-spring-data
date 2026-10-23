@@ -1,8 +1,5 @@
 package com.github.jinahya.mysql.sakila.data;
 
-import com.github.jinahya.mysql.sakila.data.AddressRepository.AddressPair;
-import com.github.jinahya.mysql.sakila.data.AddressRepository.CountryDistrictCount;
-import com.github.jinahya.mysql.sakila.data.AddressRepository.DistrictCountryCount;
 import com.github.jinahya.mysql.sakila.persistence.Address;
 import com.github.jinahya.mysql.sakila.persistence.Address_;
 import org.junit.jupiter.api.BeforeAll;
@@ -296,7 +293,7 @@ class AddressRepository_SpringBootIT
             final var page = repositoryInstance().selectDistrictsInMoreCountriesThan(
                     1L, PageRequest.of(0, 10, BY_COUNTRIES_DESC_THEN_DISTRICT));
             assertThat(page.getContent())
-                    .extracting(DistrictCountryCount::getDistrict, DistrictCountryCount::getCountries)
+                    .extracting(column("district", String.class), column("countries", Long.class))
                     .containsExactly(
                             tuple("Central", 3L),
                             tuple("al-Sharqiya", 2L),
@@ -323,12 +320,12 @@ class AddressRepository_SpringBootIT
             assertThat(page.getContent())
                     .isNotEmpty()
                     .allSatisfy(d -> {
-                        assertThat(d.getCountries()).isGreaterThan(countries);
-                        assertThat(d.getDistrict()).isNotEmpty();
+                        assertThat(d.get("countries", Long.class)).isGreaterThan(countries);
+                        assertThat(d.get("district", String.class)).isNotEmpty();
                     })
                     .isSortedAccordingTo(
-                            Comparator.comparingLong(DistrictCountryCount::getCountries).reversed()
-                                    .thenComparing(DistrictCountryCount::getDistrict, String.CASE_INSENSITIVE_ORDER));
+                            Comparator.comparing(column("countries", Long.class)).reversed()
+                                    .thenComparing(column("district", String.class), String.CASE_INSENSITIVE_ORDER));
         }
     }
 
@@ -372,7 +369,7 @@ class AddressRepository_SpringBootIT
     @Nested
     class SelectPairsSharingPostalCode_Test {
 
-        private static final Sort BY_ADDRESS_ID_THEN_OTHER = Sort.by("addressId", "otherAddressId");
+        private static final Sort BY_ADDRESS_ID_THEN_OTHER = Sort.by("a1.addressId", "a2.addressId");
 
         /**
          * Asserts that the pairs are the three of the exercise's expected output, by the two ids.
@@ -382,8 +379,11 @@ class AddressRepository_SpringBootIT
             final var page = repositoryInstance().selectPairsSharingPostalCode(
                     PageRequest.of(0, 10, BY_ADDRESS_ID_THEN_OTHER));
             assertThat(page.getContent())
-                    .extracting(AddressPair::getAddressId, AddressPair::getAddress, AddressPair::getOtherAddressId,
-                                AddressPair::getOtherAddress, AddressPair::getPostalCode)
+                    .extracting(column("address", Address.class, Address::getAddressId),
+                                column("address", Address.class, Address::getAddress),
+                                column("otherAddress", Address.class, Address::getAddressId),
+                                column("otherAddress", Address.class, Address::getAddress),
+                                column("address", Address.class, Address::getPostalCode))
                     .containsExactly(
                             tuple(221, "866 Shivapuri Manor", 595, "1074 Sanaa Parkway", "22474"),
                             tuple(304, "1635 Kuwana Boulevard", 603, "1103 Quilmes Boulevard", "52137"),
@@ -393,26 +393,28 @@ class AddressRepository_SpringBootIT
         }
 
         /**
-         * Asserts that each pair is of two addresses which {@link AddressRepository#findById(Object)} finds with that
-         * postal code, the lower id first, and that a page of one walks the pairs in the same order.
+         * Asserts that each pair is of two addresses of the same postal code, the lower id first, and that a page of
+         * one walks the pairs in the same order.
          */
         @Test
         void __() {
-            final var all = repositoryInstance().selectPairsSharingPostalCode(Pageable.unpaged(BY_ADDRESS_ID_THEN_OTHER))
+            final var all = repositoryInstance()
+                    .selectPairsSharingPostalCode(Pageable.unpaged(BY_ADDRESS_ID_THEN_OTHER))
                     .getContent();
             assertThat(all).isNotEmpty().allSatisfy(p -> {
-                assertThat(p.getAddressId()).isLessThan(p.getOtherAddressId());
-                assertThat(repositoryInstance().findById(p.getAddressId()).orElseThrow().getPostalCode())
-                        .isEqualTo(p.getPostalCode());
-                assertThat(repositoryInstance().findById(p.getOtherAddressId()).orElseThrow().getPostalCode())
-                        .isEqualTo(p.getPostalCode());
+                final var address = p.get("address", Address.class);
+                final var otherAddress = p.get("otherAddress", Address.class);
+                assertThat(address.getAddressId()).isLessThan(otherAddress.getAddressId());
+                assertThat(otherAddress.getPostalCode()).isEqualTo(address.getPostalCode());
             });
-            var page = repositoryInstance().selectPairsSharingPostalCode(PageRequest.of(0, 1, BY_ADDRESS_ID_THEN_OTHER));
+            var page = repositoryInstance().selectPairsSharingPostalCode(
+                    PageRequest.of(0, 1, BY_ADDRESS_ID_THEN_OTHER));
             assertThat(page.getTotalElements()).isEqualTo(all.size());
             for (final var expected : all) {
                 assertThat(page.getContent()).singleElement().satisfies(p -> {
-                    assertThat(p.getAddressId()).isEqualTo(expected.getAddressId());
-                    assertThat(p.getOtherAddressId()).isEqualTo(expected.getOtherAddressId());
+                    assertThat(p.get("address", Address.class)).isEqualTo(expected.get("address", Address.class));
+                    assertThat(p.get("otherAddress", Address.class))
+                            .isEqualTo(expected.get("otherAddress", Address.class));
                 });
                 if (page.hasNext()) {
                     page = repositoryInstance().selectPairsSharingPostalCode(page.nextPageable());
@@ -435,8 +437,8 @@ class AddressRepository_SpringBootIT
         void __Exercise() {
             final var list = repositoryInstance().selectTopThreeDistrictsOfIndiaChinaAndUnitedStates();
             assertThat(list)
-                    .extracting(CountryDistrictCount::getCountry, CountryDistrictCount::getDistrict,
-                                CountryDistrictCount::getAddresses)
+                    .extracting(column("country", String.class), column("district", String.class),
+                                longColumn("addresses"))
                     .containsExactly(
                             tuple("China", "Shandong", 9L),
                             tuple("China", "Hubei", 5L),

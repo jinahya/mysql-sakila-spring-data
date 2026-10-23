@@ -1,12 +1,9 @@
 package com.github.jinahya.mysql.sakila.data;
 
-import com.github.jinahya.mysql.sakila.data.RentalRepository.DayRentalCount;
-import com.github.jinahya.mysql.sakila.data.RentalRepository.MonthRentalCount;
-import com.github.jinahya.mysql.sakila.data.RentalRepository.RentalWait;
-import com.github.jinahya.mysql.sakila.data.RentalRepository.StoreRentalCount;
 import com.github.jinahya.mysql.sakila.persistence.Inventory_;
 import com.github.jinahya.mysql.sakila.persistence.Rental;
 import com.github.jinahya.mysql.sakila.persistence.Rental_;
+import com.github.jinahya.mysql.sakila.persistence.Store;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -187,7 +184,8 @@ class RentalRepository_SpringBootIT
         void __() {
             final var list = repositoryInstance().selectMonthlyCounts();
             assertThat(list)
-                    .extracting(c -> "%d-%02d".formatted(c.getYear(), c.getMonth()), MonthRentalCount::getRentals)
+                    .extracting(c -> "%d-%02d".formatted(c.get("year", Integer.class), c.get("month", Integer.class)),
+                                column("rentals", Long.class))
                     .containsExactly(tuple("2005-05", 1156L),
                                      tuple("2005-06", 2311L),
                                      tuple("2005-07", 6709L),
@@ -204,14 +202,16 @@ class RentalRepository_SpringBootIT
         void __Ordered() {
             final var list = repositoryInstance().selectMonthlyCounts();
             assertThat(list)
-                    .isSortedAccordingTo(Comparator.comparing(MonthRentalCount::getYear)
-                                                 .thenComparing(MonthRentalCount::getMonth))
+                    .isSortedAccordingTo(Comparator.comparing(column("year", Integer.class))
+                                                 .thenComparing(column("month", Integer.class)))
                     .allSatisfy(c -> {
-                        final var start = LocalDateTime.of(c.getYear(), c.getMonth(), 1, 0, 0);
-                        assertThat(c.getRentals()).as("rentals in %d-%02d", c.getYear(), c.getMonth())
+                        final var year = c.get("year", Integer.class);
+                        final var month = c.get("month", Integer.class);
+                        final var start = LocalDateTime.of(year, month, 1, 0, 0);
+                        assertThat(c.get("rentals", Long.class)).as("rentals in %d-%02d", year, month)
                                 .isEqualTo(countRentedBetween(start, start.plusMonths(1L), false));
                     });
-            assertThat(list.stream().mapToLong(MonthRentalCount::getRentals).sum())
+            assertThat(list.stream().mapToLong(c -> c.get("rentals", Long.class)).sum())
                     .isEqualTo(repositoryInstance().count());
         }
 
@@ -227,8 +227,8 @@ class RentalRepository_SpringBootIT
             final var rentalDate = rental.getRentalDate();
             assertThat(list)
                     .anySatisfy(c -> {
-                        assertThat(c.getYear()).isEqualTo(rentalDate.getYear());
-                        assertThat(c.getMonth()).isEqualTo(rentalDate.getMonthValue());
+                        assertThat(c.get("year", Integer.class)).isEqualTo(rentalDate.getYear());
+                        assertThat(c.get("month", Integer.class)).isEqualTo(rentalDate.getMonthValue());
                     });
         }
     }
@@ -239,7 +239,7 @@ class RentalRepository_SpringBootIT
     @Nested
     class SelectNotReturnedCountsByStore_Test {
 
-        private static final Sort BY_STORE_ID = Sort.by("storeId");
+        private static final Sort BY_STORE_ID = Sort.by("st.storeId");
 
         /**
          * Asserts that the stores, by store id as the exercise sorts, are the exercise's recorded output, 92 and 91
@@ -249,28 +249,29 @@ class RentalRepository_SpringBootIT
         void __() {
             final var page = repositoryInstance().selectNotReturnedCountsByStore(PageRequest.of(0, 5, BY_STORE_ID));
             assertThat(page.getContent())
-                    .extracting(StoreRentalCount::getStoreId, StoreRentalCount::getRentals)
+                    .extracting(column("store", Store.class, Store::getStoreId), column("rentals", Long.class))
                     .containsExactly(tuple(1, 92L), tuple(2, 91L));
             assertThat(page.getTotalElements()).isEqualTo(2L);
         }
 
         /**
          * Asserts that the page is ordered by store id, that each count is the number of rentals not returned yet of
-         * the store's copies, counted by a {@link Specification}, and that the counts add up to
-         * {@link RentalRepository#countNotReturned()}.
+         * the store's copies, counted by a {@link Specification} which compares the copy's store with the store
+         * itself, and that the counts add up to {@link RentalRepository#countNotReturned()}.
          */
         @Test
         void __Ordered() {
             final var page = repositoryInstance().selectNotReturnedCountsByStore(Pageable.unpaged(BY_STORE_ID));
             assertThat(page.getContent())
-                    .isSortedAccordingTo(Comparator.comparing(StoreRentalCount::getStoreId))
+                    .isSortedAccordingTo(Comparator.comparing(column("store", Store.class, Store::getStoreId)))
                     .allSatisfy(c -> {
                         final Specification<Rental> specification = (r, q, b) -> b.and(
                                 b.isNull(r.get(Rental_.returnDate)),
-                                b.equal(r.get(Rental_.inventory).get(Inventory_.storeId), c.getStoreId()));
-                        assertThat(c.getRentals()).isEqualTo(repositoryInstance().count(specification));
+                                b.equal(r.get(Rental_.inventory).get(Inventory_.store),
+                                        c.get("store", Store.class)));
+                        assertThat(c.get("rentals", Long.class)).isEqualTo(repositoryInstance().count(specification));
                     });
-            assertThat(page.getContent().stream().mapToLong(StoreRentalCount::getRentals).sum())
+            assertThat(page.getContent().stream().mapToLong(c -> c.get("rentals", Long.class)).sum())
                     .isEqualTo(repositoryInstance().countNotReturned());
         }
 
@@ -281,10 +282,14 @@ class RentalRepository_SpringBootIT
         void __Paged() {
             final var sort = Sort.by(Sort.Direction.DESC, "rentals");
             final var first = repositoryInstance().selectNotReturnedCountsByStore(PageRequest.of(0, 1, sort));
-            assertThat(first.getContent()).extracting(StoreRentalCount::getStoreId).containsExactly(1);
+            assertThat(first.getContent())
+                    .extracting(column("store", Store.class, Store::getStoreId))
+                    .containsExactly(1);
             assertThat(first.getTotalPages()).isEqualTo(2);
             final var second = repositoryInstance().selectNotReturnedCountsByStore(first.nextPageable());
-            assertThat(second.getContent()).extracting(StoreRentalCount::getStoreId).containsExactly(2);
+            assertThat(second.getContent())
+                    .extracting(column("store", Store.class, Store::getStoreId))
+                    .containsExactly(2);
             assertThat(second.hasNext()).isFalse();
         }
     }
@@ -304,7 +309,7 @@ class RentalRepository_SpringBootIT
         void __() {
             final var page = repositoryInstance().selectNotReturnedCountsByDay(PageRequest.of(0, 5, BY_DAY));
             assertThat(page.getContent())
-                    .extracting(DayRentalCount::getDay, DayRentalCount::getRentals)
+                    .extracting(column("day", LocalDate.class), column("rentals", Long.class))
                     .containsExactly(tuple(LocalDate.of(2005, 8, 21), 1L),
                                      tuple(LocalDate.of(2006, 2, 14), 182L));
             assertThat(page.getTotalElements()).isEqualTo(2L);
@@ -319,12 +324,13 @@ class RentalRepository_SpringBootIT
         void __Ordered() {
             final var page = repositoryInstance().selectNotReturnedCountsByDay(Pageable.unpaged(BY_DAY));
             assertThat(page.getContent())
-                    .isSortedAccordingTo(Comparator.comparing(DayRentalCount::getDay))
+                    .isSortedAccordingTo(Comparator.comparing(column("day", LocalDate.class)))
                     .allSatisfy(c -> {
-                        final var start = c.getDay().atStartOfDay();
-                        assertThat(c.getRentals()).isEqualTo(countRentedBetween(start, start.plusDays(1L), true));
+                        final var start = c.get("day", LocalDate.class).atStartOfDay();
+                        assertThat(c.get("rentals", Long.class))
+                                .isEqualTo(countRentedBetween(start, start.plusDays(1L), true));
                     });
-            assertThat(page.getContent().stream().mapToLong(DayRentalCount::getRentals).sum())
+            assertThat(page.getContent().stream().mapToLong(c -> c.get("rentals", Long.class)).sum())
                     .isEqualTo(repositoryInstance().countNotReturned());
         }
 
@@ -335,10 +341,10 @@ class RentalRepository_SpringBootIT
         void __Paged() {
             final var sort = Sort.by(Sort.Direction.DESC, "day");
             final var first = repositoryInstance().selectNotReturnedCountsByDay(PageRequest.of(0, 1, sort));
-            assertThat(first.getContent()).extracting(DayRentalCount::getDay)
+            assertThat(first.getContent()).extracting(column("day", LocalDate.class))
                     .containsExactly(LocalDate.of(2006, 2, 14));
             final var second = repositoryInstance().selectNotReturnedCountsByDay(first.nextPageable());
-            assertThat(second.getContent()).extracting(DayRentalCount::getDay)
+            assertThat(second.getContent()).extracting(column("day", LocalDate.class))
                     .containsExactly(LocalDate.of(2005, 8, 21));
         }
     }
@@ -428,7 +434,7 @@ class RentalRepository_SpringBootIT
         void __() {
             final var list = repositoryInstance().selectLongestWaitsBetweenRentals();
             assertThat(list)
-                    .extracting(RentalWait::getCustomerId, RentalWait::getDays)
+                    .extracting(intColumn("customer_id"), longColumn("days"))
                     .containsExactly(tuple(61, 57L),
                                      tuple(101, 43L),
                                      tuple(4, 39L),
@@ -444,12 +450,14 @@ class RentalRepository_SpringBootIT
         void __Ordered() {
             final var list = repositoryInstance().selectLongestWaitsBetweenRentals();
             assertThat(list)
-                    .isSortedAccordingTo(Comparator.comparingLong(RentalWait::getDays).reversed()
-                                                 .thenComparing(RentalWait::getCustomerId))
+                    .isSortedAccordingTo(Comparator.comparing(longColumn("days")).reversed()
+                                                 .thenComparing(intColumn("customer_id")))
                     .allSatisfy(w -> {
-                        assertThat(w.getPreviousRental()).isBefore(w.getRentalDate());
-                        assertThat(w.getDays()).isEqualTo(ChronoUnit.DAYS.between(
-                                w.getPreviousRental().toLocalDate(), w.getRentalDate().toLocalDate()));
+                        final var previousRental = w.get("previous_rental", LocalDateTime.class);
+                        final var rentalDate = w.get("rental_date", LocalDateTime.class);
+                        assertThat(previousRental).isBefore(rentalDate);
+                        assertThat(longColumn("days").apply(w)).isEqualTo(ChronoUnit.DAYS.between(
+                                previousRental.toLocalDate(), rentalDate.toLocalDate()));
                     });
         }
     }

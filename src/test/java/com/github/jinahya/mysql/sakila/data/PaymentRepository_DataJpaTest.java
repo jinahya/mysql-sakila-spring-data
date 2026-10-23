@@ -187,7 +187,7 @@ class PaymentRepository_DataJpaTest
     class SelectCustomersWhoPaidMoreThan_Test {
 
         private static final Sort BY_TOTAL_DESC_THEN_CUSTOMER_ID =
-                Sort.by(Sort.Direction.DESC, "total").and(Sort.by("customerId"));
+                Sort.by(Sort.Direction.DESC, "total").and(Sort.by("c.customerId"));
 
         /**
          * Asserts that the select with its {@code HAVING}, sorted by the total descending and then by the customer id
@@ -242,7 +242,7 @@ class PaymentRepository_DataJpaTest
     @Nested
     class SelectRunningTotals_Test {
 
-        private static final Sort BY_PAYMENT_DATE_THEN_PAYMENT_ID = Sort.by("paymentDate", "paymentId");
+        private static final Sort BY_PAYMENT_DATE_THEN_PAYMENT_ID = Sort.by("p.paymentDate", "p.paymentId");
 
         /**
          * Asserts that the self-joined select, sorted by the payment date and then by the payment id as the exercise

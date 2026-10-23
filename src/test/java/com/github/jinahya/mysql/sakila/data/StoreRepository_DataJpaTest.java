@@ -119,7 +119,7 @@ class StoreRepository_DataJpaTest
     @Nested
     class SelectCounts_Test {
 
-        private static final Sort BY_STORE_ID = Sort.by("storeId");
+        private static final Sort BY_STORE_ID = Sort.by("st.storeId");
 
         /**
          * Asserts that the select with its three scalar subqueries, sorted by the id as the exercise sorts, runs on
@@ -164,7 +164,7 @@ class StoreRepository_DataJpaTest
     @Nested
     class SelectFilmCounts_Test {
 
-        private static final Sort BY_STORE_ID = Sort.by("storeId");
+        private static final Sort BY_STORE_ID = Sort.by("st.storeId");
 
         /**
          * Asserts that the joined and grouped select, with its {@code CASE} on a correlated {@code NOT EXISTS}, sorted
@@ -197,7 +197,7 @@ class StoreRepository_DataJpaTest
     @Nested
     class SelectMonthlyRentalShares_Test {
 
-        private static final Sort BY_MONTH_THEN_STORE_ID = Sort.by("rentalYear", "rentalMonth", "storeId");
+        private static final Sort BY_MONTH_THEN_STORE_ID = Sort.by("rentalYear", "rentalMonth", "st.storeId");
 
         /**
          * Asserts that the grouped select, with its window function over the groups, and its count query, sorted by

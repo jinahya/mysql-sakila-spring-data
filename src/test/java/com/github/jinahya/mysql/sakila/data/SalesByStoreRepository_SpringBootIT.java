@@ -308,15 +308,19 @@ class SalesByStoreRepository_SpringBootIT {
             final var list = repository.listSalesAndTakenByManager();
             list.forEach(r -> log.debug("row: {}", r));
             assertThat(list)
-                    .extracting(SalesByStoreRepository.SalesAndTakenByManager::store,
-                                SalesByStoreRepository.SalesAndTakenByManager::manager,
-                                r -> r.totalSales().toPlainString(),
+                    .extracting(r -> r.sales().getStore(),
+                                r -> r.sales().getManager(),
+                                r -> r.sales().getTotalSales().toPlainString(),
                                 r -> r.takenByManager().toPlainString())
                     .containsExactly(
                             tuple("Lethbridge,Canada", "Mike Hillyer", "33679.79", "33482.50"),
                             tuple("Woodridge,Australia", "Jon Stephens", "33726.77", "33924.06"));
+            assertThat(list)
+                    .extracting(SalesByStoreRepository.SalesAndTakenByManager::sales)
+                    .usingRecursiveFieldByFieldElementComparator()
+                    .containsExactlyInAnyOrderElementsOf(rows);
             final var totalSales = list.stream()
-                    .map(SalesByStoreRepository.SalesAndTakenByManager::totalSales)
+                    .map(r -> r.sales().getTotalSales())
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
             final var takenByManagers = list.stream()
                     .map(SalesByStoreRepository.SalesAndTakenByManager::takenByManager)
@@ -331,7 +335,7 @@ class SalesByStoreRepository_SpringBootIT {
         @Test
         void __Sorted() {
             assertThat(repository.listSalesAndTakenByManager())
-                    .extracting(SalesByStoreRepository.SalesAndTakenByManager::store)
+                    .extracting(r -> r.sales().getStore())
                     .isSortedAccordingTo(String.CASE_INSENSITIVE_ORDER);
         }
     }

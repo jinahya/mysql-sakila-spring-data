@@ -1,8 +1,5 @@
 package com.github.jinahya.mysql.sakila.data;
 
-import com.github.jinahya.mysql.sakila.data.CountryRepository.CountryCustomerCount;
-import com.github.jinahya.mysql.sakila.data.CountryRepository.CountryCustomerRanking;
-import com.github.jinahya.mysql.sakila.data.CountryRepository.CountryRunningTotal;
 import com.github.jinahya.mysql.sakila.persistence.Address_;
 import com.github.jinahya.mysql.sakila.persistence.City;
 import com.github.jinahya.mysql.sakila.persistence.City_;
@@ -239,14 +236,14 @@ class CountryRepository_SpringBootIT
     class SelectCustomerCounts_Test {
 
         private static final Sort BY_CUSTOMERS_DESC_THEN_COUNTRY =
-                Sort.by(Sort.Direction.DESC, "customers").and(Sort.by("country"));
+                Sort.by(Sort.Direction.DESC, "customers").and(Sort.by("co.country"));
 
         private static Stream<Country> countries() {
             return CountryRepository_SpringBootIT.countries();
         }
 
         /**
-         * Asserts that the first five, by {@code customers} descending, then by {@code country}, are the five the
+         * Asserts that the first five, by {@code customers} descending, then by {@code co.country}, are the five the
          * exercise's SQL gives, and that the next page goes on from there, as many groups in all as the count query
          * says.
          */
@@ -256,7 +253,7 @@ class CountryRepository_SpringBootIT
                     PageRequest.of(0, 5, BY_CUSTOMERS_DESC_THEN_COUNTRY));
             assertPage(page);
             assertThat(page.getContent())
-                    .extracting(CountryCustomerCount::getCountry, CountryCustomerCount::getCustomers)
+                    .extracting(column("country", Country.class, Country::getCountry), column("customers", Long.class))
                     .containsExactly(
                             tuple("India", 60L),
                             tuple("China", 53L),
@@ -267,14 +264,14 @@ class CountryRepository_SpringBootIT
             assertThat(page.getTotalElements()).isEqualTo(all.getContent().size());
             final var next = repositoryInstance().selectCustomerCounts(page.nextPageable());
             assertThat(next.getContent())
-                    .extracting(CountryCustomerCount::getCountryId)
+                    .extracting(column("country", Country.class))
                     .containsExactlyElementsOf(all.getContent().subList(5, 10).stream()
-                                                       .map(CountryCustomerCount::getCountryId).toList());
+                                                       .map(column("country", Country.class)).toList());
         }
 
         /**
-         * Asserts that a selected country, if it has a customer, is among all groups, with as many customers as
-         * {@link CustomerRepository} counts there, and is not if it has none.
+         * Asserts that a selected country, if it has a customer, is among all groups, as the country itself, with as
+         * many customers as {@link CustomerRepository} counts there, and is not if it has none.
          *
          * @param country one of the countries selected in {@link CountryRepository_SpringBootIT#__()}.
          */
@@ -284,15 +281,14 @@ class CountryRepository_SpringBootIT
             final var all = repositoryInstance().selectCustomerCounts(Pageable.unpaged(BY_CUSTOMERS_DESC_THEN_COUNTRY));
             final var customers = countCustomersIn(country);
             final var rows = all.getContent().stream()
-                    .filter(c -> c.getCountryId().equals(country.getCountryId()))
+                    .filter(c -> c.get("country", Country.class).equals(country))
                     .toList();
             if (customers == 0L) {
                 assertThat(rows).isEmpty();
                 return;
             }
             assertThat(rows).singleElement().satisfies(c -> {
-                assertThat(c.getCountry()).isEqualTo(country.getCountry());
-                assertThat(c.getCustomers()).isEqualTo(customers);
+                assertThat(c.get("customers", Long.class)).isEqualTo(customers);
             });
         }
 
@@ -320,8 +316,8 @@ class CountryRepository_SpringBootIT
         void __() {
             final var list = repositoryInstance().selectHoldingHalfOfCustomers();
             assertThat(list)
-                    .extracting(CountryRunningTotal::getCountry, CountryRunningTotal::getCustomers,
-                                CountryRunningTotal::getRunningTotal, r -> r.getRunningPercent().doubleValue())
+                    .extracting(column("country", String.class), longColumn("customers"), longColumn("running_total"),
+                                r -> r.get("runningPercent", Number.class).doubleValue())
                     .containsExactly(
                             tuple("India", 60L, 60L, 10.02),
                             tuple("China", 53L, 113L, 18.86),
@@ -343,12 +339,13 @@ class CountryRepository_SpringBootIT
             final var list = repositoryInstance().selectHoldingHalfOfCustomers();
             assertThat(list).isNotEmpty();
             final var total = customerRepository.count();
-            assertThat(list.getLast().getRunningTotal() * 2).isGreaterThanOrEqualTo(total);
+            final var runningTotal = longColumn("running_total");
+            assertThat(runningTotal.apply(list.getLast()) * 2).isGreaterThanOrEqualTo(total);
             if (list.size() > 1) {
-                assertThat(list.get(list.size() - 2).getRunningTotal() * 2).isLessThan(total);
+                assertThat(runningTotal.apply(list.get(list.size() - 2)) * 2).isLessThan(total);
             }
-            assertThat(list).allSatisfy(r -> assertThat(r.getRunningPercent()).isEqualByComparingTo(
-                    BigDecimal.valueOf(r.getRunningTotal() * 100)
+            assertThat(list).allSatisfy(r -> assertThat(r.get("runningPercent", BigDecimal.class)).isEqualByComparingTo(
+                    BigDecimal.valueOf(runningTotal.apply(r) * 100)
                             .divide(BigDecimal.valueOf(total), 2, RoundingMode.HALF_UP)));
         }
     }
@@ -367,8 +364,7 @@ class CountryRepository_SpringBootIT
         void __() {
             final var list = repositoryInstance().selectRankedTopTenByCustomers();
             assertThat(list)
-                    .extracting(CountryCustomerRanking::getCountry, CountryCustomerRanking::getCustomers,
-                                CountryCustomerRanking::getRanking)
+                    .extracting(column("country", String.class), longColumn("customers"), longColumn("ranking"))
                     .containsExactly(
                             tuple("India", 60L, 1L),
                             tuple("China", 53L, 2L),

@@ -1,8 +1,5 @@
 package com.github.jinahya.mysql.sakila.data;
 
-import com.github.jinahya.mysql.sakila.data.CategoryRepository.CategoryAverageLength;
-import com.github.jinahya.mysql.sakila.data.CategoryRepository.CategoryFilmCount;
-import com.github.jinahya.mysql.sakila.data.CategoryRepository.CategoryRunningFilmCount;
 import com.github.jinahya.mysql.sakila.persistence.Category;
 import com.github.jinahya.mysql.sakila.persistence.Film;
 import org.junit.jupiter.api.Nested;
@@ -208,7 +205,7 @@ class CategoryRepository_DataJpaTest
     class SelectFilmCounts_Test {
 
         private static final Sort BY_FILMS_DESC_THEN_NAME =
-                Sort.by(Sort.Direction.DESC, "films").and(Sort.by("name"));
+                Sort.by(Sort.Direction.DESC, "films").and(Sort.by("c.name"));
 
         /**
          * Saves categories of three, two and no films, and asserts that a page of one, the most films first, holds the
@@ -225,16 +222,16 @@ class CategoryRepository_DataJpaTest
             saveFilms(two, 2, 100);
             final var page0 = repositoryInstance().selectFilmCounts(PageRequest.of(0, 1, BY_FILMS_DESC_THEN_NAME));
             assertThat(page0.getContent())
-                    .extracting(CategoryFilmCount::getName, CategoryFilmCount::getFilms)
-                    .containsExactly(tuple(three.getName(), 3L));
+                    .extracting(column("category", Category.class), column("films", Long.class))
+                    .containsExactly(tuple(three, 3L));
             assertThat(page0.getTotalElements()).isEqualTo(2L);
             final var page1 = repositoryInstance().selectFilmCounts(page0.nextPageable());
             assertThat(page1.getContent())
-                    .extracting(CategoryFilmCount::getName, CategoryFilmCount::getFilms)
-                    .containsExactly(tuple(two.getName(), 2L));
+                    .extracting(column("category", Category.class), column("films", Long.class))
+                    .containsExactly(tuple(two, 2L));
             assertThat(repositoryInstance().selectFilmCounts(Pageable.unpaged()).getContent())
-                    .extracting(CategoryFilmCount::getName)
-                    .doesNotContain(none.getName());
+                    .extracting(column("category", Category.class))
+                    .doesNotContain(none);
         }
     }
 
@@ -260,13 +257,13 @@ class CategoryRepository_DataJpaTest
             saveFilms(shorter, 1, 90);
             final var page = repositoryInstance().selectAverageLengths(PageRequest.of(0, 1, BY_AVERAGE_LENGTH_DESC));
             assertThat(page.getContent())
-                    .extracting(CategoryAverageLength::getName, CategoryAverageLength::getAverageLength)
-                    .containsExactly(tuple(longer.getName(), 110.5d));
+                    .extracting(column("category", Category.class), column("averageLength", Double.class))
+                    .containsExactly(tuple(longer, 110.5d));
             assertThat(page.getTotalElements()).isEqualTo(2L);
             final var next = repositoryInstance().selectAverageLengths(page.nextPageable());
             assertThat(next.getContent())
-                    .extracting(CategoryAverageLength::getName, CategoryAverageLength::getAverageLength)
-                    .containsExactly(tuple(shorter.getName(), 90.0d));
+                    .extracting(column("category", Category.class), column("averageLength", Double.class))
+                    .containsExactly(tuple(shorter, 90.0d));
         }
     }
 
@@ -277,7 +274,7 @@ class CategoryRepository_DataJpaTest
     class SelectRunningFilmCounts_Test {
 
         private static final Sort BY_FILMS_DESC_THEN_NAME =
-                Sort.by(Sort.Direction.DESC, "films").and(Sort.by("name"));
+                Sort.by(Sort.Direction.DESC, "films").and(Sort.by("c.name"));
 
         /**
          * Saves categories of two, one and one films, and one of none, and asserts that, the most films first and then
@@ -296,14 +293,14 @@ class CategoryRepository_DataJpaTest
             saveFilms(oneA, 1, 100);
             final var page = repositoryInstance().selectRunningFilmCounts(Pageable.unpaged(BY_FILMS_DESC_THEN_NAME));
             assertThat(page.getContent())
-                    .extracting(CategoryRunningFilmCount::getName, CategoryRunningFilmCount::getFilms,
-                                CategoryRunningFilmCount::getRunningFilms, CategoryRunningFilmCount::getRunningPercent)
+                    .extracting(column("category", Category.class), column("films", Long.class),
+                                column("runningFilms", Long.class), column("runningPercent", Double.class))
                     .containsExactly(
-                            tuple(two.getName(), 2L, 2L, 50.0d),
-                            tuple(oneA.getName(), 1L, 3L, 75.0d),
-                            tuple(oneB.getName(), 1L, 4L, 100.0d)
+                            tuple(two, 2L, 2L, 50.0d),
+                            tuple(oneA, 1L, 3L, 75.0d),
+                            tuple(oneB, 1L, 4L, 100.0d)
                     )
-                    .doesNotContain(tuple(none.getName(), 0L, 0L, 0.0d));
+                    .doesNotContain(tuple(none, 0L, 0L, 0.0d));
             assertThat(page.getTotalElements()).isEqualTo(3L);
         }
 
@@ -316,7 +313,8 @@ class CategoryRepository_DataJpaTest
             for (int i = 0; i < 3; i++) {
                 saveFilms(saveCategory(randomCategoryName()), 1, 100);
             }
-            final var page0 = repositoryInstance().selectRunningFilmCounts(PageRequest.of(0, 2, BY_FILMS_DESC_THEN_NAME));
+            final var page0 = repositoryInstance().selectRunningFilmCounts(
+                    PageRequest.of(0, 2, BY_FILMS_DESC_THEN_NAME));
             assertThat(page0.getContent()).hasSize(2);
             assertThat(page0.getTotalElements()).isEqualTo(3L);
             final var page1 = repositoryInstance().selectRunningFilmCounts(page0.nextPageable());
@@ -340,7 +338,7 @@ class CategoryRepository_DataJpaTest
         @Test
         void _Empty_NoRental() {
             saveFilms(saveCategory(randomCategoryName()), 1, 100);
-            final var page = repositoryInstance().selectMostRentedFilms(PageRequest.of(0, 5, Sort.by("name")));
+            final var page = repositoryInstance().selectMostRentedFilms(PageRequest.of(0, 5, Sort.by("c.name")));
             assertThat(page).isEmpty();
             assertThat(page.getTotalElements()).isZero();
         }

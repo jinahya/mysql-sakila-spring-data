@@ -1,8 +1,11 @@
 package com.github.jinahya.mysql.sakila.data;
 
+import com.github.jinahya.mysql.sakila.persistence.Actor;
+import com.github.jinahya.mysql.sakila.persistence.Film;
 import com.github.jinahya.mysql.sakila.persistence.FilmActor;
 import com.github.jinahya.mysql.sakila.persistence.FilmActorId;
 import com.github.jinahya.mysql.sakila.persistence.FilmActor_;
+import jakarta.persistence.Tuple;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -40,12 +43,16 @@ import java.util.Optional;
  * {@code PageRequest}; each method's javadoc says which sort that is. Every exercise of this table groups and counts
  * the links, which a {@link Specification}, which only filters, cannot do; so each method, {@code select...},
  * declares its JPQL with {@link Query}, with a count query of its own since Spring Data cannot derive one from a
- * grouped select, and returns a projection, one of the interfaces declared here, which Spring Data backs with the
- * selected columns, each aliased with the name of the getter it feeds. Those aliases are what the {@code Pageable}
- * sorts by; an interface rather than a record, because Spring Data rewrites a record projection into a constructor
- * expression, which drops the aliases, and the sort with them. The exercise that gives a single value, an average,
- * returns that value, not a page. An exercise upstream flags native-only is a {@link NativeQuery} with the exercise's
- * SQL, returning a {@link List} in the SQL's own order.
+ * grouped select. Such a query selects entities, not their columns: a film is selected whole ({@code SELECT f AS
+ * film}), and grouped by itself ({@code GROUP BY f}), as is an actor of a pair ({@code SELECT a1 AS actor1, a2 AS
+ * actor2}); what is computed, a count, is a column of its own beside it. A result that is a single entity is that
+ * entity; any other comes back as a {@link jakarta.persistence.Tuple}, each element read by its alias, with its type
+ * ({@code tuple.get("film", Film.class)}, {@code tuple.get("actors", Long.class)}). The {@code Pageable} sorts a
+ * computed column by its alias ({@code Sort.by(DESC, "actors")}), and an attribute of a selected entity by its path
+ * from the query's identification variable ({@code Sort.by("f.filmId")}); each method's javadoc names its aliases and
+ * identification variables. The exercise that gives a single value, an average, returns that value, not a page. A
+ * native query groups by a value, the number of actors of a film, and selects that value. An exercise upstream
+ * flags native-only is a {@link NativeQuery} with the exercise's SQL, returning a {@link List} in the SQL's own order.
  *
  * @see FilmActor
  * @see FilmActor_
@@ -57,131 +64,27 @@ public interface FilmActorRepository
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * A film, by id and title, and how many actors it has: a projection of {@link #selectActorCounts(Pageable)},
-     * sortable by {@code filmId}, {@code title} and {@code actors}.
-     */
-    interface FilmActorCount {
-
-        /**
-         * Returns the id of the film.
-         *
-         * @return the id of the film.
-         */
-        Integer getFilmId();
-
-        /**
-         * Returns the title of the film.
-         *
-         * @return the title of the film.
-         */
-        String getTitle();
-
-        /**
-         * Returns the number of actors of the film.
-         *
-         * @return the number of actors.
-         */
-        long getActors();
-    }
-
-    /**
-     * A pair of actors, by their ids, and how many films they appear in together: a projection of
-     * {@link #selectCoStarCounts(Pageable)}, sortable by {@code actorId1}, {@code actorId2} and {@code films}.
-     */
-    interface ActorPairCount {
-
-        /**
-         * Returns the id of the first actor of the pair, the smaller of the two.
-         *
-         * @return the id of the first actor.
-         */
-        Integer getActorId1();
-
-        /**
-         * Returns the id of the second actor of the pair, the greater of the two.
-         *
-         * @return the id of the second actor.
-         */
-        Integer getActorId2();
-
-        /**
-         * Returns the number of films the two actors appear in together.
-         *
-         * @return the number of films.
-         */
-        long getFilms();
-    }
-
-    /**
-     * A number of actors, and how many films have that many: a projection of {@link #selectFilmCountsByActors()}.
-     */
-    interface ActorsFilmCount {
-
-        /**
-         * Returns the number of actors.
-         *
-         * @return the number of actors.
-         */
-        long getActors();
-
-        /**
-         * Returns the number of films which have {@link #getActors()} actors.
-         *
-         * @return the number of films.
-         */
-        long getFilms();
-    }
-
-    /**
-     * A pair of films, by their ids, which have the same actors, and how many: a projection of
-     * {@link #selectFilmPairsWithSameActors(Pageable)}, sortable by {@code filmId1}, {@code filmId2} and
-     * {@code actors}.
-     */
-    interface FilmPairActorCount {
-
-        /**
-         * Returns the id of the first film of the pair, the smaller of the two.
-         *
-         * @return the id of the first film.
-         */
-        Integer getFilmId1();
-
-        /**
-         * Returns the id of the second film of the pair, the greater of the two.
-         *
-         * @return the id of the second film.
-         */
-        Integer getFilmId2();
-
-        /**
-         * Returns the number of actors the two films share, which is the number of actors of each.
-         *
-         * @return the number of actors.
-         */
-        long getActors();
-    }
-
-    /**
      * Selects the films which have at least one actor, with how many ({@code SAKILA-FILM_ACTOR-I-01}, this module's
-     * own extra, which takes the first five by {@code actors} descending, then by {@code filmId}, so that the five are
-     * always the same five).
+     * own extra, which takes the first five by {@code actors} descending, then by {@code f.filmId}, so that the five
+     * are always the same five).
      * <p>
-     * The links are grouped by their film, joined for its id and title, and counted; a film with no link is not in
-     * the page. The count query counts the distinct films of the links.
+     * The links are joined with their film, grouped by the film itself, which selects the film whole, and counted; a
+     * film with no link is not in the page. The count query counts the distinct films of the links.
      *
-     * @param pageable the page to return, and its sort, by {@code filmId}, {@code title} or {@code actors}; must not
-     *                 be {@code null}.
-     * @return a page of the films with an actor, with their numbers of actors.
+     * @param pageable the page to return, and its sort, by {@code actors}, or by an attribute of the film through
+     *                 {@code f} ({@code f.filmId}, {@code f.title}, ...); must not be {@code null}.
+     * @return a page of the films with an actor, with their numbers of actors, each a tuple of {@code film}
+     *         ({@link Film}) and {@code actors} ({@link Long}).
      */
     @Query(value = """
-            SELECT f.filmId AS filmId, f.title AS title, COUNT(fa) AS actors
+            SELECT f AS film, COUNT(fa) AS actors
             FROM FilmActor fa
             JOIN fa.film f
-            GROUP BY f.filmId, f.title""",
+            GROUP BY f""",
            countQuery = """
                    SELECT COUNT(DISTINCT fa.film)
                    FROM FilmActor fa""")
-    Page<FilmActorCount> selectActorCounts(Pageable pageable);
+    Page<Tuple> selectActorCounts(Pageable pageable);
 
     /**
      * Selects how many actors a film has, on average, over the films which have at least one
@@ -210,35 +113,42 @@ public interface FilmActorRepository
      * their numbers of actors, which a derived table groups first. The SQL is plain, so it runs on H2 as on MySQL. A
      * film with no actor has no link, and is not counted.
      *
-     * @return a list of the numbers of actors, with their numbers of films, by the number of actors.
+     * @return a list of the numbers of actors, with their numbers of films, by the number of actors, each a tuple of
+     *         {@code actors} and {@code films} ({@link Long}).
      */
     @NativeQuery("""
             SELECT actors, COUNT(*) AS films
             FROM (SELECT film_id, COUNT(*) AS actors FROM film_actor GROUP BY film_id) t
             GROUP BY actors
             ORDER BY actors""")
-    List<ActorsFilmCount> selectFilmCountsByActors();
+    List<Tuple> selectFilmCountsByActors();
 
     /**
      * Selects the pairs of actors who appear in a film together, with how many films
      * ({@code SAKILA-FILM_ACTOR-A-01}, the book's pick, which takes the first three by {@code films} descending, then
-     * by {@code actorId1}, then by {@code actorId2}).
+     * by {@code a1.actorId}, then by {@code a2.actorId}).
      * <p>
      * A self-join: every link is paired with every other link of the same film whose actor's id is greater, so each
-     * pair is counted once, the first actor's id the smaller; the pairs are grouped by the two ids and counted. The
-     * count query counts the pairs of actors, in id order, who share at least one film, through an {@code EXISTS} of
-     * the same self-join.
+     * pair is counted once, the first actor's id the smaller; the links are joined with their actors, the pairs are
+     * grouped by the two actors themselves, which selects both whole, and counted. The count query counts the pairs of
+     * actors, in id order, who share at least one film, through an {@code EXISTS} of the same self-join.
      *
-     * @param pageable the page to return, and its sort, by {@code actorId1}, {@code actorId2} or {@code films}; must
-     *                 not be {@code null}.
-     * @return a page of the pairs of actors who appear together, with their numbers of films.
+     * @param pageable the page to return, and its sort, by {@code films}, or by an attribute of either actor through
+     *                 {@code a1} or {@code a2} ({@code a1.actorId}, {@code a2.lastName}, ...); must not be
+     *                 {@code null}.
+     * @return a page of the pairs of actors who appear together, with their numbers of films, each a tuple of
+     *         {@code actor1} and {@code actor2} ({@link Actor}), the one of the smaller id first, and {@code films}
+     *         ({@link Long}).
      */
     @Query(value = """
-            SELECT fa1.id.actorId AS actorId1, fa2.id.actorId AS actorId2, COUNT(fa1) AS films
-            FROM FilmActor fa1, FilmActor fa2
+            SELECT a1 AS actor1, a2 AS actor2, COUNT(fa1) AS films
+            FROM FilmActor fa1
+            JOIN fa1.actor a1,
+                 FilmActor fa2
+            JOIN fa2.actor a2
             WHERE fa2.film = fa1.film
-              AND fa2.id.actorId > fa1.id.actorId
-            GROUP BY fa1.id.actorId, fa2.id.actorId""",
+              AND a2.actorId > a1.actorId
+            GROUP BY a1, a2""",
            countQuery = """
                    SELECT COUNT(a1)
                    FROM Actor a1, Actor a2
@@ -248,37 +158,47 @@ public interface FilmActorRepository
                                  WHERE fa1.actor = a1
                                    AND fa2.actor = a2
                                    AND fa2.film = fa1.film)""")
-    Page<ActorPairCount> selectCoStarCounts(Pageable pageable);
+    Page<Tuple> selectCoStarCounts(Pageable pageable);
 
     /**
      * Selects the pairs of films which have exactly the same actors, with how many ({@code SAKILA-FILM_ACTOR-A-03},
-     * this module's own extra, which orders by {@code filmId1}, then by {@code filmId2}).
+     * this module's own extra, which orders by {@code f1.filmId}, then by {@code f2.filmId}).
      * <p>
      * A self-join: every link is paired with every other link of the same actor whose film's id is greater, so each
-     * pair of films is counted once, the first film's id the smaller; the pairs are grouped by the two ids and counted,
-     * and a pair is kept when the actors it shares are all the actors of each film, which two correlated subqueries
-     * count. The count query counts the same groups, through a derived table of them.
+     * pair of films is counted once, the first film's id the smaller; the links are joined with their films, the
+     * pairs are grouped by the two films themselves, which selects both whole, and counted, and a pair is kept when
+     * the actors it shares are all the actors of each film, which two correlated subqueries count. The count query
+     * counts the same groups, through a derived table of them.
      *
-     * @param pageable the page to return, and its sort, by {@code filmId1}, {@code filmId2} or {@code actors}; must
-     *                 not be {@code null}.
-     * @return a page of the pairs of films with the same actors, with their numbers of actors.
+     * @param pageable the page to return, and its sort, by {@code actors}, or by an attribute of either film through
+     *                 {@code f1} or {@code f2} ({@code f1.filmId}, {@code f2.title}, ...); must not be
+     *                 {@code null}.
+     * @return a page of the pairs of films with the same actors, with their numbers of actors, each a tuple of
+     *         {@code film1} and {@code film2} ({@link Film}), the one of the smaller id first, and {@code actors}
+     *         ({@link Long}).
      */
     @Query(value = """
-            SELECT fa1.id.filmId AS filmId1, fa2.id.filmId AS filmId2, COUNT(fa1) AS actors
-            FROM FilmActor fa1, FilmActor fa2
+            SELECT f1 AS film1, f2 AS film2, COUNT(fa1) AS actors
+            FROM FilmActor fa1
+            JOIN fa1.film f1,
+                 FilmActor fa2
+            JOIN fa2.film f2
             WHERE fa2.actor = fa1.actor
-              AND fa2.id.filmId > fa1.id.filmId
-            GROUP BY fa1.id.filmId, fa2.id.filmId
-            HAVING COUNT(fa1) = (SELECT COUNT(x) FROM FilmActor x WHERE x.id.filmId = fa1.id.filmId)
-               AND COUNT(fa1) = (SELECT COUNT(y) FROM FilmActor y WHERE y.id.filmId = fa2.id.filmId)""",
+              AND f2.filmId > f1.filmId
+            GROUP BY f1, f2
+            HAVING COUNT(fa1) = (SELECT COUNT(x) FROM FilmActor x WHERE x.film = f1)
+               AND COUNT(fa1) = (SELECT COUNT(y) FROM FilmActor y WHERE y.film = f2)""",
            countQuery = """
                    SELECT COUNT(*)
-                   FROM (SELECT fa1.id.filmId AS filmId1, fa2.id.filmId AS filmId2
-                         FROM FilmActor fa1, FilmActor fa2
+                   FROM (SELECT f1.filmId AS filmId1, f2.filmId AS filmId2
+                         FROM FilmActor fa1
+                         JOIN fa1.film f1,
+                              FilmActor fa2
+                         JOIN fa2.film f2
                          WHERE fa2.actor = fa1.actor
-                           AND fa2.id.filmId > fa1.id.filmId
-                         GROUP BY fa1.id.filmId, fa2.id.filmId
-                         HAVING COUNT(fa1) = (SELECT COUNT(x) FROM FilmActor x WHERE x.id.filmId = fa1.id.filmId)
-                            AND COUNT(fa1) = (SELECT COUNT(y) FROM FilmActor y WHERE y.id.filmId = fa2.id.filmId)) p""")
-    Page<FilmPairActorCount> selectFilmPairsWithSameActors(Pageable pageable);
+                           AND f2.filmId > f1.filmId
+                         GROUP BY f1, f2
+                         HAVING COUNT(fa1) = (SELECT COUNT(x) FROM FilmActor x WHERE x.film = f1)
+                            AND COUNT(fa1) = (SELECT COUNT(y) FROM FilmActor y WHERE y.film = f2)) p""")
+    Page<Tuple> selectFilmPairsWithSameActors(Pageable pageable);
 }

@@ -1,8 +1,5 @@
 package com.github.jinahya.mysql.sakila.data;
 
-import com.github.jinahya.mysql.sakila.data.StoreRepository.StoreCounts;
-import com.github.jinahya.mysql.sakila.data.StoreRepository.StoreFilmCounts;
-import com.github.jinahya.mysql.sakila.data.StoreRepository.StoreMonthlyRentalShare;
 import com.github.jinahya.mysql.sakila.persistence.Customer;
 import com.github.jinahya.mysql.sakila.persistence.Customer_;
 import com.github.jinahya.mysql.sakila.persistence.Inventory;
@@ -278,7 +275,7 @@ class StoreRepository_SpringBootIT
     @Nested
     class SelectCounts_Test {
 
-        private static final Sort BY_STORE_ID = Sort.by("storeId");
+        private static final Sort BY_STORE_ID = Sort.by("st.storeId");
 
         /**
          * Asserts that a page of the given size, by the id as the exercise sorts, is ordered so, holds as many stores
@@ -295,14 +292,15 @@ class StoreRepository_SpringBootIT
             assertThat(page.getTotalElements()).isEqualTo(repositoryInstance().count());
             assertThat(page.getContent())
                     .isNotEmpty()
-                    .isSortedAccordingTo(Comparator.comparing(StoreCounts::getStoreId))
+                    .isSortedAccordingTo(Comparator.comparing(column("store", Store.class, Store::getStoreId)))
                     .allSatisfy(c -> {
-                        assertThat(c.getCustomers()).as("customers of store %d", c.getStoreId())
-                                .isEqualTo(countCustomersOf(c.getStoreId()));
-                        assertThat(c.getCopies()).as("copies of store %d", c.getStoreId())
-                                .isEqualTo(countCopiesOf(c.getStoreId()));
-                        assertThat(c.getStaff()).as("staff of store %d", c.getStoreId())
-                                .isEqualTo(countStaffOf(c.getStoreId()));
+                        final var storeId = c.get("store", Store.class).getStoreId();
+                        assertThat(c.get("customers", Long.class)).as("customers of store %d", storeId)
+                                .isEqualTo(countCustomersOf(storeId));
+                        assertThat(c.get("copies", Long.class)).as("copies of store %d", storeId)
+                                .isEqualTo(countCopiesOf(storeId));
+                        assertThat(c.get("staff", Long.class)).as("staff of store %d", storeId)
+                                .isEqualTo(countStaffOf(storeId));
                     });
         }
 
@@ -317,7 +315,7 @@ class StoreRepository_SpringBootIT
             assertPage(page);
             assertThat(page.getContent())
                     .isNotEmpty()
-                    .isSortedAccordingTo(Comparator.comparingLong(StoreCounts::getCustomers).reversed());
+                    .isSortedAccordingTo(Comparator.comparing(column("customers", Long.class)).reversed());
         }
     }
 
@@ -327,7 +325,7 @@ class StoreRepository_SpringBootIT
     @Nested
     class SelectFilmCounts_Test {
 
-        private static final Sort BY_STORE_ID = Sort.by("storeId");
+        private static final Sort BY_STORE_ID = Sort.by("st.storeId");
 
         /**
          * Asserts that a page of the given size, by the id as the exercise sorts, is ordered so, and that each of the
@@ -345,19 +343,20 @@ class StoreRepository_SpringBootIT
             assertThat(page.getTotalElements()).isEqualTo(filmIdsByStoreId.size());
             assertThat(page.getContent())
                     .isNotEmpty()
-                    .isSortedAccordingTo(Comparator.comparing(StoreFilmCounts::getStoreId))
+                    .isSortedAccordingTo(Comparator.comparing(column("store", Store.class, Store::getStoreId)))
                     .allSatisfy(c -> {
-                        final var films = filmIdsByStoreId.get(c.getStoreId());
-                        assertThat(films).as("films of store %d", c.getStoreId()).isNotNull();
-                        assertThat(c.getFilms()).isEqualTo(films.size());
+                        final var storeId = c.get("store", Store.class).getStoreId();
+                        final var films = filmIdsByStoreId.get(storeId);
+                        assertThat(films).as("films of store %d", storeId).isNotNull();
+                        assertThat(c.get("films", Long.class)).isEqualTo(films.size());
                         final var onlyHere = films.stream()
                                 .filter(f -> filmIdsByStoreId.entrySet().stream()
-                                        .filter(e -> !e.getKey().equals(c.getStoreId()))
+                                        .filter(e -> !e.getKey().equals(storeId))
                                         .noneMatch(e -> e.getValue().contains(f)))
                                 .count();
-                        assertThat(c.getFilmsOnlyHere()).as("films only at store %d", c.getStoreId())
+                        assertThat(c.get("filmsOnlyHere", Long.class)).as("films only at store %d", storeId)
                                 .isEqualTo(onlyHere);
-                        assertThat(c.getFilmsOnlyHere()).isLessThanOrEqualTo(c.getFilms());
+                        assertThat(c.get("filmsOnlyHere", Long.class)).isLessThanOrEqualTo(c.get("films", Long.class));
                     });
         }
     }
@@ -368,7 +367,7 @@ class StoreRepository_SpringBootIT
     @Nested
     class SelectMonthlyRentalShares_Test {
 
-        private static final Sort BY_MONTH_THEN_STORE_ID = Sort.by("rentalYear", "rentalMonth", "storeId");
+        private static final Sort BY_MONTH_THEN_STORE_ID = Sort.by("rentalYear", "rentalMonth", "st.storeId");
 
         private static Stream<Store> stores() {
             return StoreRepository_SpringBootIT.stores();
@@ -382,9 +381,9 @@ class StoreRepository_SpringBootIT
         void __Expected() {
             final var page = repositoryInstance().selectMonthlyRentalShares(Pageable.unpaged(BY_MONTH_THEN_STORE_ID));
             assertThat(page.getContent())
-                    .extracting(StoreMonthlyRentalShare::getRentalYear, StoreMonthlyRentalShare::getRentalMonth,
-                                StoreMonthlyRentalShare::getStoreId, StoreMonthlyRentalShare::getRentals,
-                                m -> m.getPercent().doubleValue())
+                    .extracting(column("rentalYear", Integer.class), column("rentalMonth", Integer.class),
+                                column("store", Store.class, Store::getStoreId), column("rentals", Long.class),
+                                m -> m.get("percent", BigDecimal.class).doubleValue())
                     .containsExactly(
                             tuple(2005, 5, 1, 575L, 49.74d),
                             tuple(2005, 5, 2, 581L, 50.26d),
@@ -408,11 +407,12 @@ class StoreRepository_SpringBootIT
         @Test
         void __AddUp() {
             final var all = repositoryInstance().selectMonthlyRentalShares(Pageable.unpaged(BY_MONTH_THEN_STORE_ID));
-            final var rentals = all.getContent().stream().mapToLong(StoreMonthlyRentalShare::getRentals).sum();
+            final var rentals = all.getContent().stream().mapToLong(m -> m.get("rentals", Long.class)).sum();
             assertThat(rentals).isEqualTo(rentalRepository.count());
             final var percents = new HashMap<Integer, BigDecimal>();
             for (final var m : all) {
-                percents.merge(m.getRentalYear() * 100 + m.getRentalMonth(), m.getPercent(), BigDecimal::add);
+                percents.merge(m.get("rentalYear", Integer.class) * 100 + m.get("rentalMonth", Integer.class),
+                               m.get("percent", BigDecimal.class), BigDecimal::add);
             }
             assertThat(percents.values()).allSatisfy(p -> {
                 assertThat(p.doubleValue()).isBetween(99.98d, 100.02d);
@@ -429,11 +429,11 @@ class StoreRepository_SpringBootIT
         void __(final Store store) {
             final var all = repositoryInstance().selectMonthlyRentalShares(Pageable.unpaged(BY_MONTH_THEN_STORE_ID));
             assertThat(all.getContent())
-                    .filteredOn(m -> m.getStoreId().equals(store.getStoreId()))
+                    .filteredOn(m -> m.get("store", Store.class).equals(store))
                     .isNotEmpty()
                     .allSatisfy(m -> {
-                        assertThat(m.getRentals()).isPositive();
-                        assertThat(m.getPercent()).isPositive();
+                        assertThat(m.get("rentals", Long.class)).isPositive();
+                        assertThat(m.get("percent", BigDecimal.class)).isPositive();
                     });
         }
 
@@ -452,14 +452,18 @@ class StoreRepository_SpringBootIT
             final var walked = new ArrayList<String>();
             while (true) {
                 assertPage(page);
-                page.forEach(m -> walked.add(m.getRentalYear() + "-" + m.getRentalMonth() + "/" + m.getStoreId()));
+                page.forEach(m -> walked.add(m.get("rentalYear", Integer.class) + "-"
+                                             + m.get("rentalMonth", Integer.class) + "/"
+                                             + m.get("store", Store.class).getStoreId()));
                 if (!page.hasNext()) {
                     break;
                 }
                 page = repositoryInstance().selectMonthlyRentalShares(page.nextPageable());
             }
             assertThat(walked).containsExactlyElementsOf(
-                    all.stream().map(m -> m.getRentalYear() + "-" + m.getRentalMonth() + "/" + m.getStoreId())
+                    all.stream()
+                            .map(m -> m.get("rentalYear", Integer.class) + "-" + m.get("rentalMonth", Integer.class)
+                                      + "/" + m.get("store", Store.class).getStoreId())
                             .toList());
         }
     }

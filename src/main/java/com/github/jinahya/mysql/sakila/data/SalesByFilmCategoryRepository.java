@@ -2,7 +2,7 @@ package com.github.jinahya.mysql.sakila.data;
 
 import com.github.jinahya.mysql.sakila.persistence.SalesByFilmCategory;
 import com.github.jinahya.mysql.sakila.persistence.SalesByFilmCategory_;
-import org.jspecify.annotations.Nullable;
+import jakarta.persistence.Tuple;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -39,10 +39,15 @@ import java.util.Objects;
  * {@code list...}, which builds a {@link Specification} with the Criteria API and runs it through
  * {@link org.springframework.data.jpa.repository.JpaSpecificationExecutor}. An exercise that shows sums, shares or
  * differences cannot be a {@code Specification}, which only filters; such a method, {@code select...}, declares its
- * JPQL with {@link Query}, with a count query of its own, and returns a projection, one of the interfaces declared
- * here, which Spring Data backs with the selected columns, each aliased with the name of the getter it feeds. Those
- * aliases are what the {@code Pageable} sorts by; an interface rather than a record, because Spring Data rewrites a
- * record projection into a constructor expression, which drops the aliases, and the sort with them.
+ * JPQL with {@link Query}, with a count query of its own. Such a query selects entities, not their columns: a row of
+ * the view is selected whole ({@code SELECT s AS salesByFilmCategory}), and grouped by itself ({@code GROUP BY s})
+ * where the query groups; what is computed, a sum, a share, a difference, is a column of its own beside it. A result
+ * that is a single entity is that entity; any other comes back as a {@link jakarta.persistence.Tuple}, each element
+ * read by its alias, with its type ({@code tuple.get("salesByFilmCategory", SalesByFilmCategory.class)},
+ * {@code tuple.get("percent", BigDecimal.class)}). The {@code Pageable} sorts a computed column by its alias
+ * ({@code Sort.by(DESC, "percent")}), and an attribute of a selected entity by its path from the query's
+ * identification variable ({@code Sort.by(DESC, "s.totalSales")}); each method's javadoc names its aliases and
+ * identification variables. A query whose select has no entity, only sums, stays as it is.
  *
  * @see SalesByFilmCategory
  * @see SalesByFilmCategory_
@@ -52,129 +57,6 @@ public interface SalesByFilmCategoryRepository
         extends _Repository<SalesByFilmCategory, String> {
 
     // ----------------------------------------------------------------------------------------------------- exercises
-
-    /**
-     * The sum of the view's {@code total_sales} over all categories, and the sum of the {@code amount} of all
-     * payments: a projection of {@link #selectSalesTotals()}.
-     */
-    interface SalesTotals {
-
-        /**
-         * Returns the sum of the {@code total_sales} of every row of the view.
-         *
-         * @return the sum of the sales by category; {@code null} if the view has no row, since the sum of nothing is
-         *         {@code null}.
-         */
-        @Nullable BigDecimal getByCategory();
-
-        /**
-         * Returns the sum of the {@code amount} of every row of the {@code payment} table.
-         *
-         * @return the sum of all payments; {@code null} if there is no payment.
-         */
-        @Nullable BigDecimal getAllPayments();
-    }
-
-    /**
-     * A category, its sales, and their share of all sales: a projection of {@link #selectSalesShares(Pageable)},
-     * sortable by {@code category}, {@code totalSales} and {@code percent}.
-     */
-    interface CategorySalesShare {
-
-        /**
-         * Returns the name of the category.
-         *
-         * @return the name of the category.
-         */
-        String getCategory();
-
-        /**
-         * Returns the sales of the category.
-         *
-         * @return the sales of the category.
-         */
-        BigDecimal getTotalSales();
-
-        /**
-         * Returns the share of all sales that are the category's, as a percentage rounded to two decimals.
-         *
-         * @return the percentage.
-         */
-        BigDecimal getPercent();
-    }
-
-    /**
-     * A category, its sales, and the running total of the sales of it and every category above it, with the share of
-     * all sales that total is: a projection of {@link #selectRunningTotals(Pageable)}, sortable by {@code category},
-     * {@code totalSales}, {@code runningTotal} and {@code runningPercent}.
-     */
-    interface CategoryRunningTotal {
-
-        /**
-         * Returns the name of the category.
-         *
-         * @return the name of the category.
-         */
-        String getCategory();
-
-        /**
-         * Returns the sales of the category.
-         *
-         * @return the sales of the category.
-         */
-        BigDecimal getTotalSales();
-
-        /**
-         * Returns the sum of the sales of the category and of every category above it, by sales descending, then by
-         * name.
-         *
-         * @return the running total.
-         */
-        BigDecimal getRunningTotal();
-
-        /**
-         * Returns the share of all sales the running total is, as a percentage rounded to two decimals.
-         *
-         * @return the percentage.
-         */
-        BigDecimal getRunningPercent();
-    }
-
-    /**
-     * A category, its sales, the category next down, by sales descending, then by name, and the gap between their
-     * sales: a projection of {@link #selectGaps(Pageable)}, sortable by {@code category}, {@code totalSales},
-     * {@code nextCategory} and {@code gap}.
-     */
-    interface CategoryGap {
-
-        /**
-         * Returns the name of the category.
-         *
-         * @return the name of the category.
-         */
-        String getCategory();
-
-        /**
-         * Returns the sales of the category.
-         *
-         * @return the sales of the category.
-         */
-        BigDecimal getTotalSales();
-
-        /**
-         * Returns the name of the category next down.
-         *
-         * @return the name of the next category.
-         */
-        String getNextCategory();
-
-        /**
-         * Returns the sales of the category less the sales of the category next down.
-         *
-         * @return the gap.
-         */
-        BigDecimal getGap();
-    }
 
     /**
      * Lists every row of the view ({@code SAKILA-SALES_BY_FILM_CATEGORY-B-01}, not a pick, which takes the first
@@ -220,56 +102,60 @@ public interface SalesByFilmCategoryRepository
      * <p>
      * The two are equal only if every payment reaches exactly one category, through its rental, copy and film. The
      * second sum is a subquery in the select, on another entity, which a {@link Specification} of this one cannot
-     * select; hence a {@link Query} and a projection. The select aggregates every row of the view into one, so it
+     * select; hence a {@link Query} and a tuple. The select aggregates every row of the view into one, so it
      * always has exactly one row, even when the view is empty, and takes no {@link Pageable}; the sums of no rows are
      * {@code null}, not zero.
      *
-     * @return the two sums.
+     * @return the two sums, as a tuple of {@code byCategory} and {@code allPayments} ({@link BigDecimal}), each
+     *         {@code null} if there is no row to sum.
      */
     @Query("""
             SELECT SUM(v.totalSales) AS byCategory, (SELECT SUM(p.amount) FROM Payment p) AS allPayments
             FROM SalesByFilmCategory v""")
-    SalesTotals selectSalesTotals();
+    Tuple selectSalesTotals();
 
     /**
      * Selects every category, with its sales and their share of all sales ({@code SAKILA-SALES_BY_FILM_CATEGORY-I-02},
-     * the book's pick, which takes the first five by {@code totalSales} descending, then by {@code category}).
+     * the book's pick, which takes the first five by {@code s.totalSales} descending, then by {@code s.category}).
      * <p>
      * The share divides the category's sales by the sales of every category, a scalar subquery in the select, which
-     * Hibernate's query language, unlike standard JPQL, allows; nothing is grouped. The columns are computed, which a
-     * {@link Specification} cannot select; hence a {@link Query} and a projection. The count query counts the rows of
-     * the view.
+     * Hibernate's query language, unlike standard JPQL, allows; nothing is grouped. The row is selected whole, and the
+     * share beside it is computed, which a {@link Specification} cannot select; hence a {@link Query} and a tuple. The
+     * count query counts the rows of the view.
      *
-     * @param pageable the page to return, and its sort, by {@code category}, {@code totalSales} or {@code percent};
-     *                 must not be {@code null}.
-     * @return a page of the categories, with their sales and shares.
+     * @param pageable the page to return, and its sort, by {@code percent}, or by an attribute of the row through
+     *                 {@code s} ({@code s.category}, {@code s.totalSales}); must not be {@code null}.
+     * @return a page of the categories, with their sales and shares, each a tuple of {@code salesByFilmCategory}
+     *         ({@link SalesByFilmCategory}) and {@code percent} ({@link BigDecimal}).
      */
     @Query(value = """
-            SELECT s.category AS category, s.totalSales AS totalSales,
+            SELECT s AS salesByFilmCategory,
                    ROUND(100 * s.totalSales / (SELECT SUM(t.totalSales) FROM SalesByFilmCategory t), 2) AS percent
             FROM SalesByFilmCategory s""",
            countQuery = """
                    SELECT COUNT(s)
                    FROM SalesByFilmCategory s""")
-    Page<CategorySalesShare> selectSalesShares(Pageable pageable);
+    Page<Tuple> selectSalesShares(Pageable pageable);
 
     /**
      * Selects every category, with its sales, the running total of the sales down to it, and the share of all sales
-     * that total is ({@code SAKILA-SALES_BY_FILM_CATEGORY-A-01}, the book's pick, which orders by {@code totalSales}
-     * descending, then by {@code category}).
+     * that total is ({@code SAKILA-SALES_BY_FILM_CATEGORY-A-01}, the book's pick, which orders by
+     * {@code s.totalSales} descending, then by {@code s.category}).
      * <p>
      * The running total runs in that order whatever the page's sort is: JPQL has no window function, so the view is
      * joined with itself, and each category {@code s} sums, with a {@code CASE}, the sales of every category {@code t}
      * that sold more, or as much with a name not after it; the share divides that by the sum of all of {@code t}. The
-     * caller's sort only orders the rows, so give it the exercise's, or the totals do not run down the page. The count
-     * query counts the rows of the view.
+     * rows are grouped by {@code s} itself, which selects it whole. The caller's sort only orders the rows, so give it
+     * the exercise's, or the totals do not run down the page. The count query counts the rows of the view.
      *
-     * @param pageable the page to return, and its sort, by {@code category}, {@code totalSales},
-     *                 {@code runningTotal} or {@code runningPercent}; must not be {@code null}.
-     * @return a page of the categories, with their running totals.
+     * @param pageable the page to return, and its sort, by {@code runningTotal} or {@code runningPercent}, or by an
+     *                 attribute of the row through {@code s} ({@code s.category}, {@code s.totalSales}); must not be
+     *                 {@code null}.
+     * @return a page of the categories, with their running totals, each a tuple of {@code salesByFilmCategory}
+     *         ({@link SalesByFilmCategory}), and {@code runningTotal} and {@code runningPercent} ({@link BigDecimal}).
      */
     @Query(value = """
-            SELECT s.category AS category, s.totalSales AS totalSales,
+            SELECT s AS salesByFilmCategory,
                    SUM(CASE WHEN t.totalSales > s.totalSales
                                  OR (t.totalSales = s.totalSales AND t.category <= s.category)
                             THEN t.totalSales ELSE 0 END) AS runningTotal,
@@ -277,29 +163,31 @@ public interface SalesByFilmCategoryRepository
                                              OR (t.totalSales = s.totalSales AND t.category <= s.category)
                                         THEN t.totalSales ELSE 0 END) / SUM(t.totalSales), 2) AS runningPercent
             FROM SalesByFilmCategory s, SalesByFilmCategory t
-            GROUP BY s.category, s.totalSales""",
+            GROUP BY s""",
            countQuery = """
                    SELECT COUNT(s)
                    FROM SalesByFilmCategory s""")
-    Page<CategoryRunningTotal> selectRunningTotals(Pageable pageable);
+    Page<Tuple> selectRunningTotals(Pageable pageable);
 
     /**
      * Selects every category but the last, with its sales, the category next down, and the gap between their sales
      * ({@code SAKILA-SALES_BY_FILM_CATEGORY-A-02}, this module's own extra, which takes the first three by {@code gap}
-     * descending, then by {@code category}).
+     * descending, then by {@code s.category}).
      * <p>
      * JPQL has no {@code LEAD}, so the view is joined with itself: {@code n} is next down from {@code s} when it is
      * below {@code s}, by sales descending and then by name, and {@code NOT EXISTS} a category {@code m} between the
-     * two. The last category has none below it, so it is not selected. The count query counts the pairs the same
-     * conditions keep.
+     * two. The last category has none below it, so it is not selected. Both rows are selected whole, and the gap is
+     * computed beside them. The count query counts the pairs the same conditions keep.
      *
-     * @param pageable the page to return, and its sort, by {@code category}, {@code totalSales},
-     *                 {@code nextCategory} or {@code gap}; must not be {@code null}.
-     * @return a page of the categories, with the gaps to the next ones down.
+     * @param pageable the page to return, and its sort, by {@code gap}, or by an attribute of either row through
+     *                 {@code s} or {@code n} ({@code s.category}, {@code s.totalSales}, {@code n.category}, ...); must
+     *                 not be {@code null}.
+     * @return a page of the categories, with the gaps to the next ones down, each a tuple of
+     *         {@code salesByFilmCategory} and {@code nextSalesByFilmCategory} ({@link SalesByFilmCategory}), and
+     *         {@code gap} ({@link BigDecimal}).
      */
     @Query(value = """
-            SELECT s.category AS category, s.totalSales AS totalSales, n.category AS nextCategory,
-                   s.totalSales - n.totalSales AS gap
+            SELECT s AS salesByFilmCategory, n AS nextSalesByFilmCategory, s.totalSales - n.totalSales AS gap
             FROM SalesByFilmCategory s, SalesByFilmCategory n
             WHERE (n.totalSales < s.totalSales OR (n.totalSales = s.totalSales AND n.category > s.category))
               AND NOT EXISTS (SELECT m
@@ -318,5 +206,5 @@ public interface SalesByFilmCategoryRepository
                                             OR (m.totalSales = s.totalSales AND m.category > s.category))
                                        AND (m.totalSales > n.totalSales
                                             OR (m.totalSales = n.totalSales AND m.category < n.category)))""")
-    Page<CategoryGap> selectGaps(Pageable pageable);
+    Page<Tuple> selectGaps(Pageable pageable);
 }

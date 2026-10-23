@@ -3,9 +3,11 @@ package com.github.jinahya.mysql.sakila.data;
 import com.github.jinahya.mysql.sakila.persistence.Address_;
 import com.github.jinahya.mysql.sakila.persistence.City;
 import com.github.jinahya.mysql.sakila.persistence.City_;
+import com.github.jinahya.mysql.sakila.persistence.Country;
 import com.github.jinahya.mysql.sakila.persistence.Country_;
 import com.github.jinahya.mysql.sakila.persistence.Customer;
 import com.github.jinahya.mysql.sakila.persistence.Customer_;
+import jakarta.persistence.Tuple;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -39,10 +41,14 @@ import java.util.Objects;
  * API and runs it through {@link org.springframework.data.jpa.repository.JpaSpecificationExecutor}. An exercise that
  * shows columns, grouped and counted, cannot be a {@code Specification}, which only filters; such a method,
  * {@code select...}, declares its JPQL with {@link Query}, with a count query of its own since Spring Data cannot
- * derive one from a grouped select, and returns a projection, one of the interfaces declared here, which Spring Data
- * backs with the selected columns, each aliased with the name of the getter it feeds. Those aliases are what the
- * {@code Pageable} sorts by; an interface rather than a record, because Spring Data rewrites a record projection into
- * a constructor expression, which drops the aliases, and the sort with them.
+ * derive one from a grouped select. Such a query selects entities, not their columns: a country is selected whole
+ * ({@code SELECT co AS country}), and grouped by itself ({@code GROUP BY co}) where the query groups; what is
+ * computed, a count, is a column of its own beside it. A result that is a single entity is that entity; any other
+ * comes back as a {@link jakarta.persistence.Tuple}, each element read by its alias, with its type
+ * ({@code tuple.get("country", Country.class)}, {@code tuple.get("cities", Long.class)}). The {@code Pageable} sorts a
+ * computed column by its alias ({@code Sort.by(DESC, "cities")}), and an attribute of a selected entity by its path
+ * from the query's identification variable ({@code Sort.by("co.country")}); each method's javadoc names its aliases
+ * and identification variables.
  *
  * @see City
  * @see City_
@@ -52,34 +58,6 @@ public interface CityRepository
         extends _Repository<City, Integer> {
 
     // ----------------------------------------------------------------------------------------------------- exercises
-
-    /**
-     * A country, by id and name, and how many cities it has: a projection of {@link #selectCityCounts(Pageable)},
-     * sortable by {@code countryId}, {@code country} and {@code cities}.
-     */
-    interface CountryCityCount {
-
-        /**
-         * Returns the id of the country.
-         *
-         * @return the id of the country.
-         */
-        Integer getCountryId();
-
-        /**
-         * Returns the name of the country.
-         *
-         * @return the name of the country.
-         */
-        String getCountry();
-
-        /**
-         * Returns the number of cities of the country.
-         *
-         * @return the number of cities.
-         */
-        long getCities();
-    }
 
     /**
      * Finds the cities whose value of {@link City_#CITY} attribute starts with the specified prefix, ordered by that
@@ -116,25 +94,26 @@ public interface CityRepository
 
     /**
      * Selects the countries that have a city, with how many ({@code SAKILA-CITY-I-02}, this module's own extra, which
-     * takes the first five by {@code cities} descending, then by {@code country}).
+     * takes the first five by {@code cities} descending, then by {@code co.country}).
      * <p>
-     * The cities are joined to their {@link City_#COUNTRY}, grouped by the country's id and name, and counted; the
-     * count query counts the countries whose cities are not empty.
+     * The cities are joined to their {@link City_#COUNTRY}, grouped by the country itself, which selects the country
+     * whole, and counted; the count query counts the countries whose cities are not empty.
      *
-     * @param pageable the page to return, and its sort, by {@code countryId}, {@code country} or {@code cities}; must
-     *                 not be {@code null}.
-     * @return a page of the countries that have a city, with their numbers of cities.
+     * @param pageable the page to return, and its sort, by {@code cities}, or by an attribute of the country through
+     *                 {@code co} ({@code co.country}, {@code co.countryId}, ...); must not be {@code null}.
+     * @return a page of the countries that have a city, with their numbers of cities, each a tuple of
+     *         {@code country} ({@link Country}) and {@code cities} ({@link Long}).
      */
     @Query(value = """
-            SELECT co.countryId AS countryId, co.country AS country, COUNT(c) AS cities
+            SELECT co AS country, COUNT(c) AS cities
             FROM City c
             JOIN c.country co
-            GROUP BY co.countryId, co.country""",
+            GROUP BY co""",
            countQuery = """
                    SELECT COUNT(co)
                    FROM Country co
                    WHERE co.cities IS NOT EMPTY""")
-    Page<CountryCityCount> selectCityCounts(Pageable pageable);
+    Page<Tuple> selectCityCounts(Pageable pageable);
 
     /**
      * Lists the cities which are the only city of their country ({@code SAKILA-CITY-A-01}, the book's pick, which

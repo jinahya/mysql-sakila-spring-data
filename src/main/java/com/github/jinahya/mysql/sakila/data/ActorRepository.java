@@ -6,6 +6,7 @@ import com.github.jinahya.mysql.sakila.persistence.Film;
 import com.github.jinahya.mysql.sakila.persistence.FilmActor;
 import com.github.jinahya.mysql.sakila.persistence.FilmActor_;
 import com.github.jinahya.mysql.sakila.persistence.Film_;
+import jakarta.persistence.Tuple;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -46,10 +47,15 @@ import java.util.stream.Stream;
  * Criteria API and runs it through {@link org.springframework.data.jpa.repository.JpaSpecificationExecutor}. An
  * exercise that shows columns, grouped and counted, or taken from other entities, cannot be a {@code Specification},
  * which only filters; such a method, {@code select...}, declares its JPQL with {@link Query}, with a count query of
- * its own since Spring Data cannot derive one from a grouped select, and returns a projection, one of the interfaces
- * declared here, which Spring Data backs with the selected columns, each aliased with the name of the getter it
- * feeds. Those aliases are what the {@code Pageable} sorts by; an interface rather than a record, because Spring Data
- * rewrites a record projection into a constructor expression, which drops the aliases, and the sort with them.
+ * its own since Spring Data cannot derive one from a grouped select. Such a query selects entities, not their
+ * columns: an actor is selected whole ({@code SELECT a AS actor}), and grouped by itself ({@code GROUP BY a}) where
+ * the query groups; what is computed, a count, a sum, an expression, is a column of its own beside it. A result that
+ * is a single entity is that entity; any other comes back as a {@link jakarta.persistence.Tuple}, each element read
+ * by its alias, with its type ({@code tuple.get("actor", Actor.class)}, {@code tuple.get("films", Long.class)}).
+ * The {@code Pageable} sorts a computed column by its alias ({@code Sort.by(DESC, "films")}), and an attribute of a
+ * selected entity by its path from the query's identification variable ({@code Sort.by("a.actorId")}); each method's
+ * javadoc names its aliases and identification variables. A query which groups by a value, not by an entity (the
+ * last names shared by more than a number of actors), still selects that value.
  *
  * @see Actor
  * @see Actor_
@@ -100,105 +106,8 @@ public interface ActorRepository
 
     // ----------------------------------------------------------------------------------------------------- exercises
 
-    /**
-     * A last name, and how many actors share it: a projection of {@link #selectLastNamesSharedByMoreThan(long,
-     * Pageable)}, sortable by {@code lastName} and {@code actors}.
-     */
-    interface LastNameCount {
 
-        /**
-         * Returns the last name.
-         *
-         * @return the last name.
-         */
-        String getLastName();
 
-        /**
-         * Returns the number of actors whose last name it is.
-         *
-         * @return the number of actors.
-         */
-        long getActors();
-    }
-
-    /**
-     * An actor, by id and names, and how many films the actor appears in: a projection of
-     * {@link #selectFilmCounts(Pageable)}, sortable by {@code actorId}, {@code firstName}, {@code lastName} and
-     * {@code films}.
-     */
-    interface ActorFilmCount {
-
-        /**
-         * Returns the id of the actor.
-         *
-         * @return the id of the actor.
-         */
-        Integer getActorId();
-
-        /**
-         * Returns the first name of the actor.
-         *
-         * @return the first name of the actor.
-         */
-        String getFirstName();
-
-        /**
-         * Returns the last name of the actor.
-         *
-         * @return the last name of the actor.
-         */
-        String getLastName();
-
-        /**
-         * Returns the number of films the actor appears in.
-         *
-         * @return the number of films.
-         */
-        long getFilms();
-    }
-
-    /**
-     * An actor, by id and names, and a film of the actor's of the longest length: a projection of
-     * {@link #selectLongestFilmsOfActorIdsBetween(int, int, Pageable)}, sortable by {@code actorId}, {@code firstName},
-     * {@code lastName}, {@code title} and {@code length}.
-     */
-    interface ActorLongestFilm {
-
-        /**
-         * Returns the id of the actor.
-         *
-         * @return the id of the actor.
-         */
-        Integer getActorId();
-
-        /**
-         * Returns the first name of the actor.
-         *
-         * @return the first name of the actor.
-         */
-        String getFirstName();
-
-        /**
-         * Returns the last name of the actor.
-         *
-         * @return the last name of the actor.
-         */
-        String getLastName();
-
-        /**
-         * Returns the title of the film.
-         *
-         * @return the title of the film.
-         */
-        String getTitle();
-
-        /**
-         * Returns the length of the film, in minutes, which is the longest of the actor's films.
-         *
-         * @return the length of the film.
-         */
-        Integer getLength();
-    }
 
     /**
      * Finds the actors whose value of {@link Actor_#LAST_NAME} attribute is equal to the specified value, by
@@ -241,7 +150,8 @@ public interface ActorRepository
      * @param actors   the number of actors a last name has to be shared by more than.
      * @param pageable the page to return, and its sort, by {@code lastName} or {@code actors}; must not be
      *                 {@code null}.
-     * @return a page of the last names shared by more than {@code actors} actors, with their counts.
+     * @return a page of the last names shared by more than {@code actors} actors, with their counts, each a tuple of
+     *         {@code lastName} ({@link String}) and {@code actors} ({@link Long}).
      */
     @Query(value = """
             SELECT a.lastName AS lastName, COUNT(a) AS actors
@@ -255,29 +165,31 @@ public interface ActorRepository
                                         FROM Actor a2
                                         GROUP BY a2.lastName
                                         HAVING COUNT(a2) > :actors)""")
-    Page<LastNameCount> selectLastNamesSharedByMoreThan(long actors, Pageable pageable);
+    Page<Tuple> selectLastNamesSharedByMoreThan(long actors, Pageable pageable);
 
     /**
      * Selects the actors who appear in at least one film, with how many ({@code SAKILA-ACTOR-I-02}, the book's pick, which takes the
-     * first five by {@code films} descending, then by {@code actorId}, so that the five are always the same five).
+     * first five by {@code films} descending, then by {@code a.actorId}, so that the five are always the same five).
      * <p>
      * The films are counted through the actor's {@link Actor_#FILM_ACTORS} links, by an inner join, so an actor with
-     * no film is not in the page; the count query counts the actors that have one.
+     * no film is not in the page; the actors are grouped by the actor itself, which selects the actor whole. The count
+     * query counts the actors that have a film.
      *
-     * @param pageable the page to return, and its sort, by {@code actorId}, {@code firstName}, {@code lastName} or
-     *                 {@code films}; must not be {@code null}.
-     * @return a page of the actors who appear in a film, with their numbers of films.
+     * @param pageable the page to return, and its sort, by {@code films}, or by an attribute of the actor through
+     *                 {@code a} ({@code a.actorId}, {@code a.lastName}, ...); must not be {@code null}.
+     * @return a page of the actors who appear in a film, with their numbers of films, each a tuple of {@code actor}
+     *         ({@link Actor}) and {@code films} ({@link Long}).
      */
     @Query(value = """
-            SELECT a.actorId AS actorId, a.firstName AS firstName, a.lastName AS lastName, COUNT(fa) AS films
+            SELECT a AS actor, COUNT(fa) AS films
             FROM Actor a
             JOIN a.filmActors fa
-            GROUP BY a.actorId, a.firstName, a.lastName""",
+            GROUP BY a""",
            countQuery = """
                    SELECT COUNT(a)
                    FROM Actor a
                    WHERE a.filmActors IS NOT EMPTY""")
-    Page<ActorFilmCount> selectFilmCounts(Pageable pageable);
+    Page<Tuple> selectFilmCounts(Pageable pageable);
 
     /**
      * Lists the actors who appear in a film of every rating ({@code SAKILA-ACTOR-A-01}, the book's pick, which takes the first five
@@ -308,22 +220,23 @@ public interface ActorRepository
     /**
      * Selects, for each actor whose id is in the specified range, the actor's films of the longest length
      * ({@code SAKILA-ACTOR-A-03}, this module's own extra, which takes the actors {@code 1} to {@code 5}, and orders by
-     * {@code actorId}, then by {@code title}).
+     * {@code a.actorId}, then by {@code f.title}).
      * <p>
      * A correlated subquery finds the longest length of the films of the actor of each row, and the outer query keeps
-     * the films of that length; two films that tie are two rows. The select takes columns of two entities, the actor
-     * and the film, which a {@link Specification} of actors cannot select; hence a {@link Query} and a projection. The
-     * count query counts the same rows.
+     * the films of that length; two films that tie are two rows. The select takes two entities, the actor and the
+     * film, which a {@link Specification} of actors cannot select; hence a {@link Query} and a tuple. The count query
+     * counts the same rows.
      *
      * @param minActorId the lowest {@link Actor_#ACTOR_ID} of the range, inclusive.
      * @param maxActorId the highest {@link Actor_#ACTOR_ID} of the range, inclusive.
-     * @param pageable   the page to return, and its sort, by {@code actorId}, {@code firstName}, {@code lastName},
-     *                   {@code title} or {@code length}; must not be {@code null}.
-     * @return a page of the actors whose ids are in the range, each with a longest film of theirs.
+     * @param pageable   the page to return, and its sort, by an attribute of the actor through {@code a}
+     *                   ({@code a.actorId}, ...) or of the film through {@code f} ({@code f.title},
+     *                   {@code f.length}, ...); must not be {@code null}.
+     * @return a page of the actors whose ids are in the range, each with a longest film of theirs, as a tuple of
+     *         {@code actor} ({@link Actor}) and {@code film} ({@link Film}).
      */
     @Query(value = """
-            SELECT a.actorId AS actorId, a.firstName AS firstName, a.lastName AS lastName,
-                   f.title AS title, f.length AS length
+            SELECT a AS actor, f AS film
             FROM Actor a
                      JOIN a.filmActors fa
                      JOIN fa.film f
@@ -342,5 +255,5 @@ public interface ActorRepository
                                      FROM FilmActor fa2
                                               JOIN fa2.film f2
                                      WHERE fa2.actor = a)""")
-    Page<ActorLongestFilm> selectLongestFilmsOfActorIdsBetween(int minActorId, int maxActorId, Pageable pageable);
+    Page<Tuple> selectLongestFilmsOfActorIdsBetween(int minActorId, int maxActorId, Pageable pageable);
 }

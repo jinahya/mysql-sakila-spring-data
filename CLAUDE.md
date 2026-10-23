@@ -48,11 +48,11 @@ after a change upstream, run `./mvnw -DskipTests install` there before building 
   `Page<T>`; no `Limit`, no `Sort` alone, no fixed `ORDER BY` in the JPQL. The caller's `PageRequest` carries the
   order; the javadoc says which sort an exercise asks for. A grouped `@Query` declares its own `countQuery` (Spring
   Data cannot derive one from a grouped select); count the groups with `COUNT(DISTINCT ..)` or a subquery.
-- **Projections are nested interfaces** of the repository (`interface LastNameCount { String getLastName(); long
-  getActors(); }`), and the select aliases each column with the getter's name (`COUNT(a) AS actors`); those aliases are
-  what the `Pageable` sorts by (`Sort.by(DESC, "actors")`). Not a record: Spring Data rewrites a record projection into
-  a constructor expression, which drops the aliases, and a sort by `actors` then fails with
-  `Could not interpret path expression`.
+- **Results that are not entities are `jakarta.persistence.Tuple`** (in a `List`, `Stream`, `Page` or alone). The
+  select aliases each column (`COUNT(a) AS actors`); the caller reads it by that alias with its type
+  (`tuple.get("actors", Long.class)`; a native number as `Number`, so the same read holds on MySQL and H2), and the
+  `Pageable` sorts by it (`Sort.by(DESC, "actors")`). The method's `@return` names the aliases and their types. The
+  three views' `JdbcClient` methods keep their records, since `JdbcClient` has no `Tuple`.
 - **Exercises.** Upstream's `../mysql-sakila-persistence/EXERCISES.asciidoc` (sibling root; `EXERCISES.yaml` is its registry) is the context, not
   a contract: for each repository, one or two exercises of each level (Basic, Intermediate, Advanced) become one
   method each, on the repository of the exercise's section, the exercise id (`SAKILA-ACTOR-I-01`) named in the

@@ -1,9 +1,5 @@
 package com.github.jinahya.mysql.sakila.data;
 
-import com.github.jinahya.mysql.sakila.data.FilmActorRepository.ActorPairCount;
-import com.github.jinahya.mysql.sakila.data.FilmActorRepository.ActorsFilmCount;
-import com.github.jinahya.mysql.sakila.data.FilmActorRepository.FilmActorCount;
-import com.github.jinahya.mysql.sakila.data.FilmActorRepository.FilmPairActorCount;
 import com.github.jinahya.mysql.sakila.persistence.Actor;
 import com.github.jinahya.mysql.sakila.persistence.Film;
 import com.github.jinahya.mysql.sakila.persistence.FilmActor;
@@ -110,7 +106,7 @@ class FilmActorRepository_DataJpaTest
     class SelectActorCounts_Test {
 
         private static final Sort BY_ACTORS_DESC_THEN_FILM_ID =
-                Sort.by(Sort.Direction.DESC, "actors").and(Sort.by("filmId"));
+                Sort.by(Sort.Direction.DESC, "actors").and(Sort.by("f.filmId"));
 
         /**
          * Saves a film with no actor, and asserts that the page is empty, with no elements in all.
@@ -126,7 +122,7 @@ class FilmActorRepository_DataJpaTest
 
         /**
          * Saves films of three, one and no actors, and asserts that a page of five, the most cast first as the
-         * exercise sorts, holds the first two with their ids, titles and counts, two in all, and that a page of one
+         * exercise sorts, holds the first two films themselves with their counts, two in all, and that a page of one
          * holds the most cast alone, still two in all.
          */
         @Test
@@ -139,17 +135,17 @@ class FilmActorRepository_DataJpaTest
             final var page = repositoryInstance().selectActorCounts(
                     PageRequest.of(0, 5, BY_ACTORS_DESC_THEN_FILM_ID));
             assertThat(page.getContent())
-                    .extracting(FilmActorCount::getFilmId, FilmActorCount::getTitle, FilmActorCount::getActors)
+                    .extracting(column("film", Film.class), column("actors", Long.class))
                     .containsExactly(
-                            tuple(three.getFilmId(), three.getTitle(), 3L),
-                            tuple(one.getFilmId(), one.getTitle(), 1L)
+                            tuple(three, 3L),
+                            tuple(one, 1L)
                     );
             assertThat(page.getTotalElements()).isEqualTo(2L);
             final var first = repositoryInstance().selectActorCounts(
                     PageRequest.of(0, 1, BY_ACTORS_DESC_THEN_FILM_ID));
             assertThat(first.getContent())
-                    .extracting(FilmActorCount::getFilmId)
-                    .containsExactly(three.getFilmId());
+                    .extracting(column("film", Film.class))
+                    .containsExactly(three);
             assertThat(first.getTotalElements()).isEqualTo(2L);
             assertThat(first.getTotalPages()).isEqualTo(2);
         }
@@ -246,7 +242,7 @@ class FilmActorRepository_DataJpaTest
             fixtures().film();
             final var list = repositoryInstance().selectFilmCountsByActors();
             assertThat(list)
-                    .extracting(ActorsFilmCount::getActors, ActorsFilmCount::getFilms)
+                    .extracting(longColumn("actors"), longColumn("films"))
                     .containsExactly(tuple(1L, 1L), tuple(2L, 2L));
         }
     }
@@ -258,7 +254,7 @@ class FilmActorRepository_DataJpaTest
     class SelectCoStarCounts_Test {
 
         private static final Sort BY_FILMS_DESC_THEN_ACTOR_IDS =
-                Sort.by(Sort.Direction.DESC, "films").and(Sort.by("actorId1", "actorId2"));
+                Sort.by(Sort.Direction.DESC, "films").and(Sort.by("a1.actorId", "a2.actorId"));
 
         /**
          * Saves a film with one actor, and asserts that the page is empty, with no elements in all: one actor makes
@@ -292,18 +288,20 @@ class FilmActorRepository_DataJpaTest
             final var page = repositoryInstance().selectCoStarCounts(
                     PageRequest.of(0, 5, BY_FILMS_DESC_THEN_ACTOR_IDS));
             assertThat(page.getContent())
-                    .extracting(ActorPairCount::getActorId1, ActorPairCount::getActorId2, ActorPairCount::getFilms)
+                    .extracting(column("actor1", Actor.class), column("actor2", Actor.class),
+                                column("films", Long.class))
                     .containsExactly(
-                            tuple(a1.getActorId(), a2.getActorId(), 2L),
-                            tuple(a1.getActorId(), a3.getActorId(), 1L),
-                            tuple(a2.getActorId(), a3.getActorId(), 1L)
+                            tuple(a1, a2, 2L),
+                            tuple(a1, a3, 1L),
+                            tuple(a2, a3, 1L)
                     );
             assertThat(page.getTotalElements()).isEqualTo(3L);
             final var first = repositoryInstance().selectCoStarCounts(
                     PageRequest.of(0, 1, BY_FILMS_DESC_THEN_ACTOR_IDS));
             assertThat(first.getContent())
-                    .extracting(ActorPairCount::getActorId1, ActorPairCount::getActorId2, ActorPairCount::getFilms)
-                    .containsExactly(tuple(a1.getActorId(), a2.getActorId(), 2L));
+                    .extracting(column("actor1", Actor.class), column("actor2", Actor.class),
+                                column("films", Long.class))
+                    .containsExactly(tuple(a1, a2, 2L));
             assertThat(first.getTotalElements()).isEqualTo(3L);
             assertThat(first.getTotalPages()).isEqualTo(3);
         }
@@ -327,7 +325,7 @@ class FilmActorRepository_DataJpaTest
     @Nested
     class SelectFilmPairsWithSameActors_Test {
 
-        private static final Sort BY_FILM_IDS = Sort.by("filmId1", "filmId2");
+        private static final Sort BY_FILM_IDS = Sort.by("f1.filmId", "f2.filmId");
 
         /**
          * Saves a film of two actors and a film of one of them, and asserts that the page is empty, with no elements
@@ -372,17 +370,17 @@ class FilmActorRepository_DataJpaTest
             cast(c1, c);
             final var page = repositoryInstance().selectFilmPairsWithSameActors(PageRequest.of(0, 5, BY_FILM_IDS));
             assertThat(page.getContent())
-                    .extracting(FilmPairActorCount::getFilmId1, FilmPairActorCount::getFilmId2,
-                                FilmPairActorCount::getActors)
+                    .extracting(column("film1", Film.class), column("film2", Film.class),
+                                column("actors", Long.class))
                     .containsExactly(
-                            tuple(ab1.getFilmId(), ab2.getFilmId(), 2L),
-                            tuple(a1.getFilmId(), a2.getFilmId(), 1L)
+                            tuple(ab1, ab2, 2L),
+                            tuple(a1, a2, 1L)
                     );
             assertThat(page.getTotalElements()).isEqualTo(2L);
             final var first = repositoryInstance().selectFilmPairsWithSameActors(PageRequest.of(0, 1, BY_FILM_IDS));
             assertThat(first.getContent())
-                    .extracting(FilmPairActorCount::getFilmId1, FilmPairActorCount::getFilmId2)
-                    .containsExactly(tuple(ab1.getFilmId(), ab2.getFilmId()));
+                    .extracting(column("film1", Film.class), column("film2", Film.class))
+                    .containsExactly(tuple(ab1, ab2));
             assertThat(first.getTotalElements()).isEqualTo(2L);
             assertThat(first.getTotalPages()).isEqualTo(2);
         }

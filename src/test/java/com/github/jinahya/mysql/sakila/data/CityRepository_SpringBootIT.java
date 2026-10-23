@@ -1,6 +1,5 @@
 package com.github.jinahya.mysql.sakila.data;
 
-import com.github.jinahya.mysql.sakila.data.CityRepository.CountryCityCount;
 import com.github.jinahya.mysql.sakila.persistence.Address_;
 import com.github.jinahya.mysql.sakila.persistence.City;
 import com.github.jinahya.mysql.sakila.persistence.City_;
@@ -185,7 +184,8 @@ class CityRepository_SpringBootIT
             final var found = repositoryInstance().findAllByCityStartingWithOrderByCityAsc(prefix);
             assertThat(found)
                     .contains(city)
-                    .allSatisfy(c -> assertThat(stripAccents(c.getCity())).startsWithIgnoringCase(stripAccents(prefix)));
+                    .allSatisfy(c -> assertThat(stripAccents(c.getCity()))
+                            .startsWithIgnoringCase(stripAccents(prefix)));
         }
 
         /**
@@ -267,14 +267,14 @@ class CityRepository_SpringBootIT
     class SelectCityCounts_Test {
 
         private static final Sort BY_CITIES_DESC_THEN_COUNTRY =
-                Sort.by(Sort.Direction.DESC, "cities").and(Sort.by("country"));
+                Sort.by(Sort.Direction.DESC, "cities").and(Sort.by("co.country"));
 
         private static Stream<City> cities() {
             return CityRepository_SpringBootIT.cities();
         }
 
         /**
-         * Asserts that the first five, by {@code cities} descending, then by {@code country}, are the five the
+         * Asserts that the first five, by {@code cities} descending, then by {@code co.country}, are the five the
          * exercise's SQL gives, and that the groups in all are the countries that have a city.
          */
         @Test
@@ -282,7 +282,7 @@ class CityRepository_SpringBootIT
             final var page = repositoryInstance().selectCityCounts(PageRequest.of(0, 5, BY_CITIES_DESC_THEN_COUNTRY));
             assertPage(page);
             assertThat(page.getContent())
-                    .extracting(CountryCityCount::getCountry, CountryCityCount::getCities)
+                    .extracting(column("country", Country.class, Country::getCountry), column("cities", Long.class))
                     .containsExactly(
                             tuple("India", 60L),
                             tuple("China", 53L),
@@ -294,8 +294,8 @@ class CityRepository_SpringBootIT
         }
 
         /**
-         * Asserts, in one transaction, that a selected city's country is among all groups, with as many cities as a
-         * {@link Specification} on the country counts.
+         * Asserts, in one transaction, that a selected city's country, the country itself, is among all groups, with as
+         * many cities as a {@link Specification} on the country counts.
          *
          * @param city one of the cities selected in {@link CityRepository_SpringBootIT#__()}.
          */
@@ -306,8 +306,8 @@ class CityRepository_SpringBootIT
             final var managed = repositoryInstance().findById(city.getCityId()).orElseThrow();
             final var all = repositoryInstance().selectCityCounts(Pageable.unpaged(BY_CITIES_DESC_THEN_COUNTRY));
             assertThat(all.getContent())
-                    .extracting(CountryCityCount::getCountryId, CountryCityCount::getCities)
-                    .contains(tuple(managed.getCountry().getCountryId(), countCitiesOfCountryOf(managed)));
+                    .extracting(column("country", Country.class), column("cities", Long.class))
+                    .contains(tuple(managed.getCountry(), countCitiesOfCountryOf(managed)));
         }
 
         /**

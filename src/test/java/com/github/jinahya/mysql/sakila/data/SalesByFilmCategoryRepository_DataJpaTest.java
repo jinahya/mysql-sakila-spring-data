@@ -153,8 +153,8 @@ class SalesByFilmCategoryRepository_DataJpaTest
         void _Null_Empty() {
             final var totals = repositoryInstance().selectSalesTotals();
             assertThat(totals).isNotNull();
-            assertThat(totals.getByCategory()).isNull();
-            assertThat(totals.getAllPayments()).isNull();
+            assertThat(totals.get("byCategory", BigDecimal.class)).isNull();
+            assertThat(totals.get("allPayments", BigDecimal.class)).isNull();
         }
     }
 
@@ -166,7 +166,7 @@ class SalesByFilmCategoryRepository_DataJpaTest
     class SelectSalesShares_Test {
 
         private static final Sort BY_TOTAL_SALES_DESC_THEN_CATEGORY =
-                Sort.by(Sort.Direction.DESC, "totalSales").and(Sort.by("category"));
+                Sort.by(Sort.Direction.DESC, "s.totalSales").and(Sort.by("s.category"));
 
         /**
          * Asserts that the select, with its scalar subquery for the sum of all sales, and its count query, sorted by
@@ -203,7 +203,7 @@ class SalesByFilmCategoryRepository_DataJpaTest
     class SelectRunningTotals_Test {
 
         private static final Sort BY_TOTAL_SALES_DESC_THEN_CATEGORY =
-                Sort.by(Sort.Direction.DESC, "totalSales").and(Sort.by("category"));
+                Sort.by(Sort.Direction.DESC, "s.totalSales").and(Sort.by("s.category"));
 
         /**
          * Asserts that the self-joined and grouped select, with its {@code CASE} sums, and its count query, sorted by
@@ -239,7 +239,7 @@ class SalesByFilmCategoryRepository_DataJpaTest
     class SelectGaps_Test {
 
         private static final Sort BY_GAP_DESC_THEN_CATEGORY =
-                Sort.by(Sort.Direction.DESC, "gap").and(Sort.by("category"));
+                Sort.by(Sort.Direction.DESC, "gap").and(Sort.by("s.category"));
 
         /**
          * Asserts that the self-joined select, with its correlated {@code NOT EXISTS}, and its count query, sorted by

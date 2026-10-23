@@ -2,6 +2,7 @@ package com.github.jinahya.mysql.sakila.data;
 
 import com.github.jinahya.mysql.sakila.persistence.Film;
 import com.github.jinahya.mysql.sakila.persistence.Film_;
+import jakarta.persistence.Tuple;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -42,11 +43,16 @@ import java.util.stream.Stream;
  * method, {@code list...}, which builds a {@link Specification} with the Criteria API and runs it through
  * {@link org.springframework.data.jpa.repository.JpaSpecificationExecutor}. An exercise that shows columns, grouped
  * and counted, cannot be a {@link Specification}, which only filters; such a method, {@code select...}, declares its
- * JPQL with {@link Query}, with a count query of its own since Spring Data cannot derive one from a grouped select,
- * and returns a projection, one of the interfaces declared here, which Spring Data backs with the selected columns,
- * each aliased with the name of the getter it feeds. Those aliases are what the {@code Pageable} sorts by; an
- * interface rather than a record, because Spring Data rewrites a record projection into a constructor expression,
- * which drops the aliases, and the sort with them.
+ * JPQL with {@link Query}, with a count query of its own since Spring Data cannot derive one from a grouped select.
+ * Such a query selects entities, not their columns: a film is selected whole ({@code SELECT f AS film}), and grouped
+ * by itself ({@code GROUP BY f}) where the query groups; what is computed, a count, an average, is a column of its
+ * own beside it. A result that is a single entity is that entity; any other comes back as a
+ * {@link jakarta.persistence.Tuple}, each element read by its alias, with its type
+ * ({@code tuple.get("film", Film.class)}, {@code tuple.get("rentals", Long.class)}). The {@code Pageable} sorts a
+ * computed column by its alias ({@code Sort.by(DESC, "rentals")}), and an attribute of a selected entity by its path
+ * from the query's identification variable ({@code Sort.by("f.filmId")}); each method's javadoc names its aliases
+ * and identification variables. A query which groups by a value, not by an entity (the ratings), still selects that
+ * value.
  *
  * @see Film
  * @see Film_
@@ -58,75 +64,6 @@ public interface FilmRepository
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * A rating, and how many films have it: a projection of {@link #selectRatingCounts()} and
-     * {@link #selectRatingCountsOfLongerThanRatingAverage(Pageable)}, sortable by {@code rating} and {@code films}.
-     */
-    interface RatingCount {
-
-        /**
-         * Returns the rating.
-         *
-         * @return the rating.
-         */
-        Film.Rating getRating();
-
-        /**
-         * Returns the number of films of the rating.
-         *
-         * @return the number of films.
-         */
-        long getFilms();
-    }
-
-    /**
-     * A rating, and the average rental rate of its films: a projection of {@link #selectAverageRentalRates()}.
-     */
-    interface RatingAverageRentalRate {
-
-        /**
-         * Returns the rating.
-         *
-         * @return the rating.
-         */
-        Film.Rating getRating();
-
-        /**
-         * Returns the average rental rate of the films of the rating, rounded to two decimal places.
-         *
-         * @return the average rental rate.
-         */
-        double getAverageRentalRate();
-    }
-
-    /**
-     * A film, by id and title, and how many times it was rented: a projection of
-     * {@link #selectRentalCounts(Pageable)}, sortable by {@code filmId}, {@code title} and {@code rentals}.
-     */
-    interface FilmRentalCount {
-
-        /**
-         * Returns the id of the film.
-         *
-         * @return the id of the film.
-         */
-        Integer getFilmId();
-
-        /**
-         * Returns the title of the film.
-         *
-         * @return the title of the film.
-         */
-        String getTitle();
-
-        /**
-         * Returns the number of times the film was rented.
-         *
-         * @return the number of rentals.
-         */
-        long getRentals();
-    }
-
-    /**
      * Selects the ratings, with how many films each has ({@code SAKILA-FILM-B-01}, the book's pick, which orders by
      * {@code rating}).
      * <p>
@@ -135,7 +72,8 @@ public interface FilmRepository
      * database, so the order there is that of the {@code ENUM}'s values, which is the order of {@link Film.Rating}'s
      * constants, not the alphabetical one.
      *
-     * @return a list of the ratings, with their numbers of films, by rating.
+     * @return a list of the ratings, with their numbers of films, by rating, each a tuple of {@code rating}
+     *         ({@link Film.Rating}) and {@code films} ({@link Long}).
      */
     @Query("""
             SELECT f.rating AS rating, COUNT(f) AS films
@@ -143,7 +81,7 @@ public interface FilmRepository
             WHERE f.rating IS NOT NULL
             GROUP BY f.rating
             ORDER BY f.rating""")
-    List<RatingCount> selectRatingCounts();
+    List<Tuple> selectRatingCounts();
 
     /**
      * Lists the films whose value of {@link Film_#LENGTH} attribute is greater than the specified value
@@ -176,7 +114,8 @@ public interface FilmRepository
      * Spring Data refuses a call that no transaction surrounds, with an
      * {@link org.springframework.dao.InvalidDataAccessApiUsageException}, before any query runs.
      *
-     * @return a stream of the ratings, with the average rental rates of their films, by rating, to be closed by the
+     * @return a stream of the ratings, with the average rental rates of their films, by rating, each a tuple of
+     *         {@code rating} ({@link Film.Rating}) and {@code averageRentalRate} ({@link Double}), to be closed by the
      *         caller.
      */
     @Query("""
@@ -185,7 +124,7 @@ public interface FilmRepository
             WHERE f.rating IS NOT NULL
             GROUP BY f.rating
             ORDER BY f.rating""")
-    Stream<RatingAverageRentalRate> selectAverageRentalRates();
+    Stream<Tuple> selectAverageRentalRates();
 
     /**
      * Lists the films which have no copy in the inventory ({@code SAKILA-FILM-I-01}, this module's own extra, which
@@ -207,30 +146,32 @@ public interface FilmRepository
 
     /**
      * Selects the films which were rented at least once, with how many times ({@code SAKILA-FILM-I-02}, the book's
-     * pick, which takes the first five by {@code rentals} descending, then by {@code filmId}, so that the five are
-     * always the same five).
+     * pick, which takes the first five by {@code rentals} descending, then by {@code f.filmId}, so that the five
+     * are always the same five).
      * <p>
      * A rental refers to a copy, and a copy to a film, so the rentals are counted through two inner joins, from the
-     * film's {@link Film_#INVENTORIES} to each copy's rentals; a film never rented is not in the page. The count
-     * query counts the films that have a rental, through an {@code EXISTS}.
+     * film's {@link Film_#INVENTORIES} to each copy's rentals; a film never rented is not in the page. The films are
+     * grouped by the film itself, which selects the film whole. The count query counts the films that have a rental,
+     * through an {@code EXISTS}.
      *
-     * @param pageable the page to return, and its sort, by {@code filmId}, {@code title} or {@code rentals}; must not
-     *                 be {@code null}.
-     * @return a page of the films rented at least once, with their numbers of rentals.
+     * @param pageable the page to return, and its sort, by {@code rentals}, or by an attribute of the film through
+     *                 {@code f} ({@code f.filmId}, {@code f.title}, ...); must not be {@code null}.
+     * @return a page of the films rented at least once, with their numbers of rentals, each a tuple of {@code film}
+     *         ({@link Film}) and {@code rentals} ({@link Long}).
      */
     @Query(value = """
-            SELECT f.filmId AS filmId, f.title AS title, COUNT(r) AS rentals
+            SELECT f AS film, COUNT(r) AS rentals
             FROM Film f
             JOIN f.inventories i
             JOIN i.rentals r
-            GROUP BY f.filmId, f.title""",
+            GROUP BY f""",
            countQuery = """
                    SELECT COUNT(f)
                    FROM Film f
                    WHERE EXISTS (SELECT r.rentalId
                                  FROM Rental r
                                  WHERE r.inventory.film = f)""")
-    Page<FilmRentalCount> selectRentalCounts(Pageable pageable);
+    Page<Tuple> selectRentalCounts(Pageable pageable);
 
     /**
      * Selects the ratings, with how many of their films are longer than the average film of the rating
@@ -242,7 +183,8 @@ public interface FilmRepository
      * in the order of the {@code ENUM}'s values.
      *
      * @param pageable the page to return, and its sort, by {@code rating} or {@code films}; must not be {@code null}.
-     * @return a page of the ratings, with their numbers of films longer than the rating's average.
+     * @return a page of the ratings, with their numbers of films longer than the rating's average, each a tuple of
+     *         {@code rating} ({@link Film.Rating}) and {@code films} ({@link Long}).
      */
     @Query(value = """
             SELECT f1.rating AS rating, COUNT(f1) AS films
@@ -253,5 +195,5 @@ public interface FilmRepository
                    SELECT COUNT(DISTINCT f1.rating)
                    FROM Film f1
                    WHERE f1.length > (SELECT AVG(f2.length) FROM Film f2 WHERE f2.rating = f1.rating)""")
-    Page<RatingCount> selectRatingCountsOfLongerThanRatingAverage(Pageable pageable);
+    Page<Tuple> selectRatingCountsOfLongerThanRatingAverage(Pageable pageable);
 }

@@ -1,4 +1,4 @@
-SELECT FID, title, actors
-FROM film_list
-WHERE FID = 1
+SELECT l.*
+FROM film_list l
+WHERE l.FID = 1
 ;

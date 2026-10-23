@@ -1,12 +1,10 @@
 package com.github.jinahya.mysql.sakila.data;
 
-import com.github.jinahya.mysql.sakila.data.FilmCategoryRepository.CategoryLongestFilm;
-import com.github.jinahya.mysql.sakila.data.FilmCategoryRepository.CategoryPairFilmCount;
-import com.github.jinahya.mysql.sakila.data.FilmCategoryRepository.FilmCategoryCount;
+import com.github.jinahya.mysql.sakila.persistence.Category;
+import com.github.jinahya.mysql.sakila.persistence.Film;
 import com.github.jinahya.mysql.sakila.persistence.FilmCategory;
 import com.github.jinahya.mysql.sakila.persistence.FilmCategoryId;
 import com.github.jinahya.mysql.sakila.persistence.FilmCategory_;
-import com.github.jinahya.mysql.sakila.persistence.Film_;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -172,7 +170,7 @@ class FilmCategoryRepository_SpringBootIT
     @Nested
     class SelectFilmsWithMoreCategoriesThan_Test {
 
-        private static final Sort BY_FILM_ID = Sort.by("filmId");
+        private static final Sort BY_FILM_ID = Sort.by("f.filmId");
 
         private static Stream<FilmCategory> filmCategories() {
             return FilmCategoryRepository_SpringBootIT.filmCategories();
@@ -206,11 +204,12 @@ class FilmCategoryRepository_SpringBootIT
                     categories, PageRequest.of(0, 5, BY_FILM_ID));
             assertPage(page);
             assertThat(page.getContent())
-                    .allSatisfy(c -> assertThat(c.getCategories()).isGreaterThan(categories))
-                    .isSortedAccordingTo(Comparator.comparing(FilmCategoryCount::getFilmId))
+                    .allSatisfy(c -> assertThat(c.get("categories", Long.class)).isGreaterThan(categories))
+                    .isSortedAccordingTo(Comparator.comparing(column("film", Film.class, Film::getFilmId)))
                     .allSatisfy(c -> {
-                        assertThat(c.getCategories()).as("categories of film %d", c.getFilmId())
-                                .isEqualTo(countByFilmId(c.getFilmId()));
+                        final var filmId = c.get("film", Film.class).getFilmId();
+                        assertThat(c.get("categories", Long.class)).as("categories of film %d", filmId)
+                                .isEqualTo(countByFilmId(filmId));
                     });
         }
 
@@ -224,7 +223,7 @@ class FilmCategoryRepository_SpringBootIT
         void __ContainsFilmOfFixture(final FilmCategory filmCategory) {
             final var all = repositoryInstance().selectFilmsWithMoreCategoriesThan(0L, Pageable.unpaged(BY_FILM_ID));
             assertThat(all.getContent())
-                    .extracting(FilmCategoryCount::getFilmId)
+                    .extracting(column("film", Film.class, Film::getFilmId))
                     .contains(filmCategory.getFilm().getFilmId());
         }
     }
@@ -235,7 +234,7 @@ class FilmCategoryRepository_SpringBootIT
     @Nested
     class SelectFilmsWithoutCategory_Test {
 
-        private static final Sort BY_FILM_ID = Sort.by(Film_.FILM_ID);
+        private static final Sort BY_FILM_ID = Sort.by("f.filmId");
 
         /**
          * Asserts that the page is empty, with no elements in all, which is the exercise's output, {@code 0}, and is
@@ -260,7 +259,7 @@ class FilmCategoryRepository_SpringBootIT
     @Nested
     class SelectLongestFilms_Test {
 
-        private static final Sort BY_NAME = Sort.by("name");
+        private static final Sort BY_NAME = Sort.by("c.name");
 
         /**
          * Asserts that all the categories, by name as the exercise orders, are the exercise's output.
@@ -269,8 +268,10 @@ class FilmCategoryRepository_SpringBootIT
         void __Expected() {
             final var page = repositoryInstance().selectLongestFilms(Pageable.unpaged(BY_NAME));
             assertThat(page.getContent())
-                    .extracting(CategoryLongestFilm::getName, CategoryLongestFilm::getFilmId,
-                                CategoryLongestFilm::getTitle, CategoryLongestFilm::getLength)
+                    .extracting(column("category", Category.class, Category::getName),
+                                column("film", Film.class, Film::getFilmId),
+                                column("film", Film.class, Film::getTitle),
+                                column("film", Film.class, Film::getLength))
                     .containsExactly(
                             tuple("Action", 212, "DARN FORRESTER", 185),
                             tuple("Animation", 349, "GANGS PRIDE", 185),
@@ -305,9 +306,9 @@ class FilmCategoryRepository_SpringBootIT
             assertPage(page);
             assertThat(page.getTotalElements()).isEqualTo(all.getTotalElements());
             assertThat(page.getContent())
-                    .extracting(CategoryLongestFilm::getName)
+                    .extracting(column("category", Category.class))
                     .containsExactlyElementsOf(all.getContent().stream().limit(size)
-                                                       .map(CategoryLongestFilm::getName).toList());
+                                                       .map(column("category", Category.class)).toList());
         }
     }
 
@@ -319,7 +320,7 @@ class FilmCategoryRepository_SpringBootIT
     class SelectCategoryPairsWithSameFilmCount_Test {
 
         private static final Sort BY_FILMS_DESC_THEN_CATEGORIES =
-                Sort.by(Sort.Direction.DESC, "films").and(Sort.by("category1", "category2"));
+                Sort.by(Sort.Direction.DESC, "films").and(Sort.by("c1.name", "c2.name"));
 
         /**
          * Asserts that the pairs, the greater count first and then by names as the exercise sorts, are the exercise's
@@ -330,8 +331,9 @@ class FilmCategoryRepository_SpringBootIT
             final var page = repositoryInstance().selectCategoryPairsWithSameFilmCount(
                     PageRequest.of(0, 5, BY_FILMS_DESC_THEN_CATEGORIES));
             assertThat(page.getContent())
-                    .extracting(CategoryPairFilmCount::getCategory1, CategoryPairFilmCount::getCategory2,
-                                CategoryPairFilmCount::getFilms)
+                    .extracting(column("category1", Category.class, Category::getName),
+                                column("category2", Category.class, Category::getName),
+                                column("films", Long.class))
                     .containsExactly(
                             tuple("Games", "Sci-Fi", 61L),
                             tuple("Classics", "Travel", 57L)
@@ -347,12 +349,12 @@ class FilmCategoryRepository_SpringBootIT
             final var page0 = repositoryInstance().selectCategoryPairsWithSameFilmCount(
                     PageRequest.of(0, 1, BY_FILMS_DESC_THEN_CATEGORIES));
             assertThat(page0.getContent())
-                    .extracting(CategoryPairFilmCount::getCategory1)
+                    .extracting(column("category1", Category.class, Category::getName))
                     .containsExactly("Games");
             assertThat(page0.getTotalElements()).isEqualTo(2L);
             final var page1 = repositoryInstance().selectCategoryPairsWithSameFilmCount(page0.nextPageable());
             assertThat(page1.getContent())
-                    .extracting(CategoryPairFilmCount::getCategory1)
+                    .extracting(column("category1", Category.class, Category::getName))
                     .containsExactly("Classics");
             assertThat(page1.hasNext()).isFalse();
         }

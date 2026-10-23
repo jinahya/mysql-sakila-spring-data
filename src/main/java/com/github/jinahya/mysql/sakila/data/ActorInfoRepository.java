@@ -8,6 +8,7 @@ import com.github.jinahya.mysql.sakila.persistence.FilmActor;
 import com.github.jinahya.mysql.sakila.persistence.FilmActor_;
 import com.github.jinahya.mysql.sakila.persistence.FilmCategory_;
 import com.github.jinahya.mysql.sakila.persistence.Film_;
+import jakarta.persistence.Tuple;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -48,9 +49,15 @@ import java.util.stream.Stream;
  * {@code count...}, which builds a {@link Specification} with the Criteria API and runs it through
  * {@link org.springframework.data.jpa.repository.JpaSpecificationExecutor}. An exercise that shows columns computed in
  * the select, a substring or counts of two tables, cannot be a {@code Specification}, which only filters; such a
- * method, {@code select...}, declares its JPQL with {@link Query} and returns a projection, one of the interfaces
- * declared here, which Spring Data backs with the selected columns, each aliased with the name of the getter it feeds.
- * A native-only exercise, grouped on a computed value, is a {@link NativeQuery} with the exercise's SQL.
+ * method, {@code select...}, declares its JPQL with {@link Query}. Such a query selects entities, not their
+ * columns: a row of the view is selected whole ({@code SELECT v AS actorInfo}); what is computed, a substring, a
+ * count, is a column of its own beside it. A result that is a single entity is that entity; any other comes back as a
+ * {@link jakarta.persistence.Tuple}, each element read by its alias, with its type
+ * ({@code tuple.get("actorInfo", ActorInfo.class)}, {@code tuple.get("actors", Long.class)}). The {@code Pageable}
+ * sorts a computed column by its alias, and an attribute of a selected entity by its path from the query's
+ * identification variable ({@code Sort.by("v.actorId")}); each method's javadoc names its aliases and identification
+ * variables. A query whose select has no entity at all, only counts, still selects those counts. A native-only
+ * exercise, grouped on a computed value, is a {@link NativeQuery} with the exercise's SQL.
  *
  * @see ActorInfo
  * @see ActorInfo_
@@ -62,89 +69,13 @@ public interface ActorInfoRepository
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * An actor of the view, by id and names, with the head of its {@code film_info}: a projection of
-     * {@link #selectFilmInfoHeadByActorId(int, int)}.
-     */
-    interface FilmInfoHead {
-
-        /**
-         * Returns the id of the actor.
-         *
-         * @return the id of the actor.
-         */
-        Integer getActorId();
-
-        /**
-         * Returns the first name of the actor.
-         *
-         * @return the first name of the actor.
-         */
-        String getFirstName();
-
-        /**
-         * Returns the last name of the actor.
-         *
-         * @return the last name of the actor.
-         */
-        String getLastName();
-
-        /**
-         * Returns the first characters of the {@code film_info} of the actor, as many as were asked for.
-         *
-         * @return the head of the {@code film_info}; {@code null} if the actor's {@code film_info} is {@code null}.
-         */
-        String getFilmInfo();
-    }
-
-    /**
-     * How many rows the view has, and how many actors the {@code actor} table has: a projection of
-     * {@link #selectRowCounts(Pageable)}.
-     */
-    interface RowCounts {
-
-        /**
-         * Returns the number of rows of the {@code actor_info} view.
-         *
-         * @return the number of rows of the view.
-         */
-        long getActorInfos();
-
-        /**
-         * Returns the number of rows of the {@code actor} table.
-         *
-         * @return the number of actors.
-         */
-        long getActors();
-    }
-
-    /**
-     * A number of categories, and how many actors' {@code film_info} covers that many: a projection of
-     * {@link #selectActorCountsByCategoryCount()}.
-     */
-    interface CategoryCountActors {
-
-        /**
-         * Returns the number of categories.
-         *
-         * @return the number of categories; {@code null} for the actors whose {@code film_info} is {@code null}.
-         */
-        Integer getCategories();
-
-        /**
-         * Returns the number of actors whose {@code film_info} covers {@link #getCategories()} categories.
-         *
-         * @return the number of actors.
-         */
-        long getActors();
-    }
-
-    /**
      * Selects the row of the actor of the specified id, with its {@code film_info} cut to the specified length, as a
      * stream ({@code SAKILA-ACTOR_INFO-B-01}, this module's own extra, which shows the actor {@code 1} with the first
-     * {@code 80} characters, and orders by {@code actorId}).
+     * {@code 80} characters, and orders by {@code v.actorId}).
      * <p>
      * The {@code film_info} is long, so the select cuts it with {@code SUBSTRING}, which a {@link Specification}, which
-     * only filters, cannot do; hence a {@link Query} and a projection. The lookup is by the id, so the stream yields
+     * only filters, cannot do; hence a {@link Query} and a tuple, of the row of the view whole and, beside it, its
+     * {@code film_info} cut. The lookup is by the id, so the stream yields
      * one row or none; the {@code ORDER BY} is the exercise's all the same. The stream is to be consumed inside a
      * transaction the caller opened, and closed, in a try-with-resources; outside one, Spring Data refuses the call
      * with an {@link org.springframework.dao.InvalidDataAccessApiUsageException}, before any query runs.
@@ -153,19 +84,21 @@ public interface ActorInfoRepository
      * @param length  the number of leading characters of the {@link ActorInfo_#FILM_INFO} attribute to select; must
      *                be positive.
      * @return a stream of the row of the actor whose id is {@code actorId}, to be closed by the caller; empty if there
-     *         is none.
+     *         is none; the row is a tuple of {@code actorInfo} ({@link ActorInfo}) and {@code filmInfo}
+     *         ({@link String}), the actor's {@code film_info} cut to {@code length} characters, and {@code null} if
+     *         the actor's {@code film_info} is.
      */
     @Query("""
-            SELECT v.actorId AS actorId, v.firstName AS firstName, v.lastName AS lastName,
-                   SUBSTRING(v.filmInfo, 1, :length) AS filmInfo
+            SELECT v AS actorInfo, SUBSTRING(v.filmInfo, 1, :length) AS filmInfo
             FROM ActorInfo v
             WHERE v.actorId = :actorId
             ORDER BY v.actorId""")
-    Stream<FilmInfoHead> selectFilmInfoHeadByActorId(int actorId, int length);
+    Stream<Tuple> selectFilmInfoHeadByActorId(int actorId, int length);
 
     /**
      * Counts the actors who appear in at least one film of the specified category, as the {@code film_info} says
-     * ({@code SAKILA-ACTOR_INFO-B-02}, not a pick, which counts the actors of a {@code Horror} film; one number, so no sort).
+     * ({@code SAKILA-ACTOR_INFO-B-02}, not a pick, which counts the actors of a {@code Horror} film; one number, so no
+     * sort).
      * <p>
      * Each category in the {@code film_info} string is written as its name followed by a colon, so a
      * {@link Specification} of one {@code LIKE}, on {@code %<category>:%}, finds the actors without joining any table.
@@ -203,13 +136,14 @@ public interface ActorInfoRepository
      * <p>
      * The view groups the actors, not the films, so an actor with no film still has a row, and the two counts should
      * be equal. The second count is a subquery in the select, on another entity, which a {@link Specification} of
-     * this one cannot select; hence a {@link Query} and a projection. The select aggregates every row of the view
+     * this one cannot select; hence a {@link Query} and a tuple. The select aggregates every row of the view
      * into one, so it always has exactly one row, even when the view is empty; the page holds that row, and the
      * count query, which Spring Data cannot derive from an aggregated select, says so: it counts the rows of the same
      * aggregate, as a subquery in its {@code FROM}.
      *
      * @param pageable the page to return; must not be {@code null}.
-     * @return a page of the one row of the two counts.
+     * @return a page of the one row of the two counts, a tuple of {@code actorInfos} and {@code actors}
+     *         ({@link Long}).
      */
     @Query(value = """
             SELECT COUNT(v) AS actorInfos, (SELECT COUNT(a) FROM Actor a) AS actors
@@ -218,7 +152,7 @@ public interface ActorInfoRepository
                    SELECT COUNT(*)
                    FROM (SELECT COUNT(v) AS actorInfos
                          FROM ActorInfo v) c""")
-    Page<RowCounts> selectRowCounts(Pageable pageable);
+    Page<Tuple> selectRowCounts(Pageable pageable);
 
     /**
      * Lists the actors whose {@code film_info} covers every category ({@code SAKILA-ACTOR_INFO-I-02}, the book's pick,
@@ -254,14 +188,17 @@ public interface ActorInfoRepository
      * whose {@code film_info} is {@code null} counts in a group of its own, a {@code null} number of categories, as the
      * SQL has it.
      *
-     * @return a list of the numbers of categories, each with its number of actors, the most categories first.
+     * @return a list of the numbers of categories, each with its number of actors, the most categories first, each a
+     *         tuple of {@code categories} and {@code actors}, numbers as the JDBC driver types them (on MySQL, a
+     *         {@link Long} each); {@code categories} is {@code null} for the actors whose {@code film_info} is
+     *         {@code null}.
      */
     @NativeQuery("""
             SELECT CHAR_LENGTH(film_info) - CHAR_LENGTH(REPLACE(film_info, ':', '')) AS categories, COUNT(*) AS actors
             FROM actor_info
             GROUP BY categories
             ORDER BY categories DESC""")
-    List<CategoryCountActors> selectActorCountsByCategoryCount();
+    List<Tuple> selectActorCountsByCategoryCount();
 
     /**
      * Lists the actors whose {@code film_info} disagrees with the tables on the number of categories

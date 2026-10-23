@@ -9,6 +9,7 @@ import com.github.jinahya.mysql.sakila.persistence.Staff;
 import com.github.jinahya.mysql.sakila.persistence.Staff_;
 import com.github.jinahya.mysql.sakila.persistence.Store;
 import com.github.jinahya.mysql.sakila.persistence.Store_;
+import jakarta.persistence.Tuple;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -48,10 +49,17 @@ import java.util.stream.Stream;
  * {@link Specification} with the Criteria API and runs it through
  * {@link org.springframework.data.jpa.repository.JpaSpecificationExecutor}. An exercise that shows columns, grouped
  * and counted, or paired, cannot be a {@code Specification}, which only filters rows of one entity; such a method,
- * {@code select...}, declares its JPQL with {@link Query}, with a count query of its own, and returns a projection, one
- * of the interfaces declared here, which Spring Data backs with the selected columns, each aliased with the name of
- * the getter it feeds. Those aliases are what the {@code Pageable} sorts by. A native-only exercise, a top-N per group
- * by a window function, is a {@link NativeQuery} with the exercise's SQL.
+ * {@code select...}, declares its JPQL with {@link Query}, with a count query of its own. Such a query selects
+ * entities, not their columns: a pair of addresses is selected as the two addresses whole
+ * ({@code SELECT a1 AS address, a2 AS otherAddress}); what is computed, a count, is a column of its own. A result
+ * that is a single entity is that entity; any other comes back as a {@link jakarta.persistence.Tuple}, each element
+ * read by its alias, with its type ({@code tuple.get("address", Address.class)},
+ * {@code tuple.get("countries", Long.class)}).
+ * The {@code Pageable} sorts a computed column by its alias ({@code Sort.by(DESC, "countries")}), and an attribute of
+ * a selected entity by its path from the query's identification variable ({@code Sort.by("a1.addressId")}); each
+ * method's javadoc names its aliases and identification variables. A query which groups by a value, not by an entity
+ * (the districts in more than a number of countries), still selects that value. A native-only exercise, a top-N per
+ * group by a window function, is a {@link NativeQuery} with the exercise's SQL.
  *
  * @see Address
  * @see Address_
@@ -61,98 +69,6 @@ public interface AddressRepository
         extends _Repository<Address, Integer> {
 
     // ----------------------------------------------------------------------------------------------------- exercises
-
-    /**
-     * A district, and in how many countries an address of that district is: a projection of
-     * {@link #selectDistrictsInMoreCountriesThan(long, Pageable)}, sortable by {@code district} and {@code countries}.
-     */
-    interface DistrictCountryCount {
-
-        /**
-         * Returns the name of the district.
-         *
-         * @return the name of the district.
-         */
-        String getDistrict();
-
-        /**
-         * Returns the number of countries the addresses of the district are in.
-         *
-         * @return the number of countries.
-         */
-        long getCountries();
-    }
-
-    /**
-     * Two addresses which share a postal code: a projection of {@link #selectPairsSharingPostalCode(Pageable)},
-     * sortable by {@code addressId}, {@code address}, {@code otherAddressId}, {@code otherAddress} and
-     * {@code postalCode}.
-     */
-    interface AddressPair {
-
-        /**
-         * Returns the id of the address of the lower id.
-         *
-         * @return the id of the first address.
-         */
-        Integer getAddressId();
-
-        /**
-         * Returns the address of the lower id.
-         *
-         * @return the first address.
-         */
-        String getAddress();
-
-        /**
-         * Returns the id of the address of the higher id.
-         *
-         * @return the id of the other address.
-         */
-        Integer getOtherAddressId();
-
-        /**
-         * Returns the address of the higher id.
-         *
-         * @return the other address.
-         */
-        String getOtherAddress();
-
-        /**
-         * Returns the postal code the two addresses share.
-         *
-         * @return the postal code.
-         */
-        String getPostalCode();
-    }
-
-    /**
-     * A country, a district of it, and how many addresses the district has: a projection of
-     * {@link #selectTopThreeDistrictsOfIndiaChinaAndUnitedStates()}.
-     */
-    interface CountryDistrictCount {
-
-        /**
-         * Returns the name of the country.
-         *
-         * @return the name of the country.
-         */
-        String getCountry();
-
-        /**
-         * Returns the name of the district.
-         *
-         * @return the name of the district.
-         */
-        String getDistrict();
-
-        /**
-         * Returns the number of addresses of the district, in the country.
-         *
-         * @return the number of addresses.
-         */
-        long getAddresses();
-    }
 
     /**
      * Finds the addresses whose value of {@link Address_#ADDRESS2} attribute is {@code null}, by
@@ -218,7 +134,8 @@ public interface AddressRepository
      * @param countries the number of countries a district has to be in more than.
      * @param pageable  the page to return, and its sort, by {@code district} or {@code countries}; must not be
      *                  {@code null}.
-     * @return a page of the districts in more than {@code countries} countries, with their numbers of countries.
+     * @return a page of the districts in more than {@code countries} countries, with their numbers of countries,
+     *         each a tuple of {@code district} ({@link String}) and {@code countries} ({@link Long}).
      */
     @Query(value = """
             SELECT a.district AS district, COUNT(DISTINCT ci.country) AS countries
@@ -236,7 +153,7 @@ public interface AddressRepository
                                         WHERE a2.district <> ''
                                         GROUP BY a2.district
                                         HAVING COUNT(DISTINCT ci2.country) > :countries)""")
-    Page<DistrictCountryCount> selectDistrictsInMoreCountriesThan(long countries, Pageable pageable);
+    Page<Tuple> selectDistrictsInMoreCountriesThan(long countries, Pageable pageable);
 
     /**
      * Lists the addresses no customer, staff member or store has ({@code SAKILA-ADDRESS-A-01}, the book's pick, which
@@ -268,21 +185,21 @@ public interface AddressRepository
 
     /**
      * Selects the pairs of addresses which share a postal code ({@code SAKILA-ADDRESS-A-02}, this module's own extra,
-     * which orders by {@code addressId}, then by {@code otherAddressId}).
+     * which orders by {@code a1.addressId}, then by {@code a2.addressId}).
      * <p>
      * A self-join of {@code Address}, on the postal code, which keeps each pair once, the lower id first, and leaves
      * out the empty postal codes; a {@code null} one equals nothing, and pairs with nothing. A row is a pair, of two
-     * addresses, which a {@link Specification} of addresses cannot select; hence a {@link Query} and a projection. The
-     * count query counts the same pairs.
+     * addresses, which a {@link Specification} of addresses cannot select; hence a {@link Query} and a tuple of the
+     * two addresses whole, the postal code they share being the one of either. The count query counts the same pairs.
      *
-     * @param pageable the page to return, and its sort, by {@code addressId}, {@code address}, {@code otherAddressId},
-     *                 {@code otherAddress} or {@code postalCode}; must not be {@code null}.
-     * @return a page of the pairs of addresses which share a postal code.
+     * @param pageable the page to return, and its sort, by an attribute of the first address through {@code a1}
+     *                 ({@code a1.addressId}, {@code a1.postalCode}, ...) or of the other through {@code a2}
+     *                 ({@code a2.addressId}, ...); must not be {@code null}.
+     * @return a page of the pairs of addresses which share a postal code, each a tuple of {@code address} and
+     *         {@code otherAddress} ({@link Address}), the lower id first.
      */
     @Query(value = """
-            SELECT a1.addressId AS addressId, a1.address AS address,
-                   a2.addressId AS otherAddressId, a2.address AS otherAddress,
-                   a1.postalCode AS postalCode
+            SELECT a1 AS address, a2 AS otherAddress
             FROM Address a1
                      JOIN Address a2 ON a2.postalCode = a1.postalCode AND a2.addressId > a1.addressId
             WHERE a1.postalCode <> ''""",
@@ -291,7 +208,7 @@ public interface AddressRepository
                    FROM Address a1
                             JOIN Address a2 ON a2.postalCode = a1.postalCode AND a2.addressId > a1.addressId
                    WHERE a1.postalCode <> ''""")
-    Page<AddressPair> selectPairsSharingPostalCode(Pageable pageable);
+    Page<Tuple> selectPairsSharingPostalCode(Pageable pageable);
 
     /**
      * Selects the three districts with the most addresses in each of India, China and the United States
@@ -303,20 +220,22 @@ public interface AddressRepository
      * order and the countries with it.
      *
      * @return a list of the countries, each with its three districts of the most addresses, and their numbers of
-     *         addresses.
+     *         addresses, each a tuple of {@code country} and {@code district} ({@link String}), and {@code addresses},
+     *         a number as the JDBC driver types it (on MySQL, a {@link Long}).
      */
     @NativeQuery("""
-            SELECT country, district, addresses
-            FROM (SELECT co.country,
+            SELECT ranked.*
+            FROM (SELECT co.*,
                          a.district,
-                         COUNT(*)                                                                       AS addresses,
-                         ROW_NUMBER() OVER (PARTITION BY co.country_id ORDER BY COUNT(*) DESC, a.district) AS district_rank
+                         COUNT(*) AS addresses,
+                         ROW_NUMBER() OVER (PARTITION BY co.country_id ORDER BY COUNT(*) DESC, a.district)
+                             AS district_rank
                   FROM address a
                            JOIN city ci ON ci.city_id = a.city_id
                            JOIN country co ON co.country_id = ci.country_id
                   WHERE co.country IN ('India', 'China', 'United States')
-                  GROUP BY co.country_id, co.country, a.district) ranked
+                  GROUP BY co.country_id, a.district) ranked
             WHERE district_rank <= 3
             ORDER BY country, district_rank""")
-    List<CountryDistrictCount> selectTopThreeDistrictsOfIndiaChinaAndUnitedStates();
+    List<Tuple> selectTopThreeDistrictsOfIndiaChinaAndUnitedStates();
 }

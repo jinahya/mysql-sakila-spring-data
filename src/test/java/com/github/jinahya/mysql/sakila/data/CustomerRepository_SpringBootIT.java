@@ -1,17 +1,14 @@
 package com.github.jinahya.mysql.sakila.data;
 
-import com.github.jinahya.mysql.sakila.data.CustomerRepository.ActiveCount;
-import com.github.jinahya.mysql.sakila.data.CustomerRepository.CustomerPaidTotal;
-import com.github.jinahya.mysql.sakila.data.CustomerRepository.StoreAboveAverageCount;
-import com.github.jinahya.mysql.sakila.data.CustomerRepository.StoreCustomerCount;
-import com.github.jinahya.mysql.sakila.data.CustomerRepository.StoreCustomerPaidTotal;
 import com.github.jinahya.mysql.sakila.persistence.Customer;
 import com.github.jinahya.mysql.sakila.persistence.Customer_;
 import com.github.jinahya.mysql.sakila.persistence.Payment;
 import com.github.jinahya.mysql.sakila.persistence.Payment_;
 import com.github.jinahya.mysql.sakila.persistence.Rental;
 import com.github.jinahya.mysql.sakila.persistence.Rental_;
+import com.github.jinahya.mysql.sakila.persistence.Store;
 import com.github.jinahya.mysql.sakila.persistence.Store_;
+import jakarta.persistence.Tuple;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -176,18 +173,19 @@ class CustomerRepository_SpringBootIT
         @Transactional
         @Test
         void __() {
-            final List<ActiveCount> list;
+            final List<Tuple> list;
             try (var stream = repositoryInstance().selectActiveCounts()) {
                 list = stream.toList();
             }
             assertThat(list)
-                    .extracting(ActiveCount::getActive, ActiveCount::getCustomers)
+                    .extracting(column("active", Boolean.class), column("customers", Long.class))
                     .containsExactly(tuple(false, 15L), tuple(true, 584L));
             assertThat(list).allSatisfy(c -> {
-                assertThat(c.getCustomers()).as("customers whose active is %s", c.getActive())
-                        .isEqualTo(countByActive(c.getActive()));
+                final var active = c.get("active", Boolean.class);
+                assertThat(c.get("customers", Long.class)).as("customers whose active is %s", active)
+                        .isEqualTo(countByActive(active));
             });
-            assertThat(list.stream().mapToLong(ActiveCount::getCustomers).sum())
+            assertThat(list.stream().mapToLong(c -> c.get("customers", Long.class)).sum())
                     .isEqualTo(repositoryInstance().count());
         }
 
@@ -224,13 +222,14 @@ class CustomerRepository_SpringBootIT
         void __() {
             final var list = repositoryInstance().selectStoreCounts();
             assertThat(list)
-                    .extracting(StoreCustomerCount::getStoreId, StoreCustomerCount::getCustomers)
+                    .extracting(column("store", Store.class, Store::getStoreId), column("customers", Long.class))
                     .containsExactly(tuple(1, 326L), tuple(2, 273L));
             assertThat(list)
-                    .isSortedAccordingTo(Comparator.comparing(StoreCustomerCount::getStoreId))
+                    .isSortedAccordingTo(Comparator.comparing(column("store", Store.class, Store::getStoreId)))
                     .allSatisfy(c -> {
-                        assertThat(c.getCustomers()).as("customers of store %d", c.getStoreId())
-                                .isEqualTo(countByStoreId(c.getStoreId()));
+                        final var storeId = c.get("store", Store.class).getStoreId();
+                        assertThat(c.get("customers", Long.class)).as("customers of store %d", storeId)
+                                .isEqualTo(countByStoreId(storeId));
                     });
         }
 
@@ -241,7 +240,7 @@ class CustomerRepository_SpringBootIT
         @Test
         void __AddUp() {
             final var list = repositoryInstance().selectStoreCounts();
-            final var sum = list.stream().mapToLong(StoreCustomerCount::getCustomers).sum();
+            final var sum = list.stream().mapToLong(c -> c.get("customers", Long.class)).sum();
             assertThat(sum).isEqualTo(repositoryInstance().count());
         }
     }
@@ -253,7 +252,7 @@ class CustomerRepository_SpringBootIT
     class SelectPaidTotals_Test {
 
         private static final Sort BY_PAID_DESC_THEN_CUSTOMER_ID =
-                Sort.by(Sort.Direction.DESC, "paid").and(Sort.by("customerId"));
+                Sort.by(Sort.Direction.DESC, "paid").and(Sort.by("c.customerId"));
 
         private static Stream<Customer> customers() {
             return CustomerRepository_SpringBootIT.customers();
@@ -261,8 +260,8 @@ class CustomerRepository_SpringBootIT
 
         /**
          * Asserts that a page of the given size, the biggest payer first as the exercise sorts, is ordered so, that
-         * the names are the customer's, and that each sum is the sum of the customer's payments, added up again from
-         * the rows of {@link PaymentRepository}.
+         * each customer is the one of its id, and that each sum is the sum of the customer's payments, added up again
+         * from the rows of {@link PaymentRepository}.
          *
          * @param size the size of the page.
          */
@@ -274,27 +273,30 @@ class CustomerRepository_SpringBootIT
             assertPage(page);
             assertThat(page.getContent())
                     .isNotEmpty()
-                    .isSortedAccordingTo(Comparator.comparing(CustomerPaidTotal::getPaid).reversed()
-                                                 .thenComparing(CustomerPaidTotal::getCustomerId))
+                    .isSortedAccordingTo(Comparator.comparing(column("paid", BigDecimal.class)).reversed()
+                                                 .thenComparing(column("customer", Customer.class,
+                                                                       Customer::getCustomerId)))
                     .allSatisfy(c -> {
-                        final var customer = repositoryInstance().findById(c.getCustomerId()).orElseThrow();
-                        assertThat(customer.getFirstName()).isEqualTo(c.getFirstName());
-                        assertThat(customer.getLastName()).isEqualTo(c.getLastName());
-                        assertThat(c.getPaid()).as("paid by customer %d", c.getCustomerId())
-                                .isEqualByComparingTo(sumPaymentsOf(c.getCustomerId()));
+                        final var customer = c.get("customer", Customer.class);
+                        final var customerId = customer.getCustomerId();
+                        assertThat(repositoryInstance().findById(customerId)).hasValue(customer);
+                        assertThat(c.get("paid", BigDecimal.class)).as("paid by customer %d", customerId)
+                                .isEqualByComparingTo(sumPaymentsOf(customerId));
                     });
         }
 
         /**
-         * Asserts that the first five, by {@code paid} descending, then by {@code customerId}, are the five the
+         * Asserts that the first five, by {@code paid} descending, then by {@code c.customerId}, are the five the
          * exercise's SQL gives.
          */
         @Test
         void __TopFive() {
             final var page = repositoryInstance().selectPaidTotals(PageRequest.of(0, 5, BY_PAID_DESC_THEN_CUSTOMER_ID));
             assertThat(page.getContent())
-                    .extracting(CustomerPaidTotal::getCustomerId, CustomerPaidTotal::getFirstName,
-                                CustomerPaidTotal::getLastName, c -> c.getPaid().doubleValue())
+                    .extracting(column("customer", Customer.class, Customer::getCustomerId),
+                                column("customer", Customer.class, Customer::getFirstName),
+                                column("customer", Customer.class, Customer::getLastName),
+                                c -> c.get("paid", BigDecimal.class).doubleValue())
                     .containsExactly(
                             tuple(526, "KARL", "SEAL", 221.55),
                             tuple(148, "ELEANOR", "HUNT", 216.54),
@@ -304,8 +306,8 @@ class CustomerRepository_SpringBootIT
         }
 
         /**
-         * Asserts that a selected customer who paid at least once is among all rows, with the sum of their payments,
-         * and that one who never paid is not.
+         * Asserts that a selected customer who paid at least once is among all rows, as the customer itself, with the
+         * sum of their payments, and that one who never paid is not.
          *
          * @param customer one of the customers selected in {@link CustomerRepository_SpringBootIT#__()}.
          */
@@ -315,17 +317,14 @@ class CustomerRepository_SpringBootIT
             final var all = repositoryInstance().selectPaidTotals(Pageable.unpaged(BY_PAID_DESC_THEN_CUSTOMER_ID));
             final var paid = sumPaymentsOf(customer.getCustomerId());
             final var rows = all.getContent().stream()
-                    .filter(c -> c.getCustomerId().equals(customer.getCustomerId()))
+                    .filter(c -> c.get("customer", Customer.class).equals(customer))
                     .toList();
             if (paid.signum() == 0) {
                 assertThat(rows).isEmpty();
                 return;
             }
-            assertThat(rows).singleElement().satisfies(c -> {
-                assertThat(c.getFirstName()).isEqualTo(customer.getFirstName());
-                assertThat(c.getLastName()).isEqualTo(customer.getLastName());
-                assertThat(c.getPaid()).isEqualByComparingTo(paid);
-            });
+            assertThat(rows).singleElement().satisfies(
+                    c -> assertThat(c.get("paid", BigDecimal.class)).isEqualByComparingTo(paid));
         }
 
         /**
@@ -391,9 +390,9 @@ class CustomerRepository_SpringBootIT
         void __() {
             final var list = repositoryInstance().selectTopThreePayersOfEachStore();
             assertThat(list)
-                    .extracting(StoreCustomerPaidTotal::getStoreId, StoreCustomerPaidTotal::getCustomerId,
-                                StoreCustomerPaidTotal::getFirstName, StoreCustomerPaidTotal::getLastName,
-                                c -> c.getPaid().doubleValue())
+                    .extracting(intColumn("store_id"), intColumn("customer_id"),
+                                column("first_name", String.class), column("last_name", String.class),
+                                c -> c.get("paid", BigDecimal.class).doubleValue())
                     .containsExactly(
                             tuple(1, 148, "ELEANOR", "HUNT", 216.54),
                             tuple(1, 144, "CLARA", "SHAW", 195.58),
@@ -401,8 +400,8 @@ class CustomerRepository_SpringBootIT
                             tuple(2, 526, "KARL", "SEAL", 221.55),
                             tuple(2, 137, "RHONDA", "KENNEDY", 194.61),
                             tuple(2, 178, "MARION", "SNYDER", 194.61));
-            assertThat(list).allSatisfy(c -> assertThat(c.getPaid())
-                    .isEqualByComparingTo(sumPaymentsOf(c.getCustomerId())));
+            assertThat(list).allSatisfy(c -> assertThat(c.get("paid", BigDecimal.class))
+                    .isEqualByComparingTo(sumPaymentsOf(c.get("customer_id", Number.class).intValue())));
         }
     }
 
@@ -412,10 +411,10 @@ class CustomerRepository_SpringBootIT
     @Nested
     class SelectAboveAveragePayerCounts_Test {
 
-        private static final Sort BY_STORE_ID = Sort.by("storeId");
+        private static final Sort BY_STORE_ID = Sort.by("s.storeId");
 
         /**
-         * Asserts that the rows, by {@code storeId} as the exercise sorts, are the two the exercise's SQL gives, and
+         * Asserts that the rows, by {@code s.storeId} as the exercise sorts, are the two the exercise's SQL gives, and
          * that the count query counts the two stores.
          */
         @Test
@@ -423,8 +422,8 @@ class CustomerRepository_SpringBootIT
             final var page = repositoryInstance().selectAboveAveragePayerCounts(PageRequest.of(0, 5, BY_STORE_ID));
             assertPage(page);
             assertThat(page.getContent())
-                    .extracting(StoreAboveAverageCount::getStoreId, StoreAboveAverageCount::getCustomers,
-                                c -> c.getAveragePaid().doubleValue())
+                    .extracting(column("store", Store.class, Store::getStoreId), column("customers", Long.class),
+                                c -> c.get("averagePaid", BigDecimal.class).doubleValue())
                     .containsExactly(
                             tuple(1, 154L, 113.49),
                             tuple(2, 126L, 111.39));
@@ -432,17 +431,21 @@ class CustomerRepository_SpringBootIT
         }
 
         /**
-         * Asserts that pages of one, by {@code storeId} descending, hold the second store and then the first, two in
+         * Asserts that pages of one, by {@code s.storeId} descending, hold the second store and then the first, two in
          * all, which the count query says.
          */
         @Test
         void __Paged() {
-            final var sort = Sort.by(Sort.Direction.DESC, "storeId");
+            final var sort = Sort.by(Sort.Direction.DESC, "s.storeId");
             final var page0 = repositoryInstance().selectAboveAveragePayerCounts(PageRequest.of(0, 1, sort));
-            assertThat(page0.getContent()).extracting(StoreAboveAverageCount::getStoreId).containsExactly(2);
+            assertThat(page0.getContent())
+                    .extracting(column("store", Store.class, Store::getStoreId))
+                    .containsExactly(2);
             assertThat(page0.getTotalElements()).isEqualTo(2L);
             final var page1 = repositoryInstance().selectAboveAveragePayerCounts(page0.nextPageable());
-            assertThat(page1.getContent()).extracting(StoreAboveAverageCount::getStoreId).containsExactly(1);
+            assertThat(page1.getContent())
+                    .extracting(column("store", Store.class, Store::getStoreId))
+                    .containsExactly(1);
             assertThat(page1.hasNext()).isFalse();
         }
 

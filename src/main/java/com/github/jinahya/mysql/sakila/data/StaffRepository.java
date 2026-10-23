@@ -3,6 +3,7 @@ package com.github.jinahya.mysql.sakila.data;
 import com.github.jinahya.mysql.sakila.persistence.Staff;
 import com.github.jinahya.mysql.sakila.persistence.Staff_;
 import com.github.jinahya.mysql.sakila.persistence.Store_;
+import jakarta.persistence.Tuple;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -10,8 +11,6 @@ import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
-import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Stream;
@@ -41,11 +40,16 @@ import java.util.stream.Stream;
  * method, {@code list...}, which builds a {@link Specification} with the Criteria API and runs it through
  * {@link org.springframework.data.jpa.repository.JpaSpecificationExecutor}. An exercise that shows columns, grouped
  * and counted, cannot be a {@code Specification}, which only filters; such a method, {@code select...}, declares its
- * JPQL with {@link Query}, with a count query of its own since Spring Data cannot derive one from a grouped select,
- * and returns a projection, one of the interfaces declared here, which Spring Data backs with the selected columns,
- * each aliased with the name of the getter it feeds. Those aliases are what the {@code Pageable} sorts by; an
- * interface rather than a record, because Spring Data rewrites a record projection into a constructor expression,
- * which drops the aliases, and the sort with them.
+ * JPQL with {@link Query}, with a count query of its own since Spring Data cannot derive one from a grouped select.
+ * Such a query selects entities, not their columns: a staff member is selected whole ({@code SELECT s AS staff}), and
+ * grouped by itself ({@code GROUP BY s}) where the query groups; what is computed, a count, a sum, an expression, is a
+ * column of its own beside it. A result that is a single entity is that entity; any other comes back as a
+ * {@link jakarta.persistence.Tuple}, each element read by its alias, with its type
+ * ({@code tuple.get("staff", Staff.class)}, {@code tuple.get("rentals", Long.class)}). The {@code Pageable} sorts a
+ * computed column by its alias ({@code Sort.by(DESC, "rentals")}), and an attribute of a selected entity by its path
+ * from the query's identification variable ({@code Sort.by("s.staffId")}); each method's javadoc names its aliases
+ * and identification variables. A query which groups by a staff member and a value, a day, selects the staff member
+ * whole and the value beside it.
  *
  * @see Staff
  * @see Staff_
@@ -55,70 +59,6 @@ public interface StaffRepository
         extends _Repository<Staff, Integer> {
 
     // ----------------------------------------------------------------------------------------------------- exercises
-
-    /**
-     * A staff member, by id and first name, and how many rentals the staff member handled: a projection of
-     * {@link #selectRentalCounts(Pageable)}, sortable by {@code staffId}, {@code firstName} and {@code rentals}.
-     */
-    interface StaffRentalCount {
-
-        /**
-         * Returns the id of the staff member.
-         *
-         * @return the id of the staff member.
-         */
-        Integer getStaffId();
-
-        /**
-         * Returns the first name of the staff member.
-         *
-         * @return the first name of the staff member.
-         */
-        String getFirstName();
-
-        /**
-         * Returns the number of rentals the staff member handled.
-         *
-         * @return the number of rentals.
-         */
-        long getRentals();
-    }
-
-    /**
-     * A staff member, by id, and the day on which the staff member took the most, with how many payments and how much
-     * that day: a projection of {@link #selectBestDays(Pageable)}, sortable by {@code staffId}, {@code paymentDay},
-     * {@code payments} and {@code total}.
-     */
-    interface StaffBestDay {
-
-        /**
-         * Returns the id of the staff member.
-         *
-         * @return the id of the staff member.
-         */
-        Integer getStaffId();
-
-        /**
-         * Returns the day on which the staff member took the most.
-         *
-         * @return the day.
-         */
-        LocalDate getPaymentDay();
-
-        /**
-         * Returns the number of payments the staff member took that day.
-         *
-         * @return the number of payments.
-         */
-        long getPayments();
-
-        /**
-         * Returns the sum of the amounts of the payments the staff member took that day.
-         *
-         * @return the sum of the amounts.
-         */
-        BigDecimal getTotal();
-    }
 
     /**
      * Finds every staff member, with the store they work at ({@code SAKILA-STAFF-B-01}, the book's pick, which orders
@@ -153,28 +93,29 @@ public interface StaffRepository
 
     /**
      * Selects the staff members who handled at least one rental, with how many ({@code SAKILA-STAFF-I-01}, this
-     * module's own extra, which orders by {@code staffId}).
+     * module's own extra, which orders by {@code s.staffId}).
      * <p>
      * The staff member has no collection of rentals, so the query starts from {@code Rental}, joins its
-     * {@code staff}, and groups by the staff member; a staff member with no rental is not in the page. The count query
-     * counts the staff members for whom a rental exists.
+     * {@code staff}, and groups by the staff member itself, which selects the staff member whole; a staff member with
+     * no rental is not in the page. The count query counts the staff members for whom a rental exists.
      *
-     * @param pageable the page to return, and its sort, by {@code staffId}, {@code firstName} or {@code rentals}; must
-     *                 not be {@code null}.
-     * @return a page of the staff members who handled a rental, with their numbers of rentals.
+     * @param pageable the page to return, and its sort, by {@code rentals}, or by an attribute of the staff member
+     *                 through {@code s} ({@code s.staffId}, {@code s.firstName}, ...); must not be {@code null}.
+     * @return a page of the staff members who handled a rental, with their numbers of rentals, each a tuple of
+     *         {@code staff} ({@link Staff}) and {@code rentals} ({@link Long}).
      */
     @Query(value = """
-            SELECT s.staffId AS staffId, s.firstName AS firstName, COUNT(r) AS rentals
+            SELECT s AS staff, COUNT(r) AS rentals
             FROM Rental r
             JOIN r.staff s
-            GROUP BY s.staffId, s.firstName""",
+            GROUP BY s""",
            countQuery = """
                    SELECT COUNT(s)
                    FROM Staff s
                    WHERE EXISTS (SELECT r
                                  FROM Rental r
                                  WHERE r.staff = s)""")
-    Page<StaffRentalCount> selectRentalCounts(Pageable pageable);
+    Page<Tuple> selectRentalCounts(Pageable pageable);
 
     /**
      * Lists the staff members who manage the very store they work at ({@code SAKILA-STAFF-I-02}, the book's pick,
@@ -198,24 +139,27 @@ public interface StaffRepository
 
     /**
      * Selects, for each staff member, the day on which the staff member took the most, with how many payments and
-     * how much ({@code SAKILA-STAFF-A-01}, the book's pick, which orders by {@code staffId}).
+     * how much ({@code SAKILA-STAFF-A-01}, the book's pick, which orders by {@code s.staffId}).
      * <p>
-     * The payments are grouped by staff member and by day, the date part of {@code paymentDate}, and a group is kept
-     * by a {@code HAVING} when its sum is not less than {@code ALL} the sums of that staff member's other days, a
-     * correlated subquery; JPQL has no window function to rank the days with. Two days tied for the most would both be
+     * The payments are grouped by the staff member itself, selected whole, and by day, the date part of
+     * {@code paymentDate}, and a group is kept by a {@code HAVING} when its sum is not less than {@code ALL} the sums
+     * of that staff member's other days, a correlated subquery; JPQL has no window function to rank the days with. Two days tied for the most would both be
      * kept; the sample data has no such tie. The count query counts the groups the same {@code HAVING} keeps, through
      * the smallest payment id of each, since Spring Data cannot derive a count from a grouped select.
      *
-     * @param pageable the page to return, and its sort, by {@code staffId}, {@code paymentDay}, {@code payments} or
-     *                 {@code total}; must not be {@code null}.
-     * @return a page of the staff members' best days.
+     * @param pageable the page to return, and its sort, by {@code paymentDay}, {@code payments} or {@code total}, or
+     *                 by an attribute of the staff member through {@code s} ({@code s.staffId}, ...); must not be
+     *                 {@code null}.
+     * @return a page of the staff members' best days, each a tuple of {@code staff} ({@link Staff}),
+     *         {@code paymentDay} ({@link java.time.LocalDate}), {@code payments} ({@link Long}) and {@code total}
+     *         ({@link java.math.BigDecimal}).
      */
     @Query(value = """
-            SELECT s.staffId AS staffId, EXTRACT(DATE FROM p.paymentDate) AS paymentDay, COUNT(p) AS payments,
+            SELECT s AS staff, EXTRACT(DATE FROM p.paymentDate) AS paymentDay, COUNT(p) AS payments,
                    SUM(p.amount) AS total
             FROM Payment p
             JOIN p.staff s
-            GROUP BY s.staffId, EXTRACT(DATE FROM p.paymentDate)
+            GROUP BY s, EXTRACT(DATE FROM p.paymentDate)
             HAVING SUM(p.amount) >= ALL (SELECT SUM(p2.amount)
                                          FROM Payment p2
                                          WHERE p2.staff.staffId = s.staffId
@@ -226,10 +170,10 @@ public interface StaffRepository
                    WHERE p.paymentId IN (SELECT MIN(p3.paymentId)
                                          FROM Payment p3
                                          JOIN p3.staff s3
-                                         GROUP BY s3.staffId, EXTRACT(DATE FROM p3.paymentDate)
+                                         GROUP BY s3, EXTRACT(DATE FROM p3.paymentDate)
                                          HAVING SUM(p3.amount) >= ALL (SELECT SUM(p2.amount)
                                                                        FROM Payment p2
                                                                        WHERE p2.staff.staffId = s3.staffId
                                                                        GROUP BY EXTRACT(DATE FROM p2.paymentDate)))""")
-    Page<StaffBestDay> selectBestDays(Pageable pageable);
+    Page<Tuple> selectBestDays(Pageable pageable);
 }

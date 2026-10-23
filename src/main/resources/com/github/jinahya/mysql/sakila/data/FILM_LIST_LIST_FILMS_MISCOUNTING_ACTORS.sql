@@ -1,4 +1,4 @@
-SELECT l.FID, l.title
+SELECT l.*
 FROM film_list l
 WHERE l.actors IS NOT NULL
   AND LENGTH(l.actors) - LENGTH(REPLACE(l.actors, ',', '')) + 1

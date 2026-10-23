@@ -1,9 +1,11 @@
 package com.github.jinahya.mysql.sakila.data;
 
+import com.github.jinahya.mysql.sakila.persistence.Category;
 import com.github.jinahya.mysql.sakila.persistence.Film;
 import com.github.jinahya.mysql.sakila.persistence.FilmCategory;
 import com.github.jinahya.mysql.sakila.persistence.FilmCategoryId;
 import com.github.jinahya.mysql.sakila.persistence.FilmCategory_;
+import jakarta.persistence.Tuple;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -39,13 +41,17 @@ import java.util.List;
  * and the sort, and returns a {@link Page}, so the order the exercise asks for, and its {@code LIMIT}, are the
  * caller's {@code PageRequest}; each method's javadoc says which sort that is. An exercise that shows columns, of
  * groups or of joined tables, cannot be a {@link Specification}, which only filters the links; such a method,
- * {@code select...}, declares its JPQL with {@link Query}, with a count query of its own, and returns a projection,
- * one of the interfaces declared here, which Spring Data backs with the selected columns, each aliased with the name
- * of the getter it feeds. Those aliases are what the {@code Pageable} sorts by; an interface rather than a record,
- * because Spring Data rewrites a record projection into a constructor expression, which drops the aliases, and the
- * sort with them. An exercise about rows of another table, the films with no link, cannot be a {@link Specification}
- * of this repository either; such a method declares its JPQL with {@link Query} too, and returns those rows, whose
- * page's {@link Page#getTotalElements()} is the count the exercise asks for.
+ * {@code select...}, declares its JPQL with {@link Query}, with a count query of its own. Such a query selects
+ * entities, not their columns: a film, a category, is selected whole ({@code SELECT f AS film}), and grouped by itself
+ * ({@code GROUP BY f}) where the query groups; what is computed, a count, is a column of its own beside it. A result
+ * that is a single entity is that entity; any other comes back as a {@link jakarta.persistence.Tuple}, each element
+ * read by its alias, with its type ({@code tuple.get("film", Film.class)}, {@code tuple.get("films", Long.class)}).
+ * The {@code Pageable} sorts a computed column by its alias ({@code Sort.by(DESC, "films")}), and an attribute of a
+ * selected entity by its path from the query's identification variable ({@code Sort.by("c.name")}); each method's
+ * javadoc names its aliases and identification variables. An exercise about rows of another
+ * table, the films with no link, cannot be a {@link Specification} of this repository either; such a method declares
+ * its JPQL with {@link Query} too, and returns those rows, whose page's {@link Page#getTotalElements()} is the count
+ * the exercise asks for.
  *
  * @see FilmCategory
  * @see FilmCategory_
@@ -55,92 +61,6 @@ public interface FilmCategoryRepository
         extends _Repository<FilmCategory, FilmCategoryId> {
 
     // ----------------------------------------------------------------------------------------------------- exercises
-
-    /**
-     * A film, by id, and how many categories it has: a projection of
-     * {@link #selectFilmsWithMoreCategoriesThan(long, Pageable)}, sortable by {@code filmId} and {@code categories}.
-     */
-    interface FilmCategoryCount {
-
-        /**
-         * Returns the id of the film.
-         *
-         * @return the id of the film.
-         */
-        Integer getFilmId();
-
-        /**
-         * Returns the number of categories of the film.
-         *
-         * @return the number of categories.
-         */
-        long getCategories();
-    }
-
-    /**
-     * A category, by name, and its longest film, by id, title and length: a projection of
-     * {@link #selectLongestFilms(Pageable)}, sortable by {@code name}, {@code filmId}, {@code title} and
-     * {@code length}.
-     */
-    interface CategoryLongestFilm {
-
-        /**
-         * Returns the name of the category.
-         *
-         * @return the name of the category.
-         */
-        String getName();
-
-        /**
-         * Returns the id of the film.
-         *
-         * @return the id of the film.
-         */
-        Integer getFilmId();
-
-        /**
-         * Returns the title of the film.
-         *
-         * @return the title of the film.
-         */
-        String getTitle();
-
-        /**
-         * Returns the length of the film, in minutes.
-         *
-         * @return the length of the film.
-         */
-        Integer getLength();
-    }
-
-    /**
-     * A pair of categories, by name, which have the same number of films, and that number: a projection of
-     * {@link #selectCategoryPairsWithSameFilmCount(Pageable)}, sortable by {@code category1}, {@code category2} and
-     * {@code films}.
-     */
-    interface CategoryPairFilmCount {
-
-        /**
-         * Returns the name of the first category of the pair, the smaller of the two.
-         *
-         * @return the name of the first category.
-         */
-        String getCategory1();
-
-        /**
-         * Returns the name of the second category of the pair, the greater of the two.
-         *
-         * @return the name of the second category.
-         */
-        String getCategory2();
-
-        /**
-         * Returns the number of films of each of the two categories.
-         *
-         * @return the number of films.
-         */
-        long getFilms();
-    }
 
     /**
      * Finds the links whose value of {@link FilmCategory_#FILM_ID} attribute is between the specified values,
@@ -161,28 +81,31 @@ public interface FilmCategoryRepository
      * ({@code SAKILA-FILM_CATEGORY-I-01}, the book's pick, which asks for more than one, {@code 1}, and names no
      * order; the sample data has none, since every film has exactly one category).
      * <p>
-     * The links are grouped by the film's id and counted; the filter is on the groups, so it is a {@code HAVING},
-     * not a {@code WHERE}, and a {@link Specification}, which filters rows, cannot do it. The count query counts the
-     * films that pass the same {@code HAVING}, through a subquery.
+     * The links are joined with their film, grouped by the film itself, which selects the film whole, and counted;
+     * the filter is on the groups, so it is a {@code HAVING}, not a {@code WHERE}, and a {@link Specification}, which
+     * filters rows, cannot do it. The count query counts the films that pass the same {@code HAVING}, through a
+     * subquery.
      *
      * @param categories the number of categories a film has to have more than.
-     * @param pageable   the page to return, and its sort, by {@code filmId} or {@code categories}; must not be
-     *                   {@code null}.
-     * @return a page of the films with more than {@code categories} categories, with their counts.
+     * @param pageable   the page to return, and its sort, by {@code categories}, or by an attribute of the film
+     *                   through {@code f} ({@code f.filmId}, {@code f.title}, ...); must not be {@code null}.
+     * @return a page of the films with more than {@code categories} categories, with their counts, each a tuple of
+     *         {@code film} ({@link Film}) and {@code categories} ({@link Long}).
      */
     @Query(value = """
-            SELECT fc.filmId AS filmId, COUNT(fc) AS categories
+            SELECT f AS film, COUNT(fc) AS categories
             FROM FilmCategory fc
-            GROUP BY fc.filmId
+            JOIN fc.film f
+            GROUP BY f
             HAVING COUNT(fc) > :categories""",
            countQuery = """
-                   SELECT COUNT(DISTINCT fc.filmId)
+                   SELECT COUNT(DISTINCT fc.film)
                    FROM FilmCategory fc
-                   WHERE fc.filmId IN (SELECT fc2.filmId
-                                       FROM FilmCategory fc2
-                                       GROUP BY fc2.filmId
-                                       HAVING COUNT(fc2) > :categories)""")
-    Page<FilmCategoryCount> selectFilmsWithMoreCategoriesThan(long categories, Pageable pageable);
+                   WHERE fc.film IN (SELECT fc2.film
+                                     FROM FilmCategory fc2
+                                     GROUP BY fc2.film
+                                     HAVING COUNT(fc2) > :categories)""")
+    Page<Tuple> selectFilmsWithMoreCategoriesThan(long categories, Pageable pageable);
 
     /**
      * Selects the films which have no category ({@code SAKILA-FILM_CATEGORY-I-02}, this module's own extra, which
@@ -194,7 +117,8 @@ public interface FilmCategoryRepository
      * {@code NOT EXISTS} on the {@code film_category} table. The query has no grouping, so Spring Data derives its
      * count query.
      *
-     * @param pageable the page to return, and its sort, by the attributes of {@link Film}; must not be {@code null}.
+     * @param pageable the page to return, and its sort, by an attribute of the film through {@code f}
+     *                 ({@code f.filmId}, {@code f.title}, ...); must not be {@code null}.
      * @return a page of the films with no category.
      */
     @Query("""
@@ -205,19 +129,21 @@ public interface FilmCategoryRepository
 
     /**
      * Selects the longest film of each category ({@code SAKILA-FILM_CATEGORY-A-01}, this module's own extra, which
-     * orders by {@code name}; of films of the same length, the one of the smallest id is the longest).
+     * orders by {@code c.name}; of films of the same length, the one of the smallest id is the longest).
      * <p>
      * A link is kept when no other link of its category has a longer film, or a film as long with a smaller id, which
-     * a correlated {@code NOT EXISTS} checks, so each category keeps one link; the category and the film are joined
-     * for their columns. A category with no film is not in the page. The count query counts the links kept, through
+     * a correlated {@code NOT EXISTS} checks, so each category keeps one link; the category and the film are joined,
+     * and selected whole. A category with no film is not in the page. The count query counts the links kept, through
      * the same {@code NOT EXISTS}.
      *
-     * @param pageable the page to return, and its sort, by {@code name}, {@code filmId}, {@code title} or
-     *                 {@code length}; must not be {@code null}.
-     * @return a page of the categories, with their longest films.
+     * @param pageable the page to return, and its sort, by an attribute of the category through {@code c}
+     *                 ({@code c.name}, ...) or of the film through {@code f} ({@code f.filmId}, {@code f.title},
+     *                 {@code f.length}, ...); must not be {@code null}.
+     * @return a page of the categories, with their longest films, each a tuple of {@code category} ({@link Category})
+     *         and {@code film} ({@link Film}).
      */
     @Query(value = """
-            SELECT c.name AS name, f.filmId AS filmId, f.title AS title, f.length AS length
+            SELECT c AS category, f AS film
             FROM FilmCategory fc
             JOIN fc.category c
             JOIN fc.film f
@@ -237,29 +163,34 @@ public interface FilmCategoryRepository
                                      WHERE fc2.category = fc.category
                                        AND (f2.length > f.length
                                             OR (f2.length = f.length AND f2.filmId < f.filmId)))""")
-    Page<CategoryLongestFilm> selectLongestFilms(Pageable pageable);
+    Page<Tuple> selectLongestFilms(Pageable pageable);
 
     /**
      * Selects the pairs of categories which have the same number of films, with that number
      * ({@code SAKILA-FILM_CATEGORY-A-02}, the book's pick, which orders by {@code films} descending, then by
-     * {@code category1}, then by {@code category2}).
+     * {@code c1.name}, then by {@code c2.name}).
      * <p>
      * Each category is paired with every category of a greater name, so each pair is selected once, the smaller name
-     * first; the first category's links are joined, grouped by the pair, and counted, and a pair is kept when the
-     * count is that of the second category's links, which a correlated subquery counts. A category with no film is
-     * paired with none. The count query counts the same pairs, with the two counts as two subqueries.
+     * first; the second category is an entity join, {@code JOIN Category c2 ON ...}, rather than a second range
+     * variable, so that Spring Data knows {@code c2} as an identification variable and sorts {@code c2.name} as it
+     * is. The first category's links are joined, grouped by the pair of categories themselves, which selects both
+     * whole, and counted, and a pair is kept when the count is that of the second category's links, which a
+     * correlated subquery counts. A category with no film is paired with none. The count query counts the same pairs,
+     * with the two counts as two subqueries.
      *
-     * @param pageable the page to return, and its sort, by {@code category1}, {@code category2} or {@code films};
-     *                 must not be {@code null}.
-     * @return a page of the pairs of categories with the same number of films, with that number.
+     * @param pageable the page to return, and its sort, by {@code films}, or by an attribute of either category
+     *                 through {@code c1} or {@code c2} ({@code c1.name}, {@code c2.name}, ...); must not be
+     *                 {@code null}.
+     * @return a page of the pairs of categories with the same number of films, with that number, each a tuple of
+     *         {@code category1} and {@code category2} ({@link Category}), the one of the smaller name first, and
+     *         {@code films} ({@link Long}).
      */
     @Query(value = """
-            SELECT c1.name AS category1, c2.name AS category2, COUNT(fc1) AS films
+            SELECT c1 AS category1, c2 AS category2, COUNT(fc1) AS films
             FROM Category c1
-            JOIN c1.filmCategories fc1,
-                 Category c2
-            WHERE c1.name < c2.name
-            GROUP BY c1.categoryId, c1.name, c2.categoryId, c2.name
+            JOIN c1.filmCategories fc1
+            JOIN Category c2 ON c1.name < c2.name
+            GROUP BY c1, c2
             HAVING COUNT(fc1) = (SELECT COUNT(fc2) FROM FilmCategory fc2 WHERE fc2.category = c2)""",
            countQuery = """
                    SELECT COUNT(c1)
@@ -268,5 +199,5 @@ public interface FilmCategoryRepository
                      AND EXISTS (SELECT fc0 FROM FilmCategory fc0 WHERE fc0.category = c1)
                      AND (SELECT COUNT(fc1) FROM FilmCategory fc1 WHERE fc1.category = c1)
                          = (SELECT COUNT(fc2) FROM FilmCategory fc2 WHERE fc2.category = c2)""")
-    Page<CategoryPairFilmCount> selectCategoryPairsWithSameFilmCount(Pageable pageable);
+    Page<Tuple> selectCategoryPairsWithSameFilmCount(Pageable pageable);
 }

@@ -1,7 +1,6 @@
 package com.github.jinahya.mysql.sakila.data;
 
 import com.github.jinahya.mysql.sakila.persistence.StaffList;
-import com.github.jinahya.mysql.sakila.persistence.StaffList_;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.PageRequest;
@@ -92,8 +91,8 @@ class StaffListRepository_DataJpaTest
         void _Zero_Empty() {
             final var counts = repositoryInstance().selectRowCounts();
             assertThat(counts).isNotNull();
-            assertThat(counts.getStaffLists()).isZero();
-            assertThat(counts.getStaffs()).isZero();
+            assertThat(counts.get("staffLists", Long.class)).isZero();
+            assertThat(counts.get("staffs", Long.class)).isZero();
         }
     }
 
@@ -104,9 +103,9 @@ class StaffListRepository_DataJpaTest
     class SelectCities_Test {
 
         /**
-         * A sort by the id, the select's alias {@code id}, as the exercise sorts.
+         * A sort by the id, through the identification variable {@code l} of the row, as the exercise sorts.
          */
-        private static final Sort BY_ID = Sort.by(StaffList_.ID);
+        private static final Sort BY_ID = Sort.by("l.id");
 
         /**
          * Asserts that the select over two roots, the view and {@code Store}, joined by the store's id, and its count

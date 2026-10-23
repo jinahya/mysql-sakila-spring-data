@@ -24,7 +24,9 @@ import java.util.Optional;
  * <p>
  * A row maps into a {@link SalesByStore} through its public constructor, by parameter name, as the base describes:
  * Spring's {@code SimplePropertyRowMapper} matches {@code store} and {@code manager} to the parameters of those names,
- * and {@code total_sales} to {@code totalSales}, by the underscore convention.
+ * and {@code total_sales} to {@code totalSales}, by the underscore convention. {@link #listSalesAndTakenByManager()},
+ * whose rows carry the computed {@code taken_by_manager} beside the view's columns, calls the same constructor with
+ * those columns itself.
  * <p>
  * {@link #sumTotalSales()} and the exercise methods read their statements from {@code .sql} resources beside this
  * class, named {@code SALES_BY_STORE_<METHOD>.sql} after the method ({@code SALES_BY_STORE_SUM_TOTAL_SALES.sql}, ...),
@@ -182,9 +184,10 @@ public class SalesByStoreRepositoryImpl
     public List<SalesAndTakenByManager> listSalesAndTakenByManager() {
         return jdbcClient().sql(SQL_LIST_SALES_AND_TAKEN_BY_MANAGER)
                 .query((rs, rowNum) -> new SalesAndTakenByManager(
-                        rs.getString(SalesByStore.COLUMN_NAME_STORE),
-                        rs.getString(SalesByStore.COLUMN_NAME_MANAGER),
-                        rs.getBigDecimal(SalesByStore.COLUMN_NAME_TOTAL_SALES),
+                        new SalesByStore(
+                                rs.getString(SalesByStore.COLUMN_NAME_STORE),
+                                rs.getString(SalesByStore.COLUMN_NAME_MANAGER),
+                                rs.getBigDecimal(SalesByStore.COLUMN_NAME_TOTAL_SALES)),
                         rs.getBigDecimal("taken_by_manager")))
                 .list();
     }

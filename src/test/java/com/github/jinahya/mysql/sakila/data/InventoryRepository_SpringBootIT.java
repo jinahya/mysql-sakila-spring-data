@@ -1,10 +1,9 @@
 package com.github.jinahya.mysql.sakila.data;
 
-import com.github.jinahya.mysql.sakila.data.InventoryRepository.FilmCopyCount;
-import com.github.jinahya.mysql.sakila.data.InventoryRepository.IdleTime;
-import com.github.jinahya.mysql.sakila.data.InventoryRepository.StoreCopyCount;
+import com.github.jinahya.mysql.sakila.persistence.Film;
 import com.github.jinahya.mysql.sakila.persistence.Inventory;
 import com.github.jinahya.mysql.sakila.persistence.Inventory_;
+import com.github.jinahya.mysql.sakila.persistence.Store;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -21,6 +20,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Collections;
 import java.util.Comparator;
@@ -146,13 +146,14 @@ class InventoryRepository_SpringBootIT
         void __() {
             final var list = repositoryInstance().selectCopyCountsByStore();
             assertThat(list)
-                    .extracting(StoreCopyCount::getStoreId, StoreCopyCount::getCopies)
+                    .extracting(column("store", Store.class, Store::getStoreId), column("copies", Long.class))
                     .containsExactly(tuple(1, 2270L), tuple(2, 2311L));
             assertThat(list).allSatisfy(c -> {
-                assertThat(c.getCopies()).as("copies of store %d", c.getStoreId())
-                        .isEqualTo(countByStoreId(c.getStoreId()));
+                final var store = c.get("store", Store.class);
+                assertThat(c.get("copies", Long.class)).as("copies of store %d", store.getStoreId())
+                        .isEqualTo(countByStoreId(store.getStoreId()));
             });
-            final var sum = list.stream().mapToLong(StoreCopyCount::getCopies).sum();
+            final var sum = list.stream().mapToLong(c -> c.get("copies", Long.class)).sum();
             assertThat(sum).isEqualTo(repositoryInstance().count());
         }
 
@@ -162,7 +163,7 @@ class InventoryRepository_SpringBootIT
         @Test
         void __Ordered() {
             final var list = repositoryInstance().selectCopyCountsByStore();
-            assertThat(list).isSortedAccordingTo(Comparator.comparing(StoreCopyCount::getStoreId));
+            assertThat(list).isSortedAccordingTo(Comparator.comparing(column("store", Store.class, Store::getStoreId)));
         }
 
         /**
@@ -175,7 +176,7 @@ class InventoryRepository_SpringBootIT
         void __Selected(final Inventory inventory) {
             final var list = repositoryInstance().selectCopyCountsByStore();
             assertThat(list)
-                    .extracting(StoreCopyCount::getStoreId)
+                    .extracting(column("store", Store.class, Store::getStoreId))
                     .contains(inventory.getStoreId());
         }
     }
@@ -251,7 +252,7 @@ class InventoryRepository_SpringBootIT
     class SelectCopyCountsByFilm_Test {
 
         private static final Sort BY_COPIES_DESC_THEN_FILM_ID =
-                Sort.by(Sort.Direction.DESC, "copies").and(Sort.by("filmId"));
+                Sort.by(Sort.Direction.DESC, "copies").and(Sort.by("f.filmId"));
 
         private static Stream<Inventory> inventories() {
             return InventoryRepository_SpringBootIT.inventories();
@@ -266,7 +267,8 @@ class InventoryRepository_SpringBootIT
             final var page = repositoryInstance().selectCopyCountsByFilm(
                     PageRequest.of(0, 5, BY_COPIES_DESC_THEN_FILM_ID));
             assertThat(page.getContent())
-                    .extracting(FilmCopyCount::getFilmId, FilmCopyCount::getTitle, FilmCopyCount::getCopies)
+                    .extracting(column("film", Film.class, Film::getFilmId), column("film", Film.class, Film::getTitle),
+                                column("copies", Long.class))
                     .containsExactly(tuple(1, "ACADEMY DINOSAUR", 8L),
                                      tuple(31, "APACHE DIVINE", 8L),
                                      tuple(69, "BEVERLY OUTLAW", 8L),
@@ -276,8 +278,8 @@ class InventoryRepository_SpringBootIT
         }
 
         /**
-         * Asserts that a page of the given size, sorted the exercise's way, is ordered so, that each title is the
-         * film's, read through {@link FilmRepository}, and that each count is the number of copies of the film.
+         * Asserts that a page of the given size, sorted the exercise's way, is ordered so, that each film is the one
+         * of its id, read through {@link FilmRepository}, and that each count is the number of copies of the film.
          *
          * @param size the size of the page.
          */
@@ -289,13 +291,13 @@ class InventoryRepository_SpringBootIT
             assertPage(page);
             assertThat(page.getContent())
                     .isNotEmpty()
-                    .isSortedAccordingTo(Comparator.comparingLong(FilmCopyCount::getCopies).reversed()
-                                                 .thenComparing(FilmCopyCount::getFilmId))
+                    .isSortedAccordingTo(Comparator.comparing(column("copies", Long.class)).reversed()
+                                                 .thenComparing(column("film", Film.class, Film::getFilmId)))
                     .allSatisfy(c -> {
-                        final var film = filmRepository.findById(c.getFilmId()).orElseThrow();
-                        assertThat(film.getTitle()).isEqualTo(c.getTitle());
-                        assertThat(c.getCopies()).as("copies of film %d", c.getFilmId())
-                                .isEqualTo(countByFilmId(c.getFilmId()));
+                        final var film = c.get("film", Film.class);
+                        assertThat(filmRepository.findById(film.getFilmId())).hasValue(film);
+                        assertThat(c.get("copies", Long.class)).as("copies of film %d", film.getFilmId())
+                                .isEqualTo(countByFilmId(film.getFilmId()));
                     });
         }
 
@@ -310,9 +312,9 @@ class InventoryRepository_SpringBootIT
             final var ten = repositoryInstance().selectCopyCountsByFilm(
                     PageRequest.of(0, 10, BY_COPIES_DESC_THEN_FILM_ID));
             assertThat(second.getTotalElements()).isEqualTo(first.getTotalElements());
-            assertThat(second.getContent()).extracting(FilmCopyCount::getFilmId)
+            assertThat(second.getContent()).extracting(column("film", Film.class))
                     .containsExactlyElementsOf(ten.getContent().subList(5, 10).stream()
-                                                       .map(FilmCopyCount::getFilmId).toList());
+                                                       .map(column("film", Film.class)).toList());
         }
 
         /**
@@ -325,7 +327,7 @@ class InventoryRepository_SpringBootIT
         void __Selected(final Inventory inventory) {
             final var all = repositoryInstance().selectCopyCountsByFilm(Pageable.unpaged(BY_COPIES_DESC_THEN_FILM_ID));
             assertThat(all.getContent())
-                    .extracting(FilmCopyCount::getFilmId)
+                    .extracting(column("film", Film.class, Film::getFilmId))
                     .contains(inventory.getFilmId());
         }
     }
@@ -389,7 +391,7 @@ class InventoryRepository_SpringBootIT
         void __() {
             final var list = repositoryInstance().selectLongestIdleTimes();
             assertThat(list)
-                    .extracting(IdleTime::getInventoryId, IdleTime::getIdleDays)
+                    .extracting(intColumn("inventory_id"), longColumn("idleDays"))
                     .containsExactly(tuple(977, 45L),
                                      tuple(3921, 45L),
                                      tuple(506, 39L),
@@ -405,13 +407,15 @@ class InventoryRepository_SpringBootIT
         void __Ordered() {
             final var list = repositoryInstance().selectLongestIdleTimes();
             assertThat(list)
-                    .isSortedAccordingTo(Comparator.comparingLong(IdleTime::getIdleDays).reversed()
-                                                 .thenComparing(IdleTime::getInventoryId))
+                    .isSortedAccordingTo(Comparator.comparing(longColumn("idleDays")).reversed()
+                                                 .thenComparing(intColumn("inventory_id")))
                     .allSatisfy(t -> {
-                        assertThat(t.getReturnDate()).isBefore(t.getNextRentalDate());
-                        final var days = ChronoUnit.DAYS.between(t.getReturnDate().toLocalDate(),
-                                                                 t.getNextRentalDate().toLocalDate());
-                        assertThat(t.getIdleDays()).isEqualTo(days);
+                        final var returnDate = t.get("return_date", LocalDateTime.class);
+                        final var nextRentalDate = t.get("next_rental_date", LocalDateTime.class);
+                        assertThat(returnDate).isBefore(nextRentalDate);
+                        final var days = ChronoUnit.DAYS.between(returnDate.toLocalDate(),
+                                                                 nextRentalDate.toLocalDate());
+                        assertThat(t.get("idleDays", Number.class).longValue()).isEqualTo(days);
                     });
         }
     }
@@ -423,7 +427,7 @@ class InventoryRepository_SpringBootIT
     @Nested
     class SelectCopyCountsOfFilmsEveryCopyRented_Test {
 
-        private static final Sort BY_FILM_ID = Sort.by("filmId");
+        private static final Sort BY_FILM_ID = Sort.by("f.filmId");
 
         /**
          * Asserts that the films whose every copy was rented are as many as the exercise's recorded output, 957 of
@@ -456,10 +460,11 @@ class InventoryRepository_SpringBootIT
                     .getContent().stream().map(Inventory::getFilmId).toList();
             assertThat(page.getContent())
                     .isNotEmpty()
-                    .isSortedAccordingTo(Comparator.comparing(FilmCopyCount::getFilmId))
+                    .isSortedAccordingTo(Comparator.comparing(column("film", Film.class, Film::getFilmId)))
                     .allSatisfy(c -> {
-                        assertThat(c.getCopies()).isEqualTo(countByFilmId(c.getFilmId()));
-                        assertThat(neverRented).doesNotContain(c.getFilmId());
+                        final var film = c.get("film", Film.class);
+                        assertThat(c.get("copies", Long.class)).isEqualTo(countByFilmId(film.getFilmId()));
+                        assertThat(neverRented).doesNotContain(film.getFilmId());
                     });
         }
 
@@ -472,7 +477,7 @@ class InventoryRepository_SpringBootIT
                     .getContent().stream().map(Inventory::getFilmId).toList();
             final var all = repositoryInstance().selectCopyCountsOfFilmsEveryCopyRented(Pageable.unpaged(BY_FILM_ID));
             assertThat(all.getContent()).hasSize((int) all.getTotalElements())
-                    .extracting(FilmCopyCount::getFilmId)
+                    .extracting(column("film", Film.class, Film::getFilmId))
                     .doesNotContainAnyElementsOf(neverRented);
         }
     }

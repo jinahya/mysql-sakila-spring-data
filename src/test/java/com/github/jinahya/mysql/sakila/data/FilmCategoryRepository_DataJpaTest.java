@@ -1,13 +1,9 @@
 package com.github.jinahya.mysql.sakila.data;
 
-import com.github.jinahya.mysql.sakila.data.FilmCategoryRepository.CategoryLongestFilm;
-import com.github.jinahya.mysql.sakila.data.FilmCategoryRepository.CategoryPairFilmCount;
-import com.github.jinahya.mysql.sakila.data.FilmCategoryRepository.FilmCategoryCount;
 import com.github.jinahya.mysql.sakila.persistence.Category;
 import com.github.jinahya.mysql.sakila.persistence.Film;
 import com.github.jinahya.mysql.sakila.persistence.FilmCategory;
 import com.github.jinahya.mysql.sakila.persistence.FilmCategoryId;
-import com.github.jinahya.mysql.sakila.persistence.Film_;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.PageRequest;
@@ -35,10 +31,9 @@ class FilmCategoryRepository_DataJpaTest
         extends _Repository_DataJpaTest<FilmCategoryRepository, FilmCategory, FilmCategoryId> {
 
     /**
-     * A sort by the film's id; by the attribute's name, since the metamodel's {@code Film_.filmId} is filled in only
-     * once the context is up, after this class is loaded.
+     * A sort by the film's id, by its path from the query's identification variable, {@code f}.
      */
-    private static final Sort BY_FILM_ID = Sort.by(Sort.Direction.ASC, Film_.FILM_ID);
+    private static final Sort BY_FILM_ID = Sort.by(Sort.Direction.ASC, "f.filmId");
 
     /**
      * Creates a new instance.
@@ -188,7 +183,7 @@ class FilmCategoryRepository_DataJpaTest
     @Nested
     class SelectFilmsWithMoreCategoriesThan_Test {
 
-        private static final Sort BY_FILM_ID = Sort.by("filmId");
+        private static final Sort BY_FILM_ID = Sort.by("f.filmId");
 
         /**
          * Saves a film of one category, and asserts that a threshold of one selects an empty page, with no elements
@@ -205,8 +200,8 @@ class FilmCategoryRepository_DataJpaTest
 
         /**
          * Saves a film of two categories, one of one and one of none, and asserts that a threshold of one selects
-         * the first alone, with its count, one in all, and that a threshold of zero selects the first two by film id,
-         * two in all, which the count query says even when the page holds one.
+         * the first film itself alone, with its count, one in all, and that a threshold of zero selects the first two
+         * by film id, two in all, which the count query says even when the page holds one.
          */
         @Test
         void __() {
@@ -219,20 +214,20 @@ class FilmCategoryRepository_DataJpaTest
             final var aboveOne = repositoryInstance().selectFilmsWithMoreCategoriesThan(
                     1L, PageRequest.of(0, 5, BY_FILM_ID));
             assertThat(aboveOne.getContent())
-                    .extracting(FilmCategoryCount::getFilmId, FilmCategoryCount::getCategories)
-                    .containsExactly(tuple(two.getFilmId(), 2L));
+                    .extracting(column("film", Film.class), column("categories", Long.class))
+                    .containsExactly(tuple(two, 2L));
             assertThat(aboveOne.getTotalElements()).isEqualTo(1L);
             final var aboveZero = repositoryInstance().selectFilmsWithMoreCategoriesThan(
                     0L, PageRequest.of(0, 1, BY_FILM_ID));
             assertThat(aboveZero.getContent())
-                    .extracting(FilmCategoryCount::getFilmId, FilmCategoryCount::getCategories)
-                    .containsExactly(tuple(two.getFilmId(), 2L));
+                    .extracting(column("film", Film.class), column("categories", Long.class))
+                    .containsExactly(tuple(two, 2L));
             assertThat(aboveZero.getTotalElements()).isEqualTo(2L);
             assertThat(aboveZero.getTotalPages()).isEqualTo(2);
             final var next = repositoryInstance().selectFilmsWithMoreCategoriesThan(0L, aboveZero.nextPageable());
             assertThat(next.getContent())
-                    .extracting(FilmCategoryCount::getFilmId, FilmCategoryCount::getCategories)
-                    .containsExactly(tuple(one.getFilmId(), 1L));
+                    .extracting(column("film", Film.class), column("categories", Long.class))
+                    .containsExactly(tuple(one, 1L));
             assertThat(next.hasNext()).isFalse();
         }
 
@@ -305,7 +300,7 @@ class FilmCategoryRepository_DataJpaTest
     @Nested
     class SelectLongestFilms_Test {
 
-        private static final Sort BY_NAME = Sort.by("name");
+        private static final Sort BY_NAME = Sort.by("c.name");
 
         /**
          * Saves a category with no film, and asserts that the page is empty, with no elements in all.
@@ -339,17 +334,17 @@ class FilmCategoryRepository_DataJpaTest
             fixtures().filmCategory(b90, b);
             final var page = repositoryInstance().selectLongestFilms(PageRequest.of(0, 5, BY_NAME));
             assertThat(page.getContent())
-                    .extracting(CategoryLongestFilm::getName, CategoryLongestFilm::getFilmId,
-                                CategoryLongestFilm::getTitle, CategoryLongestFilm::getLength)
+                    .extracting(column("category", Category.class), column("film", Film.class),
+                                column("film", Film.class, Film::getLength))
                     .containsExactly(
-                            tuple(a.getName(), a120.getFilmId(), a120.getTitle(), 120),
-                            tuple(b.getName(), b90.getFilmId(), b90.getTitle(), 90)
+                            tuple(a, a120, 120),
+                            tuple(b, b90, 90)
                     );
             assertThat(page.getTotalElements()).isEqualTo(2L);
             final var first = repositoryInstance().selectLongestFilms(PageRequest.of(0, 1, BY_NAME));
             assertThat(first.getContent())
-                    .extracting(CategoryLongestFilm::getName)
-                    .containsExactly(a.getName());
+                    .extracting(column("category", Category.class))
+                    .containsExactly(a);
             assertThat(first.getTotalElements()).isEqualTo(2L);
             assertThat(first.getTotalPages()).isEqualTo(2);
         }
@@ -375,7 +370,7 @@ class FilmCategoryRepository_DataJpaTest
     class SelectCategoryPairsWithSameFilmCount_Test {
 
         private static final Sort BY_FILMS_DESC_THEN_CATEGORIES =
-                Sort.by(Sort.Direction.DESC, "films").and(Sort.by("category1", "category2"));
+                Sort.by(Sort.Direction.DESC, "films").and(Sort.by("c1.name", "c2.name"));
 
         /**
          * Saves a category of two films and a category of one, and asserts that the page is empty, with no elements
@@ -414,18 +409,18 @@ class FilmCategoryRepository_DataJpaTest
             final var page = repositoryInstance().selectCategoryPairsWithSameFilmCount(
                     PageRequest.of(0, 5, BY_FILMS_DESC_THEN_CATEGORIES));
             assertThat(page.getContent())
-                    .extracting(CategoryPairFilmCount::getCategory1, CategoryPairFilmCount::getCategory2,
-                                CategoryPairFilmCount::getFilms)
+                    .extracting(column("category1", Category.class), column("category2", Category.class),
+                                column("films", Long.class))
                     .containsExactly(
-                            tuple(a.getName(), b.getName(), 2L),
-                            tuple(c.getName(), e.getName(), 1L)
+                            tuple(a, b, 2L),
+                            tuple(c, e, 1L)
                     );
             assertThat(page.getTotalElements()).isEqualTo(2L);
             final var first = repositoryInstance().selectCategoryPairsWithSameFilmCount(
                     PageRequest.of(0, 1, BY_FILMS_DESC_THEN_CATEGORIES));
             assertThat(first.getContent())
-                    .extracting(CategoryPairFilmCount::getCategory1, CategoryPairFilmCount::getCategory2)
-                    .containsExactly(tuple(a.getName(), b.getName()));
+                    .extracting(column("category1", Category.class), column("category2", Category.class))
+                    .containsExactly(tuple(a, b));
             assertThat(first.getTotalElements()).isEqualTo(2L);
             assertThat(first.getTotalPages()).isEqualTo(2);
         }

@@ -1,8 +1,5 @@
 package com.github.jinahya.mysql.sakila.data;
 
-import com.github.jinahya.mysql.sakila.data.ActorRepository.ActorFilmCount;
-import com.github.jinahya.mysql.sakila.data.ActorRepository.ActorLongestFilm;
-import com.github.jinahya.mysql.sakila.data.ActorRepository.LastNameCount;
 import com.github.jinahya.mysql.sakila.persistence.Actor;
 import com.github.jinahya.mysql.sakila.persistence.Actor_;
 import com.github.jinahya.mysql.sakila.persistence.Film;
@@ -427,19 +424,19 @@ class ActorRepository_DataJpaTest
             final var aboveThree = repositoryInstance().selectLastNamesSharedByMoreThan(
                     3L, PageRequest.of(0, 5, BY_ACTORS_DESC_THEN_LAST_NAME));
             assertThat(aboveThree.getContent())
-                    .extracting(LastNameCount::getLastName, LastNameCount::getActors)
+                    .extracting(column("lastName", String.class), column("actors", Long.class))
                     .containsExactly(tuple(four, 4L));
             assertThat(aboveThree.getTotalElements()).isEqualTo(1L);
             final var aboveOne = repositoryInstance().selectLastNamesSharedByMoreThan(
                     1L, PageRequest.of(0, 1, BY_ACTORS_DESC_THEN_LAST_NAME));
             assertThat(aboveOne.getContent())
-                    .extracting(LastNameCount::getLastName, LastNameCount::getActors)
+                    .extracting(column("lastName", String.class), column("actors", Long.class))
                     .containsExactly(tuple(four, 4L));
             assertThat(aboveOne.getTotalElements()).isEqualTo(2L);
             assertThat(aboveOne.getTotalPages()).isEqualTo(2);
             final var next = repositoryInstance().selectLastNamesSharedByMoreThan(1L, aboveOne.nextPageable());
             assertThat(next.getContent())
-                    .extracting(LastNameCount::getLastName, LastNameCount::getActors)
+                    .extracting(column("lastName", String.class), column("actors", Long.class))
                     .containsExactly(tuple(two, 2L));
         }
     }
@@ -451,7 +448,7 @@ class ActorRepository_DataJpaTest
     class SelectFilmCounts_Test {
 
         private static final Sort BY_FILMS_DESC_THEN_ACTOR_ID =
-                Sort.by(Sort.Direction.DESC, "films").and(Sort.by("actorId"));
+                Sort.by(Sort.Direction.DESC, "films").and(Sort.by("a.actorId"));
 
         /**
          * Saves actors in three, two, one and no films, and asserts that a page of two by films holds the first two,
@@ -476,8 +473,10 @@ class ActorRepository_DataJpaTest
             fixtures().filmActor(one, film1);
             final var page = repositoryInstance().selectFilmCounts(PageRequest.of(0, 2, BY_FILMS_DESC_THEN_ACTOR_ID));
             assertThat(page.getContent())
-                    .extracting(ActorFilmCount::getActorId, ActorFilmCount::getFirstName, ActorFilmCount::getLastName,
-                                ActorFilmCount::getFilms)
+                    .extracting(column("actor", Actor.class, Actor::getActorId),
+                                column("actor", Actor.class, Actor::getFirstName),
+                                column("actor", Actor.class, Actor::getLastName),
+                                column("films", Long.class))
                     .containsExactly(
                             tuple(three.getActorId(), three.getFirstName(), three.getLastName(), 3L),
                             tuple(two.getActorId(), two.getFirstName(), two.getLastName(), 2L)
@@ -485,8 +484,8 @@ class ActorRepository_DataJpaTest
             assertThat(page.getTotalElements()).isEqualTo(3L);
             final var all = repositoryInstance().selectFilmCounts(Pageable.unpaged(BY_FILMS_DESC_THEN_ACTOR_ID));
             assertThat(all.getContent())
-                    .noneMatch(c -> c.getActorId().equals(none.getActorId()))
-                    .extracting(ActorFilmCount::getActorId, ActorFilmCount::getFilms)
+                    .noneMatch(c -> c.get("actor", Actor.class).getActorId().equals(none.getActorId()))
+                    .extracting(column("actor", Actor.class, Actor::getActorId), column("films", Long.class))
                     .endsWith(tuple(one.getActorId(), 1L));
         }
     }
@@ -526,7 +525,7 @@ class ActorRepository_DataJpaTest
     @Nested
     class SelectLongestFilmsOfActorIdsBetween_Test {
 
-        private static final Sort BY_ACTOR_ID_THEN_TITLE = Sort.by("actorId", "title");
+        private static final Sort BY_ACTOR_ID_THEN_TITLE = Sort.by("a.actorId", "f.title");
 
         /**
          * Saves an actor in films of {@code 100}, {@code 120} and {@code 120} minutes, and another in one film, and
@@ -555,8 +554,9 @@ class ActorRepository_DataJpaTest
             final var page = repositoryInstance().selectLongestFilmsOfActorIdsBetween(
                     first.getActorId(), second.getActorId(), Pageable.unpaged(BY_ACTOR_ID_THEN_TITLE));
             assertThat(page.getContent())
-                    .extracting(ActorLongestFilm::getActorId, ActorLongestFilm::getTitle,
-                                ActorLongestFilm::getLength)
+                    .extracting(column("actor", Actor.class, Actor::getActorId),
+                                column("film", Film.class, Film::getTitle),
+                                column("film", Film.class, Film::getLength))
                     .containsExactly(
                             tuple(first.getActorId(), titles.get(0), 120),
                             tuple(first.getActorId(), titles.get(1), 120),
@@ -565,7 +565,7 @@ class ActorRepository_DataJpaTest
             final var firstOnly = repositoryInstance().selectLongestFilmsOfActorIdsBetween(
                     first.getActorId(), first.getActorId(), Pageable.unpaged(BY_ACTOR_ID_THEN_TITLE));
             assertThat(firstOnly.getContent())
-                    .extracting(ActorLongestFilm::getActorId)
+                    .extracting(column("actor", Actor.class, Actor::getActorId))
                     .containsOnly(first.getActorId());
         }
 

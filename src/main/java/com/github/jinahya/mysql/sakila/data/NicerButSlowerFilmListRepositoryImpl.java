@@ -33,7 +33,8 @@ import java.util.function.LongSupplier;
  * The exercise methods read their statements from {@code .sql} resources beside this class, named
  * {@code NICER_BUT_SLOWER_FILM_LIST_<METHOD>.sql} after the method
  * ({@code NICER_BUT_SLOWER_FILM_LIST_COUNT_DIFFERING_FROM_FILM_LIST.sql}, ...), each exercise's statement as
- * {@code EXERCISES.asciidoc} has it; {@link #listAll(Pageable)} writes its own in place. A page is selected as
+ * {@code EXERCISES.asciidoc} has it; the exercises that select whole rows map them by {@link #ROW_MAPPER} too.
+ * {@link #listAll(Pageable)} writes its own statement in place. A page is selected as
  * {@link FilmListRepositoryImpl} selects one: an {@code ORDER BY} built from the {@link Pageable}'s {@link Sort}
  * through {@link #COLUMNS}, with {@code FID} last, {@code LIMIT ... OFFSET ...} from the page unless the
  * {@code Pageable} is unpaged, and a {@code COUNT(*)} of the same {@code WHERE} for the total, run only when the page
@@ -228,9 +229,9 @@ public class NicerButSlowerFilmListRepositoryImpl
 
     // ----------------------------------------------------------------------------------------------------- exercises
     @Override
-    public List<FilmListRepository.FilmActors> listActorsOfFilmOne() {
+    public List<NicerButSlowerFilmList> listActorsOfFilmOne() {
         return jdbcClient().sql(SQL_LIST_ACTORS_OF_FILM_ONE)
-                .query(FilmListRepositoryImpl.FILM_ACTORS_ROW_MAPPER)
+                .query(ROW_MAPPER)
                 .list();
     }
 
@@ -242,9 +243,9 @@ public class NicerButSlowerFilmListRepositoryImpl
     }
 
     @Override
-    public List<FilmListRepository.FilmInCategory> listFilmsWithNoActor() {
+    public List<NicerButSlowerFilmList> listFilmsWithNoActor() {
         return jdbcClient().sql(SQL_LIST_FILMS_WITH_NO_ACTOR)
-                .query(FilmListRepositoryImpl.FILM_IN_CATEGORY_ROW_MAPPER)
+                .query(ROW_MAPPER)
                 .list();
     }
 

@@ -164,8 +164,8 @@ class ActorInfoRepository_DataJpaTest
         void _Zero_Empty() {
             final var page = repositoryInstance().selectRowCounts(Pageable.unpaged());
             assertThat(page.getContent()).singleElement().satisfies(c -> {
-                assertThat(c.getActorInfos()).isZero();
-                assertThat(c.getActors()).isZero();
+                assertThat(c.get("actorInfos", Long.class)).isZero();
+                assertThat(c.get("actors", Long.class)).isZero();
             });
         }
 

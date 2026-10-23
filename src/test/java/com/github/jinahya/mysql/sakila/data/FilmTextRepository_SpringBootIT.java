@@ -1,7 +1,5 @@
 package com.github.jinahya.mysql.sakila.data;
 
-import com.github.jinahya.mysql.sakila.data.FilmTextRepository.CategoryKindCount;
-import com.github.jinahya.mysql.sakila.data.FilmTextRepository.TitleChainStep;
 import com.github.jinahya.mysql.sakila.persistence.FilmText;
 import com.github.jinahya.mysql.sakila.persistence.FilmText_;
 import org.junit.jupiter.api.BeforeAll;
@@ -189,8 +187,8 @@ class FilmTextRepository_SpringBootIT
         @Test
         void __Expected() {
             final var counts = repositoryInstance().selectRowCounts();
-            assertThat(counts.getFilmTexts()).isEqualTo(1000L);
-            assertThat(counts.getFilms()).isEqualTo(1000L);
+            assertThat(counts.get("filmTexts", Long.class)).isEqualTo(1000L);
+            assertThat(counts.get("films", Long.class)).isEqualTo(1000L);
         }
 
         /**
@@ -200,8 +198,8 @@ class FilmTextRepository_SpringBootIT
         @Test
         void __() {
             final var counts = repositoryInstance().selectRowCounts();
-            assertThat(counts.getFilmTexts()).isEqualTo(repositoryInstance().count());
-            assertThat(counts.getFilms()).isEqualTo(filmRepository.count());
+            assertThat(counts.get("filmTexts", Long.class)).isEqualTo(repositoryInstance().count());
+            assertThat(counts.get("films", Long.class)).isEqualTo(filmRepository.count());
         }
     }
 
@@ -367,8 +365,8 @@ class FilmTextRepository_SpringBootIT
         @Test
         void __Expected() {
             final var counts = repositoryInstance().selectEitherAndBothCounts("crocodile", "shark");
-            assertThat(counts.getEitherWord()).isEqualTo(203L);
-            assertThat(counts.getBothWords()).isEqualTo(10L);
+            assertThat(counts.get("eitherWord", Number.class).longValue()).isEqualTo(203L);
+            assertThat(counts.get("bothWords", Number.class).longValue()).isEqualTo(10L);
         }
 
         /**
@@ -382,8 +380,8 @@ class FilmTextRepository_SpringBootIT
         @ParameterizedTest
         void __(final String word1, final String word2) {
             final var counts = repositoryInstance().selectEitherAndBothCounts(word1, word2);
-            assertThat(counts.getBothWords())
-                    .isLessThanOrEqualTo(counts.getEitherWord())
+            assertThat(counts.get("bothWords", Number.class).longValue())
+                    .isLessThanOrEqualTo(counts.get("eitherWord", Number.class).longValue())
                     .isEqualTo(repositoryInstance().countMatchingInBooleanMode("+" + word1 + " +" + word2));
         }
 
@@ -413,8 +411,7 @@ class FilmTextRepository_SpringBootIT
         void __Expected() {
             final var list = repositoryInstance().selectMostCommonKinds();
             assertThat(list)
-                    .extracting(CategoryKindCount::getCategory, CategoryKindCount::getKind,
-                                CategoryKindCount::getFilms)
+                    .extracting(column("name", String.class), column("kind", String.class), longColumn("films"))
                     .containsExactly(
                             tuple("Action", "Reflection", 10L),
                             tuple("Animation", "Epistle", 9L),
@@ -453,7 +450,7 @@ class FilmTextRepository_SpringBootIT
         void __Expected() {
             final var list = repositoryInstance().selectTitleChain(1, 10);
             assertThat(list)
-                    .extracting(TitleChainStep::getStep, TitleChainStep::getFilmId, TitleChainStep::getTitle)
+                    .extracting(intColumn("step"), intColumn("film_id"), column("title", String.class))
                     .containsExactly(
                             tuple(1, 1, "ACADEMY DINOSAUR"),
                             tuple(2, 231, "DINOSAUR SECRETARY"),
@@ -480,19 +477,20 @@ class FilmTextRepository_SpringBootIT
             final var steps = 3;
             final var list = repositoryInstance().selectTitleChain(filmText.getFilmId(), steps);
             assertThat(list).isNotEmpty();
-            assertThat(list.getFirst().getStep()).isOne();
-            assertThat(list.getFirst().getFilmId()).isEqualTo(filmText.getFilmId());
+            assertThat(list.getFirst().get("step", Number.class).intValue()).isOne();
+            assertThat(list.getFirst().get("film_id", Number.class).intValue()).isEqualTo(filmText.getFilmId());
             assertThat(list)
-                    .isSortedAccordingTo(Comparator.comparingInt(TitleChainStep::getStep))
-                    .allSatisfy(s -> assertThat(s.getStep()).isBetween(1, steps));
+                    .isSortedAccordingTo(Comparator.comparing(intColumn("step")))
+                    .allSatisfy(s -> assertThat(s.get("step", Number.class).intValue()).isBetween(1, steps));
             for (final var step : list) {
-                if (step.getStep() == 1) {
+                if (step.get("step", Number.class).intValue() == 1) {
                     continue;
                 }
-                final var first = step.getTitle().split(" ")[0];
+                final var first = step.get("title", String.class).split(" ")[0];
                 assertThat(list).anySatisfy(previous -> {
-                    assertThat(previous.getStep()).isEqualTo(step.getStep() - 1);
-                    assertThat(previous.getTitle()).endsWithIgnoringCase(" " + first);
+                    assertThat(previous.get("step", Number.class).intValue())
+                            .isEqualTo(step.get("step", Number.class).intValue() - 1);
+                    assertThat(previous.get("title", String.class)).endsWithIgnoringCase(" " + first);
                 });
             }
         }

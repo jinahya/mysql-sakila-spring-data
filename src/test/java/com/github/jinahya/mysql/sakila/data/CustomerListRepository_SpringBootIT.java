@@ -1,10 +1,5 @@
 package com.github.jinahya.mysql.sakila.data;
 
-import com.github.jinahya.mysql.sakila.data.CustomerListRepository.CityCountryCustomerCount;
-import com.github.jinahya.mysql.sakila.data.CustomerListRepository.NotesCustomerCount;
-import com.github.jinahya.mysql.sakila.data.CustomerListRepository.RowCounts;
-import com.github.jinahya.mysql.sakila.data.CustomerListRepository.SidCountryCustomerCount;
-import com.github.jinahya.mysql.sakila.data.CustomerListRepository.SidCustomerCount;
 import com.github.jinahya.mysql.sakila.persistence.Address_;
 import com.github.jinahya.mysql.sakila.persistence.City_;
 import com.github.jinahya.mysql.sakila.persistence.Country_;
@@ -258,10 +253,11 @@ class CustomerListRepository_SpringBootIT
             assertPage(page);
             assertThat(page.getContent())
                     .isNotEmpty()
-                    .isSortedAccordingTo(Comparator.comparing(SidCustomerCount::getSid))
+                    .isSortedAccordingTo(Comparator.comparing(column("sid", Integer.class)))
                     .allSatisfy(c -> {
-                        assertThat(c.getCustomers()).as("customers of store %d", c.getSid())
-                                .isEqualTo(countCustomersOfStore(c.getSid()));
+                        final var sid = c.get("sid", Integer.class);
+                        assertThat(c.get("customers", Long.class)).as("customers of store %d", sid)
+                                .isEqualTo(countCustomersOfStore(sid));
                     });
             final var distinctSids = repositoryInstance().findAll(Pageable.unpaged()).stream()
                     .map(CustomerList::getSid)
@@ -280,7 +276,7 @@ class CustomerListRepository_SpringBootIT
         void __Selected(final int sid) {
             final var all = repositoryInstance().selectCustomerCountsBySid(Pageable.unpaged(BY_SID));
             assertThat(all.getContent())
-                    .extracting(SidCustomerCount::getSid, SidCustomerCount::getCustomers)
+                    .extracting(column("sid", Integer.class), column("customers", Long.class))
                     .contains(tuple(sid, countCustomersOfStore(sid)));
         }
     }
@@ -300,11 +296,11 @@ class CustomerListRepository_SpringBootIT
         void __() {
             final var list = repositoryInstance().selectNotesCounts();
             assertThat(list)
-                    .extracting(NotesCustomerCount::getNotes, NotesCustomerCount::getCustomers)
+                    .extracting(column("notes", String.class), column("customers", Long.class))
                     .containsExactly(tuple("", 15L), tuple("active", 584L));
             final Specification<Customer> active = (r, q, b) -> b.isTrue(r.get(Customer_.active));
-            assertThat(list.getLast().getCustomers()).isEqualTo(customerRepository.count(active));
-            assertThat(list.stream().mapToLong(NotesCustomerCount::getCustomers).sum())
+            assertThat(list.getLast().get("customers", Long.class)).isEqualTo(customerRepository.count(active));
+            assertThat(list.stream().mapToLong(c -> c.get("customers", Long.class)).sum())
                     .isEqualTo(repositoryInstance().count());
         }
     }
@@ -330,7 +326,7 @@ class CustomerListRepository_SpringBootIT
             final var page = repositoryInstance().selectRowCounts(PageRequest.of(0, 1, BY_CUSTOMERS));
             assertPage(page);
             assertThat(page.getContent())
-                    .extracting(RowCounts::getCustomerLists, RowCounts::getCustomers)
+                    .extracting(column("customerLists", Long.class), column("customers", Long.class))
                     .containsExactly(tuple(599L, 599L));
             final var next = repositoryInstance().selectRowCounts(PageRequest.of(1, 1, BY_CUSTOMERS));
             assertThat(next.getContent()).isEmpty();
@@ -348,9 +344,11 @@ class CustomerListRepository_SpringBootIT
         @ParameterizedTest
         void __(final int sid) {
             final var counts = repositoryInstance().selectRowCounts(Pageable.unpaged()).getContent().getFirst();
-            assertThat(counts.getCustomerLists()).isPositive().isEqualTo(counts.getCustomers());
-            assertThat(counts.getCustomerLists()).isEqualTo(repositoryInstance().count());
-            assertThat(counts.getCustomers()).isEqualTo(customerRepository.count());
+            final var customerLists = counts.get("customerLists", Long.class);
+            final var customers = counts.get("customers", Long.class);
+            assertThat(customerLists).isPositive().isEqualTo(customers);
+            assertThat(customerLists).isEqualTo(repositoryInstance().count());
+            assertThat(customers).isEqualTo(customerRepository.count());
             final Specification<CustomerList> ofStore = (r, q, b) -> b.equal(r.get(CustomerList_.sid), sid);
             assertThat(repositoryInstance().count(ofStore)).isEqualTo(countCustomersOfStore(sid));
         }
@@ -384,16 +382,16 @@ class CustomerListRepository_SpringBootIT
             final var page = repositoryInstance().selectCitiesWithMoreCustomersThan(
                     1L, Pageable.unpaged(BY_CITY_THEN_COUNTRY));
             assertThat(page.getContent())
-                    .extracting(CityCountryCustomerCount::getCity, CityCountryCustomerCount::getCountry,
-                                CityCountryCustomerCount::getCustomers)
+                    .extracting(column("city", String.class), column("country", String.class),
+                                column("customers", Long.class))
                     .containsExactly(
                             tuple("Aurora", "United States", 2L),
                             tuple("London", "United Kingdom", 2L));
             assertThat(page.getContent()).allSatisfy(c -> {
                 final Specification<CustomerList> in = (r, q, b) -> b.and(
-                        b.equal(r.get(CustomerList_.city), c.getCity()),
-                        b.equal(r.get(CustomerList_.country), c.getCountry()));
-                assertThat(repositoryInstance().count(in)).isEqualTo(c.getCustomers());
+                        b.equal(r.get(CustomerList_.city), c.get("city", String.class)),
+                        b.equal(r.get(CustomerList_.country), c.get("country", String.class)));
+                assertThat(repositoryInstance().count(in)).isEqualTo(c.get("customers", Long.class));
             });
         }
 
@@ -405,10 +403,10 @@ class CustomerListRepository_SpringBootIT
         void __Paged() {
             final var page0 = repositoryInstance().selectCitiesWithMoreCustomersThan(
                     1L, PageRequest.of(0, 1, BY_CITY_THEN_COUNTRY));
-            assertThat(page0.getContent()).extracting(CityCountryCustomerCount::getCity).containsExactly("Aurora");
+            assertThat(page0.getContent()).extracting(column("city", String.class)).containsExactly("Aurora");
             assertThat(page0.getTotalElements()).isEqualTo(2L);
             final var page1 = repositoryInstance().selectCitiesWithMoreCustomersThan(1L, page0.nextPageable());
-            assertThat(page1.getContent()).extracting(CityCountryCustomerCount::getCity).containsExactly("London");
+            assertThat(page1.getContent()).extracting(column("city", String.class)).containsExactly("London");
             assertThat(page1.hasNext()).isFalse();
             final var none = repositoryInstance().selectCitiesWithMoreCustomersThan(
                     2L, PageRequest.of(0, 1, BY_CITY_THEN_COUNTRY));
@@ -440,8 +438,7 @@ class CustomerListRepository_SpringBootIT
         void __() {
             final var list = repositoryInstance().selectTopThreeCountriesOfEachStore();
             assertThat(list)
-                    .extracting(SidCountryCustomerCount::getSid, SidCountryCustomerCount::getCountry,
-                                SidCountryCustomerCount::getCustomers)
+                    .extracting(intColumn("sid"), column("country", String.class), longColumn("customers"))
                     .containsExactly(
                             tuple(1, "India", 37L),
                             tuple(1, "China", 26L),
@@ -451,9 +448,9 @@ class CustomerListRepository_SpringBootIT
                             tuple(2, "Mexico", 15L));
             assertThat(list).allSatisfy(c -> {
                 final Specification<CustomerList> in = (r, q, b) -> b.and(
-                        b.equal(r.get(CustomerList_.sid), c.getSid()),
-                        b.equal(r.get(CustomerList_.country), c.getCountry()));
-                assertThat(repositoryInstance().count(in)).isEqualTo(c.getCustomers());
+                        b.equal(r.get(CustomerList_.sid), c.get("sid", Number.class).intValue()),
+                        b.equal(r.get(CustomerList_.country), c.get("country", String.class)));
+                assertThat(repositoryInstance().count(in)).isEqualTo(c.get("customers", Number.class).longValue());
             });
         }
     }

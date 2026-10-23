@@ -3,6 +3,7 @@ package com.github.jinahya.mysql.sakila.data;
 import com.github.jinahya.mysql.sakila.persistence.FilmText;
 import com.github.jinahya.mysql.sakila.persistence.FilmText_;
 import com.github.jinahya.mysql.sakila.persistence.Film_;
+import jakarta.persistence.Tuple;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -40,15 +41,17 @@ import java.util.Objects;
  * {@link Page}, so the order the exercise asks for is the caller's {@code PageRequest}; one that counts them is
  * answered by the page of those rows, whose {@link Page#getTotalElements()} is the count. An exercise that shows
  * counts of two tables in one row cannot be a {@link Specification}, which only filters; such a method,
- * {@code select...}, declares its JPQL with {@link Query} and returns a projection, one of the interfaces declared
- * here, which Spring Data backs with the selected columns, each aliased with the name of the getter it feeds.
+ * {@code select...}, declares its JPQL with {@link Query}. A result that is not an entity comes back as a
+ * {@link jakarta.persistence.Tuple}, each column aliased in the select and read by that alias, with its type
+ * ({@code tuple.get("films", Long.class)}); the aliases are also what a {@code Pageable} would sort by. Each method's
+ * javadoc names its aliases.
  * <p>
  * Most exercises of this table search with the full-text index ({@code MATCH ... AGAINST}), or cut the description
  * with {@code SUBSTRING_INDEX}, or walk the titles with a recursive {@code WITH}, which is MySQL's own SQL, so such a
  * method declares it with {@link NativeQuery}, as the exercise has it; it runs on the Sakila database only. The
  * exercises upstream flags native-only return a {@link List} in the SQL's own order, or the one row of their counts;
- * a native query's columns are aliased with the names of the getters of its projection, which is the one change
- * made to the exercise's SQL.
+ * a native query's columns are aliased with the names its tuple is read by, which is the one change made to the
+ * exercise's SQL, and its numbers come back as the JDBC driver types them.
  *
  * @see FilmText
  * @see FilmText_
@@ -58,102 +61,6 @@ public interface FilmTextRepository
         extends _Repository<FilmText, Integer> {
 
     // ----------------------------------------------------------------------------------------------------- exercises
-
-    /**
-     * How many rows {@code film_text} and {@code film} have: a projection of {@link #selectRowCounts()}.
-     */
-    interface RowCounts {
-
-        /**
-         * Returns the number of rows of {@code film_text}.
-         *
-         * @return the number of rows of {@code film_text}.
-         */
-        long getFilmTexts();
-
-        /**
-         * Returns the number of rows of {@code film}.
-         *
-         * @return the number of rows of {@code film}.
-         */
-        long getFilms();
-    }
-
-    /**
-     * How many rows mention either of two words, and how many mention both: a projection of
-     * {@link #selectEitherAndBothCounts(String, String)}.
-     */
-    interface EitherBothCounts {
-
-        /**
-         * Returns the number of rows which mention either word, or both.
-         *
-         * @return the number of rows which mention either word.
-         */
-        long getEitherWord();
-
-        /**
-         * Returns the number of rows which mention both words.
-         *
-         * @return the number of rows which mention both words.
-         */
-        long getBothWords();
-    }
-
-    /**
-     * A category, the most common kind of story among its films, and how many of its films are of that kind: a
-     * projection of {@link #selectMostCommonKinds()}.
-     */
-    interface CategoryKindCount {
-
-        /**
-         * Returns the name of the category.
-         *
-         * @return the name of the category.
-         */
-        String getCategory();
-
-        /**
-         * Returns the kind of story, the third word of the description.
-         *
-         * @return the kind of story.
-         */
-        String getKind();
-
-        /**
-         * Returns the number of films of the category of that kind.
-         *
-         * @return the number of films.
-         */
-        long getFilms();
-    }
-
-    /**
-     * A step of a chain of titles, and the row at it: a projection of {@link #selectTitleChain(int, int)}.
-     */
-    interface TitleChainStep {
-
-        /**
-         * Returns the number of the step, from {@code 1}.
-         *
-         * @return the number of the step.
-         */
-        int getStep();
-
-        /**
-         * Returns the id of the film at the step.
-         *
-         * @return the id of the film.
-         */
-        Integer getFilmId();
-
-        /**
-         * Returns the title of the film at the step.
-         *
-         * @return the title of the film.
-         */
-        String getTitle();
-    }
 
     /**
      * Finds the rows whose value of {@link FilmText_#DESCRIPTION} attribute contains both specified words
@@ -180,12 +87,12 @@ public interface FilmTextRepository
      * {@link Specification}, which filters one. The exercise gives one row, so the method takes no {@link Pageable}
      * and returns no {@link Page}: there is nothing to page or to sort.
      *
-     * @return the two counts.
+     * @return the two counts, as a tuple of {@code filmTexts} and {@code films} ({@link Long}).
      */
     @Query("""
             SELECT COUNT(ft) AS filmTexts, (SELECT COUNT(f) FROM Film f) AS films
             FROM FilmText ft""")
-    RowCounts selectRowCounts();
+    Tuple selectRowCounts();
 
     /**
      * Lists the rows whose title or description mention the specified word, by the full-text index
@@ -261,7 +168,8 @@ public interface FilmTextRepository
      *
      * @param word1 one word; must not be {@code null}.
      * @param word2 the other word; must not be {@code null}.
-     * @return the two counts.
+     * @return the two counts, as a tuple of {@code eitherWord} and {@code bothWords}, each a number ({@link Long} on
+     *         MySQL).
      */
     @NativeQuery("""
             SELECT (SELECT COUNT(*)
@@ -271,36 +179,40 @@ public interface FilmTextRepository
                     FROM film_text
                     WHERE MATCH(title, description) AGAINST (CONCAT('+', :word1, ' +', :word2) IN BOOLEAN MODE))
                        AS bothWords""")
-    EitherBothCounts selectEitherAndBothCounts(String word1, String word2);
+    Tuple selectEitherAndBothCounts(String word1, String word2);
 
     /**
      * Selects the most common kind of story in each category ({@code SAKILA-FILM_TEXT-A-01}, native-only, which
-     * orders by {@code category}; of kinds as common, the first by name).
+     * orders by the category's {@code name}; of kinds as common, the first by name).
      * <p>
      * A {@link NativeQuery} with the exercise's SQL: the kind is the third word of the description, cut with
      * {@code SUBSTRING_INDEX}, the films are counted by category and kind in a {@code WITH}, and
-     * {@code ROW_NUMBER()} ranks the kinds of each category. MySQL's own, so the method runs on the Sakila database
+     * {@code ROW_NUMBER()} ranks the kinds of each category. Each select takes the whole row of what it reads, the
+     * category's ({@code c.*}, grouped by its key) and the common table expressions' ({@code kinds.*},
+     * {@code ranked.*}), with the computed columns beside it. MySQL's own, so the method runs on the Sakila database
      * only, and has no slice test.
      *
      * @return a list of the categories, with their most common kinds of story and the numbers of films of them, by
-     *         category.
+     *         category, each a tuple of the category's columns by their names ({@code category_id}, a number,
+     *         {@code name} ({@link String}), {@code last_update}), {@code kind} ({@link String}), and {@code films} and
+     *         {@code rn}, numbers ({@link Long} on MySQL).
      */
     @NativeQuery("""
-            WITH kinds AS (SELECT c.name AS category,
+            WITH kinds AS (SELECT c.*,
                                   SUBSTRING_INDEX(SUBSTRING_INDEX(ft.description, ' ', 3), ' ', -1) AS kind,
                                   COUNT(*) AS films
                            FROM film_text ft
                                     JOIN film_category fc ON fc.film_id = ft.film_id
                                     JOIN category c ON c.category_id = fc.category_id
-                           GROUP BY c.name, kind),
-                 ranked AS (SELECT category, kind, films,
-                                   ROW_NUMBER() OVER (PARTITION BY category ORDER BY films DESC, kind) AS rn
+                           GROUP BY c.category_id, kind),
+                 ranked AS (SELECT kinds.*,
+                                   ROW_NUMBER() OVER (PARTITION BY category_id ORDER BY films DESC, kind) AS rn
                             FROM kinds)
-            SELECT category, kind, films
+            SELECT ranked.*
             FROM ranked
             WHERE rn = 1
-            ORDER BY category""")
-    List<CategoryKindCount> selectMostCommonKinds();
+            ORDER BY name""")
+    List<Tuple> selectMostCommonKinds();
 
     /**
      * Selects the chain of titles from the specified film, each title starting with the last word of the one before
@@ -310,25 +222,28 @@ public interface FilmTextRepository
      * A {@link NativeQuery} with the exercise's SQL: a recursive {@code WITH} joins each step's row to the rows whose
      * first word, cut with {@code SUBSTRING_INDEX}, is the step's last word. A step with more than one such row
      * branches the chain, so a step may have more than one row; the sample data has none from the film {@code 1}.
-     * MySQL's own, so the method runs on the Sakila database only, and has no slice test.
+     * Each step selects the whole row of the {@code film_text} it reads ({@code ft.*}) beside its number. MySQL's
+     * own, so the method runs on the Sakila database only, and has no slice test.
      *
      * @param filmId the id of the film to start from.
      * @param steps  the number of steps, the first one included.
-     * @return a list of the steps of the chain, with their films, by step.
+     * @return a list of the steps of the chain, with their films, by step, each a tuple of {@code step}, a number, and
+     *         the {@code film_text} row's columns by their names ({@code film_id}, a number, {@code title} and
+     *         {@code description} ({@link String})).
      */
     @NativeQuery("""
-            WITH RECURSIVE chain AS (SELECT 1 AS step, film_id, title
-                                     FROM film_text
-                                     WHERE film_id = :filmId
+            WITH RECURSIVE chain AS (SELECT 1 AS step, f.*
+                                     FROM film_text f
+                                     WHERE f.film_id = :filmId
                                      UNION ALL
-                                     SELECT c.step + 1, ft.film_id, ft.title
+                                     SELECT c.step + 1, ft.*
                                      FROM chain c
                                               JOIN film_text ft
                                                    ON SUBSTRING_INDEX(ft.title, ' ', 1)
                                                           = SUBSTRING_INDEX(c.title, ' ', -1)
                                      WHERE c.step < :steps)
-            SELECT step, film_id AS filmId, title
+            SELECT chain.*
             FROM chain
             ORDER BY step""")
-    List<TitleChainStep> selectTitleChain(int filmId, int steps);
+    List<Tuple> selectTitleChain(int filmId, int steps);
 }

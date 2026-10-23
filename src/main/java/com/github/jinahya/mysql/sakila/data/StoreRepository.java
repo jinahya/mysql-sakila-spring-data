@@ -3,6 +3,7 @@ package com.github.jinahya.mysql.sakila.data;
 import com.github.jinahya.mysql.sakila.persistence.Address_;
 import com.github.jinahya.mysql.sakila.persistence.Store;
 import com.github.jinahya.mysql.sakila.persistence.Store_;
+import jakarta.persistence.Tuple;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -39,10 +40,15 @@ import java.util.Objects;
  * Criteria API and runs it through {@link org.springframework.data.jpa.repository.JpaSpecificationExecutor}. An
  * exercise that shows columns, counted or grouped, cannot be a {@code Specification}, which only filters; such a
  * method, {@code select...}, declares its JPQL with {@link Query}, with a count query of its own since Spring Data
- * cannot derive one from a grouped select, and returns a projection, one of the interfaces declared here, which Spring
- * Data backs with the selected columns, each aliased with the name of the getter it feeds. Those aliases are what the
- * {@code Pageable} sorts by; an interface rather than a record, because Spring Data rewrites a record projection into
- * a constructor expression, which drops the aliases, and the sort with them.
+ * cannot derive one from a grouped select. Such a query selects entities, not their columns: a store is selected
+ * whole ({@code SELECT st AS store}), and grouped by itself ({@code GROUP BY st}) where the query groups; what is
+ * computed, a count, a share, is a column of its own beside it. A result that is a single entity is that entity; any
+ * other comes back as a {@link jakarta.persistence.Tuple}, each element read by its alias, with its type
+ * ({@code tuple.get("store", Store.class)}, {@code tuple.get("copies", Long.class)}). The {@code Pageable} sorts a
+ * computed column by its alias ({@code Sort.by(DESC, "copies")}), and an attribute of a selected entity by its path
+ * from the query's identification variable ({@code Sort.by("st.storeId")}); each method's javadoc names its aliases
+ * and identification variables. A query which groups by a store and by values, a year and a month, selects the store
+ * whole and the values beside it.
  *
  * @see Store
  * @see Store_
@@ -52,114 +58,6 @@ public interface StoreRepository
         extends _Repository<Store, Integer> {
 
     // ----------------------------------------------------------------------------------------------------- exercises
-
-    /**
-     * A store, by id, and how many customers, copies and staff members it has: a projection of
-     * {@link #selectCounts(Pageable)}, sortable by {@code storeId}, {@code customers}, {@code copies} and
-     * {@code staff}.
-     */
-    interface StoreCounts {
-
-        /**
-         * Returns the id of the store.
-         *
-         * @return the id of the store.
-         */
-        Integer getStoreId();
-
-        /**
-         * Returns the number of customers of the store.
-         *
-         * @return the number of customers.
-         */
-        long getCustomers();
-
-        /**
-         * Returns the number of copies in the inventory of the store.
-         *
-         * @return the number of copies.
-         */
-        long getCopies();
-
-        /**
-         * Returns the number of staff members who work at the store.
-         *
-         * @return the number of staff members.
-         */
-        long getStaff();
-    }
-
-    /**
-     * A store, by id, and how many films it has a copy of, and how many of those no other store has a copy of: a
-     * projection of {@link #selectFilmCounts(Pageable)}, sortable by {@code storeId}, {@code films} and
-     * {@code filmsOnlyHere}.
-     */
-    interface StoreFilmCounts {
-
-        /**
-         * Returns the id of the store.
-         *
-         * @return the id of the store.
-         */
-        Integer getStoreId();
-
-        /**
-         * Returns the number of distinct films the store has at least one copy of.
-         *
-         * @return the number of films.
-         */
-        long getFilms();
-
-        /**
-         * Returns the number of those films no other store has a copy of.
-         *
-         * @return the number of films only this store has.
-         */
-        long getFilmsOnlyHere();
-    }
-
-    /**
-     * A month, a store, by id, how many rentals of the store's copies began in that month, and what share of all the
-     * month's rentals that is: a projection of {@link #selectMonthlyRentalShares(Pageable)}, sortable by
-     * {@code rentalYear}, {@code rentalMonth}, {@code storeId}, {@code rentals} and {@code percent}.
-     */
-    interface StoreMonthlyRentalShare {
-
-        /**
-         * Returns the year of the month.
-         *
-         * @return the year.
-         */
-        Integer getRentalYear();
-
-        /**
-         * Returns the month of the year, from {@code 1} to {@code 12}.
-         *
-         * @return the month.
-         */
-        Integer getRentalMonth();
-
-        /**
-         * Returns the id of the store.
-         *
-         * @return the id of the store.
-         */
-        Integer getStoreId();
-
-        /**
-         * Returns the number of rentals of the store's copies that began in the month.
-         *
-         * @return the number of rentals.
-         */
-        long getRentals();
-
-        /**
-         * Returns the share of the month's rentals that are the store's, as a percentage rounded to two decimals.
-         *
-         * @return the percentage.
-         */
-        BigDecimal getPercent();
-    }
 
     /**
      * Finds every store, with the ids of its manager and its address ({@code SAKILA-STORE-B-01}, the book's pick,
@@ -199,19 +97,22 @@ public interface StoreRepository
     }
 
     /**
-     * Selects every store, by id, with the numbers of its customers, its copies and its staff members
-     * ({@code SAKILA-STORE-I-02}, this module's own extra, which orders by {@code storeId}).
+     * Selects every store, with the numbers of its customers, its copies and its staff members
+     * ({@code SAKILA-STORE-I-02}, this module's own extra, which orders by {@code st.storeId}).
      * <p>
      * The three counts come from three tables, and joining all three at once would multiply the rows, so each is a
-     * correlated scalar subquery in the select, on the store of the row. Nothing is grouped, but the columns are
-     * counts, which a {@link Specification} cannot select; the count query counts the stores.
+     * correlated scalar subquery in the select, on the store of the row, which is selected whole. Nothing is grouped,
+     * but the counts beside the store are columns a {@link Specification} cannot select; the count query counts the
+     * stores.
      *
-     * @param pageable the page to return, and its sort, by {@code storeId}, {@code customers}, {@code copies} or
-     *                 {@code staff}; must not be {@code null}.
-     * @return a page of the stores, with their three counts.
+     * @param pageable the page to return, and its sort, by {@code customers}, {@code copies} or {@code staff}, or by
+     *                 an attribute of the store through {@code st} ({@code st.storeId}, ...); must not be
+     *                 {@code null}.
+     * @return a page of the stores, with their three counts, each a tuple of {@code store} ({@link Store}), and
+     *         {@code customers}, {@code copies} and {@code staff} ({@link Long}).
      */
     @Query(value = """
-            SELECT st.storeId AS storeId,
+            SELECT st AS store,
                    (SELECT COUNT(c) FROM Customer c WHERE c.store = st) AS customers,
                    (SELECT COUNT(i) FROM Inventory i WHERE i.store = st) AS copies,
                    (SELECT COUNT(s) FROM Staff s WHERE s.store = st) AS staff
@@ -219,25 +120,26 @@ public interface StoreRepository
            countQuery = """
                    SELECT COUNT(st)
                    FROM Store st""")
-    Page<StoreCounts> selectCounts(Pageable pageable);
+    Page<Tuple> selectCounts(Pageable pageable);
 
     /**
-     * Selects the stores that have a copy of a film, by id, with how many distinct films they have a copy of, and how
-     * many of those no other store has a copy of ({@code SAKILA-STORE-A-01}, the book's pick, which orders by
-     * {@code storeId}).
+     * Selects the stores that have a copy of a film, with how many distinct films they have a copy of, and how many
+     * of those no other store has a copy of ({@code SAKILA-STORE-A-01}, the book's pick, which orders by
+     * {@code st.storeId}).
      * <p>
-     * The copies are reached through the store's {@link Store_#INVENTORIES}, by an inner join, and grouped by store;
-     * the first count is of the distinct film ids. The second is of the distinct film ids that a {@code CASE} keeps,
-     * which it does when no copy of the film exists in a store other than the one of the group, a correlated
-     * {@code NOT EXISTS}; a film another store has falls out of the {@code CASE} as {@code null}, which the count
-     * ignores. The count query counts the stores that have a copy.
+     * The copies are reached through the store's {@link Store_#INVENTORIES}, by an inner join, and grouped by the store
+     * itself, which selects the store whole; the first count is of the distinct film ids. The second is of the distinct
+     * film ids that a {@code CASE} keeps, which it does when no copy of the film exists in a store other than the one
+     * of the group, a correlated {@code NOT EXISTS}; a film another store has falls out of the {@code CASE} as
+     * {@code null}, which the count ignores. The count query counts the stores that have a copy.
      *
-     * @param pageable the page to return, and its sort, by {@code storeId}, {@code films} or {@code filmsOnlyHere};
-     *                 must not be {@code null}.
-     * @return a page of the stores that have a copy, with their two counts.
+     * @param pageable the page to return, and its sort, by {@code films} or {@code filmsOnlyHere}, or by an attribute
+     *                 of the store through {@code st} ({@code st.storeId}, ...); must not be {@code null}.
+     * @return a page of the stores that have a copy, with their two counts, each a tuple of {@code store}
+     *         ({@link Store}), and {@code films} and {@code filmsOnlyHere} ({@link Long}).
      */
     @Query(value = """
-            SELECT st.storeId AS storeId,
+            SELECT st AS store,
                    COUNT(DISTINCT i.filmId) AS films,
                    COUNT(DISTINCT CASE
                                       WHEN NOT EXISTS (SELECT o
@@ -247,46 +149,52 @@ public interface StoreRepository
                                   END) AS filmsOnlyHere
             FROM Store st
             JOIN st.inventories i
-            GROUP BY st.storeId""",
+            GROUP BY st""",
            countQuery = """
                    SELECT COUNT(st)
                    FROM Store st
                    WHERE st.inventories IS NOT EMPTY""")
-    Page<StoreFilmCounts> selectFilmCounts(Pageable pageable);
+    Page<Tuple> selectFilmCounts(Pageable pageable);
 
     /**
      * Selects, for each month and each store, how many rentals of the store's copies began in the month, and what
      * share of all the month's rentals that is ({@code SAKILA-STORE-A-02}, this module's own extra, which orders by
-     * {@code rentalYear}, {@code rentalMonth}, then {@code storeId}).
+     * {@code rentalYear}, {@code rentalMonth}, then {@code st.storeId}).
      * <p>
-     * The rentals are joined with their {@code inventory}, for the store, and grouped by the year and the month of
-     * {@code rentalDate} and by the store. The share needs the month's rentals of every store, which the group does
-     * not hold: a window function, {@code SUM(COUNT(r)) OVER (PARTITION BY ..)}, adds the counts of the month's
-     * groups up, which Hibernate's query language, unlike standard JPQL, allows; the count is cast to
-     * {@link BigDecimal} so that the division is not an integer one. The exercise's {@code DATE_FORMAT} is MySQL's
-     * own, so the month is two columns, the year and the month. The count query counts the groups, through the
-     * smallest rental id of each, since Spring Data cannot derive a count from a grouped select.
+     * The rentals are joined with their {@code inventory}, and with its {@code store}, and grouped by the year and the
+     * month of {@code rentalDate} and by the store itself, which selects the store whole beside the two values. The
+     * share needs the month's rentals of every store, which the group does not hold: a window function,
+     * {@code SUM(COUNT(r)) OVER (PARTITION BY ..)}, adds the counts of the month's groups up, which Hibernate's query
+     * language, unlike standard JPQL, allows; the count is cast to {@link BigDecimal} so that the division is not an
+     * integer one. The exercise's {@code DATE_FORMAT} is MySQL's own, so the month is two columns, the year and the
+     * month. The count query counts the groups, through the smallest rental id of each, since Spring Data cannot derive
+     * a count from a grouped select.
      *
-     * @param pageable the page to return, and its sort, by {@code rentalYear}, {@code rentalMonth}, {@code storeId},
-     *                 {@code rentals} or {@code percent}; must not be {@code null}.
-     * @return a page of the months and stores, with their rentals and their shares of the months.
+     * @param pageable the page to return, and its sort, by {@code rentalYear}, {@code rentalMonth}, {@code rentals}
+     *                 or {@code percent}, or by an attribute of the store through {@code st} ({@code st.storeId}, ...);
+     *                 must not be {@code null}.
+     * @return a page of the months and stores, with their rentals and their shares of the months, each a tuple of
+     *         {@code rentalYear} and {@code rentalMonth} ({@link Integer}), {@code store} ({@link Store}),
+     *         {@code rentals} ({@link Long}) and {@code percent} ({@link BigDecimal}).
      */
     @Query(value = """
             SELECT EXTRACT(YEAR FROM r.rentalDate) AS rentalYear, EXTRACT(MONTH FROM r.rentalDate) AS rentalMonth,
-                   i.storeId AS storeId, COUNT(r) AS rentals,
+                   st AS store, COUNT(r) AS rentals,
                    ROUND(100 * CAST(COUNT(r) AS BigDecimal)
                          / SUM(COUNT(r)) OVER (PARTITION BY EXTRACT(YEAR FROM r.rentalDate),
                                                             EXTRACT(MONTH FROM r.rentalDate)), 2) AS percent
             FROM Rental r
             JOIN r.inventory i
-            GROUP BY EXTRACT(YEAR FROM r.rentalDate), EXTRACT(MONTH FROM r.rentalDate), i.storeId""",
+            JOIN i.store st
+            GROUP BY EXTRACT(YEAR FROM r.rentalDate), EXTRACT(MONTH FROM r.rentalDate), st""",
            countQuery = """
                    SELECT COUNT(r)
                    FROM Rental r
                    WHERE r.rentalId IN (SELECT MIN(r2.rentalId)
                                         FROM Rental r2
                                         JOIN r2.inventory i2
+                                        JOIN i2.store st2
                                         GROUP BY EXTRACT(YEAR FROM r2.rentalDate), EXTRACT(MONTH FROM r2.rentalDate),
-                                                 i2.storeId)""")
-    Page<StoreMonthlyRentalShare> selectMonthlyRentalShares(Pageable pageable);
+                                                 st2)""")
+    Page<Tuple> selectMonthlyRentalShares(Pageable pageable);
 }

@@ -138,7 +138,7 @@ class InventoryRepository_DataJpaTest
     class SelectCopyCountsByFilm_Test {
 
         private static final Sort BY_COPIES_DESC_THEN_FILM_ID =
-                Sort.by(Sort.Direction.DESC, "copies").and(Sort.by("filmId"));
+                Sort.by(Sort.Direction.DESC, "copies").and(Sort.by("f.filmId"));
 
         /**
          * Saves a film, and asserts that the page is empty, with no elements in all: a film with no copy is not
@@ -222,7 +222,7 @@ class InventoryRepository_DataJpaTest
     @Nested
     class SelectCopyCountsOfFilmsEveryCopyRented_Test {
 
-        private static final Sort BY_FILM_ID = Sort.by("filmId");
+        private static final Sort BY_FILM_ID = Sort.by("f.filmId");
 
         /**
          * Saves a film, and asserts that the page is empty, with no films in all: a film with no copy has none that

@@ -1,6 +1,5 @@
 package com.github.jinahya.mysql.sakila.data;
 
-import com.github.jinahya.mysql.sakila.data.CityRepository.CountryCityCount;
 import com.github.jinahya.mysql.sakila.persistence.City;
 import com.github.jinahya.mysql.sakila.persistence.City_;
 import com.github.jinahya.mysql.sakila.persistence.Country;
@@ -244,11 +243,11 @@ class CityRepository_DataJpaTest
     class SelectCityCounts_Test {
 
         private static final Sort BY_CITIES_DESC_THEN_COUNTRY =
-                Sort.by(Sort.Direction.DESC, "cities").and(Sort.by("country"));
+                Sort.by(Sort.Direction.DESC, "cities").and(Sort.by("co.country"));
 
         /**
          * Saves a country with three cities, one with two, one with one, and one with none, and asserts that the
-         * three with a city are selected with their counts, and the one with none is not.
+         * three with a city are selected, each the country itself, with their counts, and the one with none is not.
          */
         @Test
         void __() {
@@ -265,12 +264,9 @@ class CityRepository_DataJpaTest
             saveCity(randomName(), one);
             final var all = repositoryInstance().selectCityCounts(Pageable.unpaged(BY_CITIES_DESC_THEN_COUNTRY));
             assertThat(all.getContent())
-                    .extracting(CountryCityCount::getCountryId, CountryCityCount::getCountry,
-                                CountryCityCount::getCities)
-                    .contains(tuple(three.getCountryId(), three.getCountry(), 3L),
-                              tuple(two.getCountryId(), two.getCountry(), 2L),
-                              tuple(one.getCountryId(), one.getCountry(), 1L))
-                    .noneMatch(t -> none.getCountryId().equals(t.toList().getFirst()));
+                    .noneMatch(t -> t.get("country", Country.class).equals(none))
+                    .extracting(column("country", Country.class), column("cities", Long.class))
+                    .contains(tuple(three, 3L), tuple(two, 2L), tuple(one, 1L));
         }
 
         /**
@@ -289,8 +285,8 @@ class CityRepository_DataJpaTest
             saveCity(randomName(), oneA);
             final var all = repositoryInstance().selectCityCounts(Pageable.unpaged(BY_CITIES_DESC_THEN_COUNTRY));
             assertThat(all.getContent())
-                    .extracting(CountryCityCount::getCountryId)
-                    .containsSubsequence(three.getCountryId(), oneA.getCountryId(), oneB.getCountryId());
+                    .extracting(column("country", Country.class))
+                    .containsSubsequence(three, oneA, oneB);
         }
 
         /**
@@ -307,9 +303,9 @@ class CityRepository_DataJpaTest
             assertThat(page0.getContent()).hasSize(2);
             assertThat(page0.getTotalElements()).isEqualTo(all.getTotalElements()).isEqualTo(3L);
             assertThat(page0.getContent())
-                    .extracting(CountryCityCount::getCountryId)
+                    .extracting(column("country", Country.class))
                     .containsExactlyElementsOf(all.getContent().subList(0, 2).stream()
-                                                       .map(CountryCityCount::getCountryId).toList());
+                                                       .map(column("country", Country.class)).toList());
         }
 
         /**

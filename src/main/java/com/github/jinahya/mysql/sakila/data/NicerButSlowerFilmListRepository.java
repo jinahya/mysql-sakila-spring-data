@@ -28,8 +28,9 @@ import java.util.List;
  * {@code nicer_but_slower_film_list} view, one method per exercise, in the order of their ids, each named in its
  * javadoc ({@code SAKILA-NICER_BUT_SLOWER_FILM_LIST-B-01}, ...). The view has no entity, so every one of them is
  * native-only: it runs the exercise's SQL as {@code EXERCISES.asciidoc} has it, its literals, its {@code ORDER BY} and
- * its {@code LIMIT} included, from a {@code .sql} resource beside the implementation, and returns a single value or the
- * exercise's columns as a record, nested here or, for the same columns, in {@link FilmListRepository}.
+ * its {@code LIMIT} included, from a {@code .sql} resource beside the implementation. A method whose statement selects
+ * whole rows of the view, with {@code n.*}, returns them as {@link NicerButSlowerFilmList}s; one that counts or groups
+ * by a value returns a single value, or its columns as one of the records nested here.
  *
  * @see NicerButSlowerFilmList
  * @see NicerButSlowerFilmListRepositoryImpl
@@ -88,14 +89,15 @@ public interface NicerButSlowerFilmListRepository
 
     /**
      * Lists the actors of the film {@code 1}, as this view writes them ({@code SAKILA-NICER_BUT_SLOWER_FILM_LIST-B-01};
-     * native-only; no sort, the rows of one film), to compare with the same row of {@code film_list}.
+     * native-only; no sort, the rows of one film), selecting the whole rows, to compare with the same row of
+     * {@code film_list}.
      * <p>
      * A list rather than an optional, as {@link FilmListRepository#listActorsOfFilmOne()} explains: {@code FID} does
      * not identify a row of the view. The names are written with only the first letter of each in upper case.
      *
-     * @return the rows of the film {@code 1}, with its title and the names of its actors in one string.
+     * @return the rows of the film {@code 1}, each with the names of its actors in one string.
      */
-    List<FilmListRepository.FilmActors> listActorsOfFilmOne();
+    List<NicerButSlowerFilmList> listActorsOfFilmOne();
 
     /**
      * Counts the films {@code PENELOPE GUINESS} plays in, by the view's {@code actors}
@@ -110,11 +112,11 @@ public interface NicerButSlowerFilmListRepository
 
     /**
      * Lists the films which have no actors ({@code SAKILA-NICER_BUT_SLOWER_FILM_LIST-B-03}; native-only; sorted by
-     * {@code FID}).
+     * {@code FID}), selecting the whole rows.
      *
-     * @return the films whose {@code actors} is {@code NULL}, with their categories, by {@code FID}.
+     * @return the rows whose {@code actors} is {@code NULL}, by {@code FID}.
      */
-    List<FilmListRepository.FilmInCategory> listFilmsWithNoActor();
+    List<NicerButSlowerFilmList> listFilmsWithNoActor();
 
     /**
      * Lists the five categories whose films are the longest, on average

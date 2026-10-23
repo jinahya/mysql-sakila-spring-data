@@ -1,6 +1,5 @@
 package com.github.jinahya.mysql.sakila.data;
 
-import com.github.jinahya.mysql.sakila.data.LanguageRepository.LanguageFilmCount;
 import com.github.jinahya.mysql.sakila.persistence.Film;
 import com.github.jinahya.mysql.sakila.persistence.Film_;
 import com.github.jinahya.mysql.sakila.persistence.Language;
@@ -234,7 +233,7 @@ class LanguageRepository_SpringBootIT
     @Nested
     class SelectFilmCounts_Test {
 
-        private static final Sort BY_LANGUAGE_ID_ALIAS = Sort.by("languageId");
+        private static final Sort BY_L_LANGUAGE_ID = Sort.by("l.languageId");
 
         private static Stream<Language> languages() {
             return LanguageRepository_SpringBootIT.languages();
@@ -246,9 +245,9 @@ class LanguageRepository_SpringBootIT
          */
         @Test
         void __() {
-            final var page = repositoryInstance().selectFilmCounts(PageRequest.of(0, 10, BY_LANGUAGE_ID_ALIAS));
+            final var page = repositoryInstance().selectFilmCounts(PageRequest.of(0, 10, BY_L_LANGUAGE_ID));
             assertThat(page.getContent())
-                    .extracting(LanguageFilmCount::getName, LanguageFilmCount::getFilms)
+                    .extracting(column("language", Language.class, Language::getName), column("films", Long.class))
                     .containsExactly(tuple("English", 1000L),
                                      tuple("Italian", 0L),
                                      tuple("Japanese", 0L),
@@ -259,23 +258,22 @@ class LanguageRepository_SpringBootIT
         }
 
         /**
-         * Asserts that the page is ordered by id, and that the count of a selected language is the number of its
-         * films, counted by a {@link Specification} on {@link Film_#language}.
+         * Asserts that the page is ordered by id, that it holds a selected language itself, and that its count is
+         * the number of its films, counted by a {@link Specification} on {@link Film_#language}.
          *
          * @param language one of the languages selected in {@link LanguageRepository_SpringBootIT#__()}.
          */
         @MethodSource("languages")
         @ParameterizedTest
         void __Ordered(final Language language) {
-            final var page = repositoryInstance().selectFilmCounts(Pageable.unpaged(BY_LANGUAGE_ID_ALIAS));
+            final var page = repositoryInstance().selectFilmCounts(Pageable.unpaged(BY_L_LANGUAGE_ID));
             assertThat(page.getContent())
-                    .isSortedAccordingTo(Comparator.comparing(LanguageFilmCount::getLanguageId))
-                    .filteredOn(c -> c.getLanguageId().equals(language.getLanguageId()))
+                    .isSortedAccordingTo(Comparator.comparing(column("language", Language.class,
+                                                                     Language::getLanguageId)))
+                    .filteredOn(c -> c.get("language", Language.class).equals(language))
                     .singleElement()
-                    .satisfies(c -> {
-                        assertThat(c.getName()).isEqualTo(language.getName());
-                        assertThat(c.getFilms()).isEqualTo(countFilmsBy(language, Film_.language));
-                    });
+                    .satisfies(c -> assertThat(c.get("films", Long.class))
+                            .isEqualTo(countFilmsBy(language, Film_.language)));
         }
 
         /**
@@ -287,18 +285,18 @@ class LanguageRepository_SpringBootIT
         @ValueSource(ints = {1, 4})
         @ParameterizedTest
         void __Paged(final int size) {
-            final var all = repositoryInstance().selectFilmCounts(Pageable.unpaged(BY_LANGUAGE_ID_ALIAS));
-            var page = repositoryInstance().selectFilmCounts(PageRequest.of(0, size, BY_LANGUAGE_ID_ALIAS));
+            final var all = repositoryInstance().selectFilmCounts(Pageable.unpaged(BY_L_LANGUAGE_ID));
+            var page = repositoryInstance().selectFilmCounts(PageRequest.of(0, size, BY_L_LANGUAGE_ID));
             assertPage(page);
             assertThat(page.getTotalElements()).isEqualTo(all.getTotalElements());
-            final var walked = new ArrayList<Integer>();
-            page.forEach(c -> walked.add(c.getLanguageId()));
+            final var walked = new ArrayList<Language>();
+            page.forEach(c -> walked.add(c.get("language", Language.class)));
             while (page.hasNext()) {
                 page = repositoryInstance().selectFilmCounts(page.nextPageable());
-                page.forEach(c -> walked.add(c.getLanguageId()));
+                page.forEach(c -> walked.add(c.get("language", Language.class)));
             }
             assertThat(walked).containsExactlyElementsOf(
-                    all.getContent().stream().map(LanguageFilmCount::getLanguageId).toList());
+                    all.getContent().stream().map(column("language", Language.class)).toList());
         }
     }
 

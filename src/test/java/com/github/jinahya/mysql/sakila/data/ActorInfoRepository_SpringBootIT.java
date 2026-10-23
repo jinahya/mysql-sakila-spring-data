@@ -1,6 +1,5 @@
 package com.github.jinahya.mysql.sakila.data;
 
-import com.github.jinahya.mysql.sakila.data.ActorInfoRepository.CategoryCountActors;
 import com.github.jinahya.mysql.sakila.persistence.ActorInfo;
 import com.github.jinahya.mysql.sakila.persistence.ActorInfo_;
 import org.junit.jupiter.api.BeforeAll;
@@ -126,19 +125,20 @@ class ActorInfoRepository_SpringBootIT
         void __Exercise() {
             try (var selected = repositoryInstance().selectFilmInfoHeadByActorId(1, FILM_INFO_LENGTH)) {
                 assertThat(selected.toList()).singleElement().satisfies(h -> {
-                    assertThat(h.getActorId()).isEqualTo(1);
-                    assertThat(h.getFirstName()).isEqualTo("PENELOPE");
-                    assertThat(h.getLastName()).isEqualTo("GUINESS");
-                    assertThat(h.getFilmInfo()).isEqualTo(
+                    final var actorInfo = h.get("actorInfo", ActorInfo.class);
+                    assertThat(actorInfo.getActorId()).isEqualTo(1);
+                    assertThat(actorInfo.getFirstName()).isEqualTo("PENELOPE");
+                    assertThat(actorInfo.getLastName()).isEqualTo("GUINESS");
+                    assertThat(h.get("filmInfo", String.class)).isEqualTo(
                             "Animation: ANACONDA CONFESSIONS; Children: LANGUAGE COWBOY; Classics: COLOR PHIL");
                 });
             }
         }
 
         /**
-         * Asserts, in one transaction, that the id of a selected row streams that row alone, with the names the row
-         * has, which are the names of the actor of that id in the {@code actor} table, and with the first eighty
-         * characters of the row's {@code film_info}.
+         * Asserts, in one transaction, that the id of a selected row streams that row alone, the row itself, whose
+         * names are the names of the actor of that id in the {@code actor} table, with the first eighty characters of
+         * the row's {@code film_info} beside it.
          *
          * @param actorInfo one of the rows selected in {@link ActorInfoRepository_SpringBootIT#__()}.
          */
@@ -149,13 +149,12 @@ class ActorInfoRepository_SpringBootIT
             final var actorId = actorInfo.getActorId();
             try (var selected = repositoryInstance().selectFilmInfoHeadByActorId(actorId, FILM_INFO_LENGTH)) {
                 assertThat(selected.toList()).singleElement().satisfies(h -> {
-                    assertThat(h.getActorId()).isEqualTo(actorId);
-                    assertThat(h.getFirstName()).isEqualTo(actorInfo.getFirstName());
-                    assertThat(h.getLastName()).isEqualTo(actorInfo.getLastName());
-                    assertThat(h.getFilmInfo()).isEqualTo(head(actorInfo.getFilmInfo()));
+                    final var selectedInfo = h.get("actorInfo", ActorInfo.class);
+                    assertThat(selectedInfo).isEqualTo(actorInfo);
+                    assertThat(h.get("filmInfo", String.class)).isEqualTo(head(actorInfo.getFilmInfo()));
                     final var actor = actorRepository.findById(actorId).orElseThrow();
-                    assertThat(h.getFirstName()).isEqualToIgnoringCase(actor.getFirstName());
-                    assertThat(h.getLastName()).isEqualToIgnoringCase(actor.getLastName());
+                    assertThat(selectedInfo.getFirstName()).isEqualToIgnoringCase(actor.getFirstName());
+                    assertThat(selectedInfo.getLastName()).isEqualToIgnoringCase(actor.getLastName());
                 });
             }
         }
@@ -294,8 +293,8 @@ class ActorInfoRepository_SpringBootIT
         void __Exercise() {
             final var page = repositoryInstance().selectRowCounts(Pageable.unpaged());
             assertThat(page.getContent()).singleElement().satisfies(c -> {
-                assertThat(c.getActorInfos()).isEqualTo(200L);
-                assertThat(c.getActors()).isEqualTo(200L);
+                assertThat(c.get("actorInfos", Long.class)).isEqualTo(200L);
+                assertThat(c.get("actors", Long.class)).isEqualTo(200L);
             });
         }
 
@@ -310,9 +309,9 @@ class ActorInfoRepository_SpringBootIT
         @ParameterizedTest
         void __(final ActorInfo actorInfo) {
             final var counts = repositoryInstance().selectRowCounts(Pageable.unpaged()).getContent().getFirst();
-            assertThat(counts.getActorInfos()).isPositive().isEqualTo(counts.getActors());
-            assertThat(counts.getActorInfos()).isEqualTo(repositoryInstance().count());
-            assertThat(counts.getActors()).isEqualTo(actorRepository.count());
+            assertThat(counts.get("actorInfos", Long.class)).isPositive().isEqualTo(counts.get("actors", Long.class));
+            assertThat(counts.get("actorInfos", Long.class)).isEqualTo(repositoryInstance().count());
+            assertThat(counts.get("actors", Long.class)).isEqualTo(actorRepository.count());
             assertThat(actorRepository.existsById(actorInfo.getActorId())).isTrue();
         }
 
@@ -395,7 +394,7 @@ class ActorInfoRepository_SpringBootIT
         void __Exercise() {
             final var list = repositoryInstance().selectActorCountsByCategoryCount();
             assertThat(list)
-                    .extracting(CategoryCountActors::getCategories, CategoryCountActors::getActors)
+                    .extracting(intColumn("categories"), longColumn("actors"))
                     .containsExactly(tuple(16, 11L), tuple(15, 19L), tuple(14, 49L), tuple(13, 57L), tuple(12, 33L),
                                      tuple(11, 19L), tuple(10, 8L), tuple(9, 2L), tuple(8, 2L));
         }
@@ -408,13 +407,15 @@ class ActorInfoRepository_SpringBootIT
         @Test
         void __() {
             final var list = repositoryInstance().selectActorCountsByCategoryCount();
-            assertThat(list.stream().mapToLong(CategoryCountActors::getActors).sum())
+            assertThat(list.stream().mapToLong(c -> c.get("actors", Number.class).longValue()).sum())
                     .isEqualTo(repositoryInstance().count());
             final var every = repositoryInstance().listCoveringEveryCategory(Pageable.unpaged());
-            assertThat(list).filteredOn(c -> c.getCategories() != null
-                                             && c.getCategories() == categoryRepository.count())
+            assertThat(list).filteredOn(c -> c.get("categories") != null
+                                             && c.get("categories", Number.class).longValue()
+                                                == categoryRepository.count())
                     .singleElement()
-                    .satisfies(c -> assertThat(c.getActors()).isEqualTo(every.getTotalElements()));
+                    .satisfies(c -> assertThat(c.get("actors", Number.class).longValue())
+                            .isEqualTo(every.getTotalElements()));
         }
     }
 

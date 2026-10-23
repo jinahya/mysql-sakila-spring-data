@@ -1,7 +1,10 @@
 package com.github.jinahya.mysql.sakila.data;
 
+import com.github.jinahya.mysql.sakila.persistence.Customer;
 import com.github.jinahya.mysql.sakila.persistence.Payment;
 import com.github.jinahya.mysql.sakila.persistence.Payment_;
+import com.github.jinahya.mysql.sakila.persistence.Staff;
+import jakarta.persistence.Tuple;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -11,7 +14,6 @@ import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Stream;
@@ -42,11 +44,16 @@ import java.util.stream.Stream;
  * {@link org.springframework.data.jpa.repository.JpaSpecificationExecutor}. An exercise that shows columns, grouped
  * and summed, cannot be a {@code Specification}, which only filters; such a method, {@code select...}, declares its
  * JPQL with {@link Query}, with a count query of its own where it is paged, since Spring Data cannot derive one from
- * a grouped select, and returns a projection, one of the interfaces declared here, which Spring Data backs with the
- * selected columns, each aliased with the name of the getter it feeds. Those aliases are what the {@code Pageable}
- * sorts by; an interface rather than a record, because Spring Data rewrites a record projection into a constructor
- * expression, which drops the aliases, and the sort with them. An exercise only MySQL's own SQL can answer is a
- * {@link NativeQuery}, which runs on the Sakila database only.
+ * a grouped select. Such a query selects entities, not their columns: a customer is selected whole
+ * ({@code SELECT c AS customer}), and grouped by itself ({@code GROUP BY c}) where the query groups; what is
+ * computed, a count, a sum, is a column of its own beside it. A result that is a single entity is that entity; any
+ * other comes back as a {@link jakarta.persistence.Tuple}, each element read by its alias, with its type
+ * ({@code tuple.get("customer", Customer.class)}, {@code tuple.get("total", BigDecimal.class)}). The {@code Pageable}
+ * sorts a computed column by its alias ({@code Sort.by(DESC, "total")}), and an attribute of a selected entity by its
+ * path from the query's identification variable ({@code Sort.by("c.customerId")}); each method's javadoc names its
+ * aliases and identification variables. A query which groups by a value, not by an entity (the months), still
+ * selects that value. An exercise only MySQL's own SQL can answer is a {@link NativeQuery}, which runs on the Sakila
+ * database only.
  *
  * @see Payment
  * @see Payment_
@@ -58,174 +65,12 @@ public interface PaymentRepository
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * A staff member, by id, and how many payments the staff member took and their sum: a projection of
-     * {@link #selectTotalsByStaff()}.
-     */
-    interface StaffPaymentTotal {
-
-        /**
-         * Returns the id of the staff member.
-         *
-         * @return the id of the staff member.
-         */
-        Integer getStaffId();
-
-        /**
-         * Returns the number of payments the staff member took.
-         *
-         * @return the number of payments.
-         */
-        long getPayments();
-
-        /**
-         * Returns the sum of the payments the staff member took.
-         *
-         * @return the sum of the payments.
-         */
-        BigDecimal getTotal();
-    }
-
-    /**
-     * A month, as a year and a month of it, and how many payments were made in it and their sum: a projection of
-     * {@link #selectMonthlyTotals()}.
-     */
-    interface MonthPaymentTotal {
-
-        /**
-         * Returns the year of the month.
-         *
-         * @return the year.
-         */
-        Integer getYear();
-
-        /**
-         * Returns the month of the year, {@code 1} to {@code 12}.
-         *
-         * @return the month.
-         */
-        Integer getMonth();
-
-        /**
-         * Returns the number of payments made in the month.
-         *
-         * @return the number of payments.
-         */
-        long getPayments();
-
-        /**
-         * Returns the sum of the payments made in the month.
-         *
-         * @return the sum of the payments.
-         */
-        BigDecimal getTotal();
-    }
-
-    /**
-     * A customer, by id and names, and the sum of the customer's payments: a projection of
-     * {@link #selectCustomersWhoPaidMoreThan(BigDecimal, Pageable)}, sortable by {@code customerId},
-     * {@code firstName}, {@code lastName} and {@code total}.
-     */
-    interface CustomerPaymentTotal {
-
-        /**
-         * Returns the id of the customer.
-         *
-         * @return the id of the customer.
-         */
-        Integer getCustomerId();
-
-        /**
-         * Returns the first name of the customer.
-         *
-         * @return the first name of the customer.
-         */
-        String getFirstName();
-
-        /**
-         * Returns the last name of the customer.
-         *
-         * @return the last name of the customer.
-         */
-        String getLastName();
-
-        /**
-         * Returns the sum of the customer's payments.
-         *
-         * @return the sum of the payments.
-         */
-        BigDecimal getTotal();
-    }
-
-    /**
-     * A payment of a customer, and the sum of the customer's payments up to and including it: a projection of
-     * {@link #selectRunningTotals(Integer, Pageable)}, sortable by {@code paymentId}, {@code paymentDate},
-     * {@code amount} and {@code runningTotal}.
-     */
-    interface PaymentRunningTotal {
-
-        /**
-         * Returns the id of the payment.
-         *
-         * @return the id of the payment.
-         */
-        Integer getPaymentId();
-
-        /**
-         * Returns the date of the payment.
-         *
-         * @return the date of the payment.
-         */
-        LocalDateTime getPaymentDate();
-
-        /**
-         * Returns the amount of the payment.
-         *
-         * @return the amount of the payment.
-         */
-        BigDecimal getAmount();
-
-        /**
-         * Returns the sum of the amounts of the customer's payments up to and including this one.
-         *
-         * @return the running total.
-         */
-        BigDecimal getRunningTotal();
-    }
-
-    /**
-     * A run of consecutive days on which payments were made: a projection of
-     * {@link #selectRunsOfConsecutiveDays()}.
-     */
-    interface PaymentDayRun {
-
-        /**
-         * Returns the first day of the run.
-         *
-         * @return the first day.
-         */
-        LocalDate getFirstDay();
-
-        /**
-         * Returns the last day of the run.
-         *
-         * @return the last day.
-         */
-        LocalDate getLastDay();
-
-        /**
-         * Returns the number of days of the run.
-         *
-         * @return the number of days.
-         */
-        long getDays();
-    }
-
-    /**
      * Selects each staff member who took a payment, with the number of payments the staff member took and their sum,
-     * as a stream ({@code SAKILA-PAYMENT-B-01}, this module's own extra, which orders by {@code staffId}).
+     * as a stream ({@code SAKILA-PAYMENT-B-01}, this module's own extra, which orders by the staff member's id).
      * <p>
-     * The payments are grouped by the id of their {@link Payment_#STAFF}, joined, and counted and summed; the order is
-     * the exercise's, written in the query.
+     * The payments are grouped by their {@link Payment_#STAFF}, joined, and counted and summed; the staff member is
+     * selected whole, and the payments grouped by the staff member itself. The order is the exercise's, written in
+     * the query.
      * <p>
      * A {@link Stream} reads the rows as they are consumed, over a result set that stays open until the stream is
      * closed, so close it, in a try-with-resources. It also has to be consumed inside a transaction the caller opened:
@@ -234,15 +79,16 @@ public interface PaymentRepository
      * {@link org.springframework.dao.InvalidDataAccessApiUsageException}, before any query runs.
      *
      * @return a stream of the staff members who took a payment, with their numbers of payments and their sums, by
-     *         staff id, to be closed by the caller.
+     *         staff id, each a tuple of {@code staff} ({@link Staff}), {@code payments} ({@link Long}) and
+     *         {@code total} ({@link BigDecimal}), to be closed by the caller.
      */
     @Query("""
-            SELECT s.staffId AS staffId, COUNT(p) AS payments, SUM(p.amount) AS total
+            SELECT s AS staff, COUNT(p) AS payments, SUM(p.amount) AS total
             FROM Payment p
             JOIN p.staff s
-            GROUP BY s.staffId
+            GROUP BY s
             ORDER BY s.staffId""")
-    Stream<StaffPaymentTotal> selectTotalsByStaff();
+    Stream<Tuple> selectTotalsByStaff();
 
     /**
      * Selects each month in which a payment was made, with the number of payments made in it and their sum
@@ -253,7 +99,9 @@ public interface PaymentRepository
      * year and the month {@code EXTRACT}ed from the {@link Payment_#PAYMENT_DATE}, and the payments are grouped and
      * ordered by both; a caller that wants the exercise's string formats the two.
      *
-     * @return a list of the months, with their numbers of payments and their sums, by month.
+     * @return a list of the months, with their numbers of payments and their sums, by month, each a tuple of
+     *         {@code year} and {@code month} ({@link Integer}), {@code payments} ({@link Long}) and {@code total}
+     *         ({@link BigDecimal}).
      */
     @Query("""
             SELECT EXTRACT(YEAR FROM p.paymentDate) AS year,
@@ -263,7 +111,7 @@ public interface PaymentRepository
             FROM Payment p
             GROUP BY EXTRACT(YEAR FROM p.paymentDate), EXTRACT(MONTH FROM p.paymentDate)
             ORDER BY EXTRACT(YEAR FROM p.paymentDate), EXTRACT(MONTH FROM p.paymentDate)""")
-    List<MonthPaymentTotal> selectMonthlyTotals();
+    List<Tuple> selectMonthlyTotals();
 
     /**
      * Counts the payments which refer to no rental ({@code SAKILA-PAYMENT-B-03}, not a pick; a count is not a list).
@@ -305,23 +153,24 @@ public interface PaymentRepository
     /**
      * Selects the customers whose payments add up to more than the specified amount, with the sums
      * ({@code SAKILA-PAYMENT-I-02}, this module's own extra, which asks for more than {@code 180}, and orders by
-     * {@code total} descending, then by {@code customerId}).
+     * {@code total} descending, then by {@code c.customerId}).
      * <p>
-     * The payments are grouped by their {@link Payment_#CUSTOMER}, joined for the id and the names, and summed; the
-     * filter is on the groups, so it is a {@code HAVING}, which a {@link Specification} cannot do. The count query
-     * counts the customers that pass the same {@code HAVING}, through a subquery.
+     * The payments are grouped by their {@link Payment_#CUSTOMER}, joined, and summed; the customer is selected
+     * whole, and the payments grouped by the customer itself. The filter is on the groups, so it is a
+     * {@code HAVING}, which a {@link Specification} cannot do. The count query counts the customers that pass the same
+     * {@code HAVING}, through a subquery.
      *
      * @param amount   the amount the sum of a customer's payments has to be more than; must not be {@code null}.
-     * @param pageable the page to return, and its sort, by {@code customerId}, {@code firstName}, {@code lastName} or
-     *                 {@code total}; must not be {@code null}.
-     * @return a page of the customers who paid more than {@code amount} in all, with their sums.
+     * @param pageable the page to return, and its sort, by {@code total}, or by an attribute of the customer through
+     *                 {@code c} ({@code c.customerId}, {@code c.lastName}, ...); must not be {@code null}.
+     * @return a page of the customers who paid more than {@code amount} in all, with their sums, each a tuple of
+     *         {@code customer} ({@link Customer}) and {@code total} ({@link BigDecimal}).
      */
     @Query(value = """
-            SELECT c.customerId AS customerId, c.firstName AS firstName, c.lastName AS lastName,
-                   SUM(p.amount) AS total
+            SELECT c AS customer, SUM(p.amount) AS total
             FROM Payment p
             JOIN p.customer c
-            GROUP BY c.customerId, c.firstName, c.lastName
+            GROUP BY c
             HAVING SUM(p.amount) > :amount""",
            countQuery = """
                    SELECT COUNT(DISTINCT p.customer)
@@ -330,38 +179,40 @@ public interface PaymentRepository
                                         FROM Payment p2
                                         GROUP BY p2.customer
                                         HAVING SUM(p2.amount) > :amount)""")
-    Page<CustomerPaymentTotal> selectCustomersWhoPaidMoreThan(BigDecimal amount, Pageable pageable);
+    Page<Tuple> selectCustomersWhoPaidMoreThan(BigDecimal amount, Pageable pageable);
 
     /**
      * Selects the payments of the customer of the specified id, each with the running total of the customer's
      * payments up to and including it ({@code SAKILA-PAYMENT-A-01}, the book's pick, which asks for the customer
-     * {@code 1}, orders by {@code paymentDate}, then by {@code paymentId}, and takes the first ten).
+     * {@code 1}, orders by {@code p.paymentDate}, then by {@code p.paymentId}, and takes the first ten).
      * <p>
      * JPQL has no window function, so the running total is a self-join: each payment {@code p} of the customer is
      * paired with every payment {@code q} of the same customer made before it, or at the same instant with an id no
      * greater, and the {@code q}s of each {@code p} are summed. The order the running total accumulates in is the one
-     * the exercise sorts by, written in the join; the page's own sort only orders the rows. The count query counts the
-     * customer's payments.
+     * the exercise sorts by, written in the join; the page's own sort only orders the rows. Each {@code p} is a
+     * group of its own, so the payment is selected whole, and grouped by itself. The count query counts the customer's
+     * payments.
      *
      * @param customerId the id of the customer; must not be {@code null}.
-     * @param pageable   the page to return, and its sort, by {@code paymentId}, {@code paymentDate}, {@code amount}
-     *                   or {@code runningTotal}; must not be {@code null}.
-     * @return a page of the customer's payments, with their running totals.
+     * @param pageable   the page to return, and its sort, by {@code runningTotal}, or by an attribute of the payment
+     *                   through {@code p} ({@code p.paymentDate}, {@code p.paymentId}, {@code p.amount}, ...); must
+     *                   not be {@code null}.
+     * @return a page of the customer's payments, with their running totals, each a tuple of {@code payment}
+     *         ({@link Payment}) and {@code runningTotal} ({@link BigDecimal}).
      */
     @Query(value = """
-            SELECT p.paymentId AS paymentId, p.paymentDate AS paymentDate, p.amount AS amount,
-                   SUM(q.amount) AS runningTotal
+            SELECT p AS payment, SUM(q.amount) AS runningTotal
             FROM Payment p, Payment q
             WHERE p.customer.customerId = :customerId
               AND q.customer = p.customer
               AND (q.paymentDate < p.paymentDate
                    OR (q.paymentDate = p.paymentDate AND q.paymentId <= p.paymentId))
-            GROUP BY p.paymentId, p.paymentDate, p.amount""",
+            GROUP BY p""",
            countQuery = """
                    SELECT COUNT(p)
                    FROM Payment p
                    WHERE p.customer.customerId = :customerId""")
-    Page<PaymentRunningTotal> selectRunningTotals(Integer customerId, Pageable pageable);
+    Page<Tuple> selectRunningTotals(Integer customerId, Pageable pageable);
 
     /**
      * Selects the runs of consecutive days on which payments were made ({@code SAKILA-PAYMENT-A-02}, native-only,
@@ -371,10 +222,11 @@ public interface PaymentRepository
      * the same day for every day of one run, and the days are grouped by it. That needs a window function,
      * {@code ROW_NUMBER() OVER (..)}, and MySQL's {@code DATE} and {@code DATE_SUB(.., INTERVAL .. DAY)}; JPQL and the
      * Criteria API have none of them, so this is a native query, the exercise's SQL with its columns aliased with the
-     * getters' names of {@link PaymentDayRun}, and it runs on the Sakila database only, with no slice test. Its order is
-     * the exercise's own.
+     * names its tuple is read by, and it runs on the Sakila database only, with no slice test. Its order is the
+     * exercise's own.
      *
-     * @return a list of the runs of consecutive days with a payment, by their first days.
+     * @return a list of the runs of consecutive days with a payment, by their first days, each a tuple of
+     *         {@code firstDay} and {@code lastDay} ({@link LocalDate}), and {@code days}, a number.
      */
     @NativeQuery("""
             WITH days AS (SELECT DISTINCT DATE(payment_date) AS day FROM payment),
@@ -383,5 +235,5 @@ public interface PaymentRepository
             FROM islands
             GROUP BY island
             ORDER BY firstDay""")
-    List<PaymentDayRun> selectRunsOfConsecutiveDays();
+    List<Tuple> selectRunsOfConsecutiveDays();
 }

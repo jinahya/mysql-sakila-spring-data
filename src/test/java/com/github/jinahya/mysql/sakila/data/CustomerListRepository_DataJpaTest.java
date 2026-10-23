@@ -172,8 +172,8 @@ class CustomerListRepository_DataJpaTest
         void _Zero_Empty() {
             final var page = repositoryInstance().selectRowCounts(PageRequest.of(0, 1, BY_CUSTOMERS));
             assertThat(page.getContent()).singleElement().satisfies(c -> {
-                assertThat(c.getCustomerLists()).isZero();
-                assertThat(c.getCustomers()).isZero();
+                assertThat(c.get("customerLists", Long.class)).isZero();
+                assertThat(c.get("customers", Long.class)).isZero();
             });
         }
 

@@ -1,6 +1,6 @@
 package com.github.jinahya.mysql.sakila.data;
 
-import com.github.jinahya.mysql.sakila.data.StaffListRepository.StaffCities;
+import com.github.jinahya.mysql.sakila.persistence.City;
 import com.github.jinahya.mysql.sakila.persistence.StaffList;
 import com.github.jinahya.mysql.sakila.persistence.StaffList_;
 import org.junit.jupiter.api.BeforeAll;
@@ -177,9 +177,11 @@ class StaffListRepository_SpringBootIT
         @ParameterizedTest
         void __(final StaffList staffList) {
             final var counts = repositoryInstance().selectRowCounts();
-            assertThat(counts.getStaffLists()).isPositive().isEqualTo(counts.getStaffs());
-            assertThat(counts.getStaffLists()).isEqualTo(repositoryInstance().count());
-            assertThat(counts.getStaffs()).isEqualTo(staffRepository.count());
+            final var staffLists = counts.get("staffLists", Long.class);
+            final var staffs = counts.get("staffs", Long.class);
+            assertThat(staffLists).isPositive().isEqualTo(staffs);
+            assertThat(staffLists).isEqualTo(repositoryInstance().count());
+            assertThat(staffs).isEqualTo(staffRepository.count());
             assertThat(staffRepository.existsById(staffList.getId())).isTrue();
         }
     }
@@ -191,9 +193,9 @@ class StaffListRepository_SpringBootIT
     class SelectCities_Test {
 
         /**
-         * A sort by the id, the select's alias {@code id}, as the exercise sorts.
+         * A sort by the id, through the identification variable {@code l} of the row, as the exercise sorts.
          */
-        private static final Sort BY_ID = Sort.by(StaffList_.ID);
+        private static final Sort BY_ID = Sort.by("l.id");
 
         private static Stream<StaffList> staffLists() {
             return StaffListRepository_SpringBootIT.staffLists();
@@ -207,8 +209,10 @@ class StaffListRepository_SpringBootIT
         void __Expected() {
             final var page = repositoryInstance().selectCities(Pageable.unpaged(BY_ID));
             assertThat(page.getContent())
-                    .extracting(StaffCities::getId, StaffCities::getName, StaffCities::getLivesIn,
-                                StaffCities::getWorksIn)
+                    .extracting(column("staffList", StaffList.class, StaffList::getId),
+                                column("staffList", StaffList.class, StaffList::getName),
+                                column("staffList", StaffList.class, StaffList::getCity),
+                                column("city", City.class, City::getCity))
                     .containsExactly(
                             tuple(1, "Mike Hillyer", "Lethbridge", "Lethbridge"),
                             tuple(2, "Jon Stephens", "Woodridge", "Woodridge")
@@ -216,8 +220,8 @@ class StaffListRepository_SpringBootIT
         }
 
         /**
-         * Asserts that a selected row is selected, with its own name and city as the {@code livesIn}, and a city the
-         * store works in.
+         * Asserts that a selected row is selected, the row itself, with the city of the store the staff member works
+         * at.
          *
          * @param staffList one of the rows selected in {@link StaffListRepository_SpringBootIT#__()}.
          */
@@ -226,12 +230,10 @@ class StaffListRepository_SpringBootIT
         void __(final StaffList staffList) {
             final var page = repositoryInstance().selectCities(Pageable.unpaged(BY_ID));
             assertThat(page.getContent())
-                    .filteredOn(c -> c.getId().equals(staffList.getId()))
+                    .filteredOn(c -> c.get("staffList", StaffList.class).equals(staffList))
                     .singleElement()
                     .satisfies(c -> {
-                        assertThat(c.getName()).isEqualTo(staffList.getName());
-                        assertThat(c.getLivesIn()).isEqualTo(staffList.getCity());
-                        assertThat(c.getWorksIn()).isNotBlank();
+                        assertThat(c.get("city", City.class).getCity()).isNotBlank();
                     });
         }
 
@@ -248,7 +250,7 @@ class StaffListRepository_SpringBootIT
             assertThat(page.getTotalElements()).isEqualTo(repositoryInstance().count());
             assertThat(page.getContent())
                     .hasSize((int) Math.min(size, page.getTotalElements()))
-                    .isSortedAccordingTo(Comparator.comparing(StaffCities::getId));
+                    .isSortedAccordingTo(Comparator.comparing(column("staffList", StaffList.class, StaffList::getId)));
         }
     }
 

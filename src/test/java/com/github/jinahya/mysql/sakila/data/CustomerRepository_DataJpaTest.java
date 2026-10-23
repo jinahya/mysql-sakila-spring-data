@@ -127,7 +127,7 @@ class CustomerRepository_DataJpaTest
     class SelectPaidTotals_Test {
 
         private static final Sort BY_PAID_DESC_THEN_CUSTOMER_ID =
-                Sort.by(Sort.Direction.DESC, "paid").and(Sort.by("customerId"));
+                Sort.by(Sort.Direction.DESC, "paid").and(Sort.by("c.customerId"));
 
         /**
          * Asserts that the joined and grouped select, sorted by the sum and then by the id as the exercise sorts,
@@ -203,7 +203,7 @@ class CustomerRepository_DataJpaTest
     @Nested
     class SelectAboveAveragePayerCounts_Test {
 
-        private static final Sort BY_STORE_ID = Sort.by("storeId");
+        private static final Sort BY_STORE_ID = Sort.by("s.storeId");
 
         /**
          * Asserts that the select, with its correlated sums, sorted by the store as the exercise sorts, runs on the

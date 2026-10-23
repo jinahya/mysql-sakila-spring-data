@@ -27,8 +27,9 @@ import java.util.List;
  * {@code film_list} view, one method per exercise, in the order of their ids, each named in its javadoc
  * ({@code SAKILA-FILM_LIST-B-01}, ...). The view has no entity, so every one of them is native-only: it runs the
  * exercise's SQL as {@code EXERCISES.asciidoc} has it, its literals, its {@code ORDER BY} and its {@code LIMIT}
- * included, from a {@code .sql} resource beside the implementation, and returns the exercise's columns as one of the
- * records nested here.
+ * included, from a {@code .sql} resource beside the implementation. A method whose statement selects whole rows of
+ * the view, with {@code l.*}, returns them as {@link FilmList}s; one that counts or groups by a value returns a single
+ * value, or its columns as one of the records nested here.
  *
  * @see FilmList
  * @see FilmListRepositoryImpl
@@ -36,49 +37,6 @@ import java.util.List;
  */
 public interface FilmListRepository
         extends _NonEntityRepository<FilmList> {
-
-    /**
-     * A film, by its {@code FID} and {@code title}, with the names of its actors in one comma-separated string.
-     *
-     * @param fid    the {@code FID}, the id of the film.
-     * @param title  the title of the film.
-     * @param actors the names of the actors of the film, comma-separated.
-     */
-    record FilmActors(Integer fid, String title, String actors) {
-
-    }
-
-    /**
-     * A film, by its {@code FID} and {@code title}, with its {@code length}.
-     *
-     * @param fid    the {@code FID}, the id of the film.
-     * @param title  the title of the film.
-     * @param length the length of the film, in minutes.
-     */
-    record FilmLength(Integer fid, String title, Integer length) {
-
-    }
-
-    /**
-     * A film, by its {@code FID} and {@code title}, with the name of its {@code category}.
-     *
-     * @param fid      the {@code FID}, the id of the film.
-     * @param title    the title of the film.
-     * @param category the name of the category of the film.
-     */
-    record FilmInCategory(Integer fid, String title, String category) {
-
-    }
-
-    /**
-     * A film, by its {@code FID} and {@code title}.
-     *
-     * @param fid   the {@code FID}, the id of the film.
-     * @param title the title of the film.
-     */
-    record FilmTitle(Integer fid, String title) {
-
-    }
 
     /**
      * The number of rows of the view next to the number of films which have a category.
@@ -149,33 +107,34 @@ public interface FilmListRepository
 
     /**
      * Lists the actors of the film {@code 1} ({@code SAKILA-FILM_LIST-B-02}; native-only; no sort, the rows of one
-     * film).
+     * film), selecting the whole rows.
      * <p>
      * A list rather than an optional: {@code FID} does not identify a row of the view, which has one row for each
      * category of the film. The names come in the order the view's {@code GROUP_CONCAT} gives them, which it does not
      * fix.
      *
-     * @return the rows of the film {@code 1}, with its title and the names of its actors in one string.
+     * @return the rows of the film {@code 1}, each with the names of its actors in one string.
      */
-    List<FilmActors> listActorsOfFilmOne();
+    List<FilmList> listActorsOfFilmOne();
 
     /**
      * Lists the {@code Children} films rated {@code G} ({@code SAKILA-FILM_LIST-B-03}; native-only; sorted by
-     * {@code title}, then by {@code FID}).
+     * {@code title}, then by {@code FID}), selecting the whole rows.
      *
-     * @return the {@code Children} films rated {@code G}, with their lengths, by title.
+     * @return the rows of the {@code Children} films rated {@code G}, by title.
      */
-    List<FilmLength> listChildrenFilmsRatedG();
+    List<FilmList> listChildrenFilmsRatedG();
 
     /**
-     * Lists the films with no actor ({@code SAKILA-FILM_LIST-B-04}; native-only; sorted by {@code FID}).
+     * Lists the films with no actor ({@code SAKILA-FILM_LIST-B-04}; native-only; sorted by {@code FID}), selecting
+     * the whole rows.
      * <p>
      * The view joins the actors with a {@code LEFT JOIN}, so a film with no actor is in it, with {@code NULL}
      * {@code actors}.
      *
-     * @return the films whose {@code actors} is {@code NULL}, with their categories, by {@code FID}.
+     * @return the rows whose {@code actors} is {@code NULL}, by {@code FID}.
      */
-    List<FilmInCategory> listFilmsWithNoActor();
+    List<FilmList> listFilmsWithNoActor();
 
     /**
      * Counts the rows of the view next to the films which have a category ({@code SAKILA-FILM_LIST-I-01};
@@ -199,15 +158,15 @@ public interface FilmListRepository
 
     /**
      * Lists the films whose {@code actors} string names a different number of actors than {@code film_actor} has
-     * ({@code SAKILA-FILM_LIST-I-03}; native-only; sorted by {@code FID}).
+     * ({@code SAKILA-FILM_LIST-I-03}; native-only; sorted by {@code FID}), selecting the whole rows.
      * <p>
      * The names are counted by their commas, and compared with a correlated count of the film's {@code film_actor}
      * links; a film with no actor is left out. The answer on the sample data is no row.
      *
-     * @return the films whose actors are miscounted, by {@code FID}; empty when the view agrees with
+     * @return the rows whose actors are miscounted, by {@code FID}; empty when the view agrees with
      *         {@code film_actor}.
      */
-    List<FilmTitle> listFilmsMiscountingActors();
+    List<FilmList> listFilmsMiscountingActors();
 
     /**
      * Counts, for each category, the films longer than the category's average ({@code SAKILA-FILM_LIST-A-01};

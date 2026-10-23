@@ -1,8 +1,5 @@
 package com.github.jinahya.mysql.sakila.data;
 
-import com.github.jinahya.mysql.sakila.data.ActorRepository.ActorFilmCount;
-import com.github.jinahya.mysql.sakila.data.ActorRepository.ActorLongestFilm;
-import com.github.jinahya.mysql.sakila.data.ActorRepository.LastNameCount;
 import com.github.jinahya.mysql.sakila.persistence.Actor;
 import com.github.jinahya.mysql.sakila.persistence.Actor_;
 import com.github.jinahya.mysql.sakila.persistence.Film;
@@ -404,7 +401,7 @@ class ActorRepository_SpringBootIT
             final var page = repositoryInstance().selectLastNamesSharedByMoreThan(
                     3L, PageRequest.of(0, 10, BY_ACTORS_DESC_THEN_LAST_NAME));
             assertThat(page.getContent())
-                    .extracting(LastNameCount::getLastName, LastNameCount::getActors)
+                    .extracting(column("lastName", String.class), column("actors", Long.class))
                     .containsExactly(tuple("KILMER", 5L), tuple("NOLTE", 4L), tuple("TEMPLE", 4L));
             assertThat(page.getTotalElements()).isEqualTo(3L);
         }
@@ -422,13 +419,14 @@ class ActorRepository_SpringBootIT
                     actors, PageRequest.of(0, 5, BY_ACTORS_DESC_THEN_LAST_NAME));
             assertPage(page);
             assertThat(page.getContent())
-                    .allSatisfy(c -> assertThat(c.getActors()).isGreaterThan(actors))
-                    .isSortedAccordingTo(Comparator.comparingLong(LastNameCount::getActors).reversed()
-                                                 .thenComparing(LastNameCount::getLastName))
+                    .allSatisfy(c -> assertThat(c.get("actors", Long.class)).isGreaterThan(actors))
+                    .isSortedAccordingTo(Comparator.comparing(column("actors", Long.class)).reversed()
+                                                 .thenComparing(column("lastName", String.class)))
                     .allSatisfy(c -> {
-                        final var named = repositoryInstance().findAllByLastNameOrderByActorIdAsc(c.getLastName());
-                        assertThat((long) named.size()).as("actors named %s", c.getLastName())
-                                .isEqualTo(c.getActors());
+                        final var named = repositoryInstance().findAllByLastNameOrderByActorIdAsc(
+                                c.get("lastName", String.class));
+                        assertThat((long) named.size()).as("actors named %s", c.get("lastName", String.class))
+                                .isEqualTo(c.get("actors", Long.class));
                     });
         }
     }
@@ -440,7 +438,7 @@ class ActorRepository_SpringBootIT
     class SelectFilmCounts_Test {
 
         private static final Sort BY_FILMS_DESC_THEN_ACTOR_ID =
-                Sort.by(Sort.Direction.DESC, "films").and(Sort.by("actorId"));
+                Sort.by(Sort.Direction.DESC, "films").and(Sort.by("a.actorId"));
 
         /**
          * Asserts that the first page of five, the most filmed first, then by id, holds the five actors of the
@@ -450,14 +448,14 @@ class ActorRepository_SpringBootIT
         void __Exercise() {
             final var page = repositoryInstance().selectFilmCounts(PageRequest.of(0, 5, BY_FILMS_DESC_THEN_ACTOR_ID));
             assertThat(page.getContent())
-                    .extracting(ActorFilmCount::getActorId, ActorFilmCount::getFilms)
+                    .extracting(column("actor", Actor.class, Actor::getActorId), column("films", Long.class))
                     .containsExactly(tuple(107, 42L), tuple(102, 41L), tuple(198, 40L), tuple(181, 39L),
                                      tuple(23, 37L));
         }
 
         /**
-         * Asserts that a page of the given size, the most filmed first as the exercise sorts, is ordered so, and that
-         * each count is the number of the actor's {@code film_actor} links.
+         * Asserts that a page of the given size, the most filmed first as the exercise sorts, is ordered so, that each
+         * actor is the one of its id, and that each count is the number of the actor's {@code film_actor} links.
          *
          * @param size the size of the page.
          */
@@ -469,13 +467,12 @@ class ActorRepository_SpringBootIT
             assertPage(page);
             assertThat(page.getContent())
                     .isNotEmpty()
-                    .isSortedAccordingTo(Comparator.comparingLong(ActorFilmCount::getFilms).reversed()
-                                                 .thenComparing(ActorFilmCount::getActorId))
+                    .isSortedAccordingTo(Comparator.comparing(column("films", Long.class)).reversed()
+                                                 .thenComparing(column("actor", Actor.class, Actor::getActorId)))
                     .allSatisfy(c -> {
-                        final var actor = repositoryInstance().findById(c.getActorId()).orElseThrow();
-                        assertThat(actor.getFirstName()).isEqualTo(c.getFirstName());
-                        assertThat(actor.getLastName()).isEqualTo(c.getLastName());
-                        assertThat(filmActorsOf(actor)).hasSize((int) c.getFilms());
+                        final var actor = c.get("actor", Actor.class);
+                        assertThat(repositoryInstance().findById(actor.getActorId())).hasValue(actor);
+                        assertThat(filmActorsOf(actor)).hasSize(c.get("films", Long.class).intValue());
                     });
         }
     }
@@ -528,7 +525,7 @@ class ActorRepository_SpringBootIT
     @Nested
     class SelectLongestFilmsOfActorIdsBetween_Test {
 
-        private static final Sort BY_ACTOR_ID_THEN_TITLE = Sort.by("actorId", "title");
+        private static final Sort BY_ACTOR_ID_THEN_TITLE = Sort.by("a.actorId", "f.title");
 
         private static Stream<Actor> actors() {
             return ActorRepository_SpringBootIT.actors();
@@ -543,8 +540,9 @@ class ActorRepository_SpringBootIT
             final var page = repositoryInstance().selectLongestFilmsOfActorIdsBetween(
                     1, 5, Pageable.unpaged(BY_ACTOR_ID_THEN_TITLE));
             assertThat(page.getContent())
-                    .extracting(ActorLongestFilm::getActorId, ActorLongestFilm::getTitle,
-                                ActorLongestFilm::getLength)
+                    .extracting(column("actor", Actor.class, Actor::getActorId),
+                                column("film", Film.class, Film::getTitle),
+                                column("film", Film.class, Film::getLength))
                     .containsExactly(
                             tuple(1, "KING EVOLUTION", 184),
                             tuple(2, "WARDROBE PHANTOM", 178),
@@ -556,7 +554,7 @@ class ActorRepository_SpringBootIT
 
         /**
          * Asserts, in one transaction, that the range of a selected actor alone selects the actor's films of the
-         * longest length the actor's {@code film_actor} links reach, by title, with the actor's names.
+         * longest length the actor's {@code film_actor} links reach, by title, each with the actor itself.
          *
          * @param actor one of the actors selected in {@link ActorRepository_SpringBootIT#__()}.
          */
@@ -575,12 +573,10 @@ class ActorRepository_SpringBootIT
                     actor.getActorId(), actor.getActorId(), Pageable.unpaged(BY_ACTOR_ID_THEN_TITLE));
             assertThat(page.getContent())
                     .allSatisfy(r -> {
-                        assertThat(r.getActorId()).isEqualTo(actor.getActorId());
-                        assertThat(r.getFirstName()).isEqualTo(actor.getFirstName());
-                        assertThat(r.getLastName()).isEqualTo(actor.getLastName());
-                        assertThat(r.getLength()).isEqualTo(longest);
+                        assertThat(r.get("actor", Actor.class)).isEqualTo(actor);
+                        assertThat(r.get("film", Film.class).getLength()).isEqualTo(longest);
                     })
-                    .extracting(ActorLongestFilm::getTitle)
+                    .extracting(column("film", Film.class, Film::getTitle))
                     .containsExactlyElementsOf(expected);
         }
 
@@ -598,14 +594,19 @@ class ActorRepository_SpringBootIT
             assertThat(page.getTotalElements()).isEqualTo(all.size());
             final var walked = new ArrayList<String>();
             while (true) {
-                page.getContent().forEach(r -> walked.add(r.getActorId() + "/" + r.getTitle()));
+                page.getContent().forEach(
+                        r -> walked.add(r.get("actor", Actor.class).getActorId() + "/"
+                                        + r.get("film", Film.class).getTitle()));
                 if (!page.hasNext()) {
                     break;
                 }
                 page = repositoryInstance().selectLongestFilmsOfActorIdsBetween(1, 5, page.nextPageable());
             }
             assertThat(walked).containsExactlyElementsOf(
-                    all.stream().map(r -> r.getActorId() + "/" + r.getTitle()).toList());
+                    all.stream()
+                            .map(r -> r.get("actor", Actor.class).getActorId() + "/"
+                                      + r.get("film", Film.class).getTitle())
+                            .toList());
         }
     }
 

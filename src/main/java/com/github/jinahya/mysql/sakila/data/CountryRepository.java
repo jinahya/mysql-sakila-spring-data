@@ -2,6 +2,7 @@ package com.github.jinahya.mysql.sakila.data;
 
 import com.github.jinahya.mysql.sakila.persistence.Country;
 import com.github.jinahya.mysql.sakila.persistence.Country_;
+import jakarta.persistence.Tuple;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -34,12 +35,18 @@ import java.util.Objects;
  * order the exercise asks for, and its {@code LIMIT}, are the caller's {@code PageRequest}; each method's javadoc says
  * which sort that is. An exercise that shows rows is a {@code default} method, {@code list...}, which builds a
  * {@link Specification} with the Criteria API; one that shows columns, grouped and counted, is a {@code select...}
- * with its JPQL declared by {@link Query}, a count query of its own, and a projection, one of the interfaces declared
- * here, whose getters name the select's aliases, which are what the {@code Pageable} sorts by.
+ * with its JPQL declared by {@link Query} and a count query of its own. Such a query selects entities, not their
+ * columns: a country is selected whole ({@code SELECT co AS country}), and grouped by itself ({@code GROUP BY co})
+ * where the query groups; what is computed, a count, is a column of its own beside it. A result that is a single
+ * entity is that entity; any other comes back as a {@link jakarta.persistence.Tuple}, each element read by its alias,
+ * with its type ({@code tuple.get("country", Country.class)}, {@code tuple.get("customers", Long.class)}). The
+ * {@code Pageable} sorts a computed column by its alias ({@code Sort.by(DESC, "customers")}), and an attribute of a
+ * selected entity by its path from the query's identification variable ({@code Sort.by("co.country")}); each
+ * method's javadoc names its aliases and identification variables.
  * <p>
  * An exercise only native SQL can answer, here a running total and a ranking, which take window functions JPQL does
- * not have, is a {@link NativeQuery} of the exercise's own SQL, with its order and its limit, returning a list of a
- * projection whose getters name the select's aliases.
+ * not have, is a {@link NativeQuery} of the exercise's own SQL, with its order and its limit, returning a list of
+ * tuples, read by the select's aliases; their numbers are as the JDBC driver types them.
  *
  * @see Country
  * @see Country_
@@ -49,96 +56,6 @@ public interface CountryRepository
         extends _Repository<Country, Integer> {
 
     // ----------------------------------------------------------------------------------------------------- exercises
-
-    /**
-     * A country, by id and name, and how many customers live there: a projection of
-     * {@link #selectCustomerCounts(Pageable)}, sortable by {@code countryId}, {@code country} and {@code customers}.
-     */
-    interface CountryCustomerCount {
-
-        /**
-         * Returns the id of the country.
-         *
-         * @return the id of the country.
-         */
-        Integer getCountryId();
-
-        /**
-         * Returns the name of the country.
-         *
-         * @return the name of the country.
-         */
-        String getCountry();
-
-        /**
-         * Returns the number of customers whose address is in the country.
-         *
-         * @return the number of customers.
-         */
-        long getCustomers();
-    }
-
-    /**
-     * A country, its customers, and the running total of the customers down to it: a row of
-     * {@link #selectHoldingHalfOfCustomers()}.
-     */
-    interface CountryRunningTotal {
-
-        /**
-         * Returns the name of the country.
-         *
-         * @return the name of the country.
-         */
-        String getCountry();
-
-        /**
-         * Returns the number of customers whose address is in the country.
-         *
-         * @return the number of customers.
-         */
-        long getCustomers();
-
-        /**
-         * Returns the number of customers of this country and of every country before it.
-         *
-         * @return the running total of customers.
-         */
-        long getRunningTotal();
-
-        /**
-         * Returns the running total as a percentage of all customers, rounded to two decimal places.
-         *
-         * @return the running percentage.
-         */
-        BigDecimal getRunningPercent();
-    }
-
-    /**
-     * A country, its customers, and its rank by them: a row of {@link #selectRankedTopTenByCustomers()}.
-     */
-    interface CountryCustomerRanking {
-
-        /**
-         * Returns the name of the country.
-         *
-         * @return the name of the country.
-         */
-        String getCountry();
-
-        /**
-         * Returns the number of customers whose address is in the country.
-         *
-         * @return the number of customers.
-         */
-        long getCustomers();
-
-        /**
-         * Returns the rank of the country by its customers, ties sharing a rank.
-         *
-         * @return the rank.
-         */
-        long getRanking();
-    }
 
     /**
      * Finds the countries whose value of {@link Country_#COUNTRY} attribute starts with the specified prefix, ordered
@@ -173,30 +90,31 @@ public interface CountryRepository
 
     /**
      * Selects the countries that have a customer, with how many ({@code SAKILA-COUNTRY-I-02}, the book's pick, which
-     * takes the first five by {@code customers} descending, then by {@code country}).
+     * takes the first five by {@code customers} descending, then by {@code co.country}).
      * <p>
      * The customers are joined along their address chain, to the address, its city and the city's country, grouped by
-     * the country's id and name, and counted. The count query counts the countries that some customer lives in,
-     * through an {@code EXISTS} along the same chain.
+     * the country itself, which selects the country whole, and counted. The count query counts the countries that
+     * some customer lives in, through an {@code EXISTS} along the same chain.
      *
-     * @param pageable the page to return, and its sort, by {@code countryId}, {@code country} or {@code customers};
-     *                 must not be {@code null}.
-     * @return a page of the countries that have a customer, with their numbers of customers.
+     * @param pageable the page to return, and its sort, by {@code customers}, or by an attribute of the country
+     *                 through {@code co} ({@code co.country}, {@code co.countryId}, ...); must not be {@code null}.
+     * @return a page of the countries that have a customer, with their numbers of customers, each a tuple of
+     *         {@code country} ({@link Country}) and {@code customers} ({@link Long}).
      */
     @Query(value = """
-            SELECT co.countryId AS countryId, co.country AS country, COUNT(cu) AS customers
+            SELECT co AS country, COUNT(cu) AS customers
             FROM Customer cu
             JOIN cu.address a
             JOIN a.city c
             JOIN c.country co
-            GROUP BY co.countryId, co.country""",
+            GROUP BY co""",
            countQuery = """
                    SELECT COUNT(co)
                    FROM Country co
                    WHERE EXISTS (SELECT cu.customerId
                                  FROM Customer cu
                                  WHERE cu.address.city.country = co)""")
-    Page<CountryCustomerCount> selectCustomerCounts(Pageable pageable);
+    Page<Tuple> selectCustomerCounts(Pageable pageable);
 
     /**
      * Selects the fewest countries which hold half of the customers ({@code SAKILA-COUNTRY-A-01}, native-only,
@@ -205,28 +123,32 @@ public interface CountryRepository
      * The customers are counted by country, along the address chain, and two window sums run over the counts: the
      * total of the countries down to each, in the exercise's order, and the total of all. A country is kept while the
      * countries before it hold less than half. JPQL has neither a common table expression nor a window function, so
-     * this is the exercise's own SQL, with the aliases of the outer select named after the getters of
-     * {@link CountryRunningTotal}.
+     * this is the exercise's own SQL. Each select takes the whole row of what it reads, the country's
+     * ({@code co.*}, grouped by its key) and the common table expressions' ({@code counted.*}, {@code running.*}), with
+     * the computed columns beside it.
      *
-     * @return a list of the countries which together hold half of the customers, the most first.
+     * @return a list of the countries which together hold half of the customers, the most first, each a tuple of the
+     *         country's columns by their names ({@code country_id}, {@code country}, {@code last_update}), and
+     *         {@code customers}, {@code running_total}, {@code total} and {@code runningPercent}, numbers as the JDBC
+     *         driver types them (on MySQL, a {@link Long}, a {@link BigDecimal}, a {@link BigDecimal} and a
+     *         {@link BigDecimal}).
      */
     @NativeQuery("""
-            WITH counted AS (SELECT co.country, COUNT(*) AS customers
+            WITH counted AS (SELECT co.*, COUNT(*) AS customers
                              FROM country co
                                       JOIN city ci ON ci.country_id = co.country_id
                                       JOIN address a ON a.city_id = ci.city_id
                                       JOIN customer cu ON cu.address_id = a.address_id
-                             GROUP BY co.country_id, co.country),
+                             GROUP BY co.country_id),
                  running AS (SELECT counted.*,
                                     SUM(customers) OVER (ORDER BY customers DESC, country) AS running_total,
                                     SUM(customers) OVER () AS total
                              FROM counted)
-            SELECT country, customers, running_total AS runningTotal,
-                   ROUND(100 * running_total / total, 2) AS runningPercent
+            SELECT running.*, ROUND(100 * running_total / total, 2) AS runningPercent
             FROM running
             WHERE running_total - customers < total / 2
             ORDER BY customers DESC, country""")
-    List<CountryRunningTotal> selectHoldingHalfOfCustomers();
+    List<Tuple> selectHoldingHalfOfCustomers();
 
     /**
      * Selects the countries ranked in the top ten by customers, ties sharing a rank ({@code SAKILA-COUNTRY-A-02},
@@ -234,19 +156,23 @@ public interface CountryRepository
      * <p>
      * The customers are counted by country, along the address chain, and ranked by {@code RANK()}, which gives tied
      * countries the same rank and skips the ranks after them, so the list may hold more than ten countries. JPQL has
-     * no window function, so this is the exercise's own SQL.
+     * no window function, so this is the exercise's own SQL; it selects the whole row of the country ({@code co.*},
+     * grouped by its key), with the computed columns beside it, and the outer select passes the rows through
+     * ({@code t.*}).
      *
-     * @return a list of the countries ranked ten or better by their customers.
+     * @return a list of the countries ranked ten or better by their customers, each a tuple of the country's columns
+     *         by their names ({@code country_id}, {@code country}, {@code last_update}), and {@code customers} and
+     *         {@code ranking}, numbers as the JDBC driver types them (on MySQL, a {@link Long} each).
      */
     @NativeQuery("""
-            SELECT country, customers, ranking
-            FROM (SELECT co.country, COUNT(*) AS customers, RANK() OVER (ORDER BY COUNT(*) DESC) AS ranking
+            SELECT t.*
+            FROM (SELECT co.*, COUNT(*) AS customers, RANK() OVER (ORDER BY COUNT(*) DESC) AS ranking
                   FROM country co
                            JOIN city ci ON ci.country_id = co.country_id
                            JOIN address a ON a.city_id = ci.city_id
                            JOIN customer cu ON cu.address_id = a.address_id
-                  GROUP BY co.country_id, co.country) t
+                  GROUP BY co.country_id) t
             WHERE ranking <= 10
             ORDER BY ranking, country""")
-    List<CountryCustomerRanking> selectRankedTopTenByCustomers();
+    List<Tuple> selectRankedTopTenByCustomers();
 }

@@ -1,5 +1,5 @@
-SELECT FID, title, category
-FROM film_list
-WHERE actors IS NULL
-ORDER BY FID
+SELECT l.*
+FROM film_list l
+WHERE l.actors IS NULL
+ORDER BY l.FID
 ;

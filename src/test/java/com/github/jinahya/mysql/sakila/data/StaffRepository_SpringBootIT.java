@@ -1,7 +1,5 @@
 package com.github.jinahya.mysql.sakila.data;
 
-import com.github.jinahya.mysql.sakila.data.StaffRepository.StaffBestDay;
-import com.github.jinahya.mysql.sakila.data.StaffRepository.StaffRentalCount;
 import com.github.jinahya.mysql.sakila.persistence.Rental;
 import com.github.jinahya.mysql.sakila.persistence.Rental_;
 import com.github.jinahya.mysql.sakila.persistence.Staff;
@@ -25,6 +23,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Collections;
 import java.util.Comparator;
@@ -258,11 +257,11 @@ class StaffRepository_SpringBootIT
     @Nested
     class SelectRentalCounts_Test {
 
-        private static final Sort BY_STAFF_ID = Sort.by("staffId");
+        private static final Sort BY_STAFF_ID = Sort.by("s.staffId");
 
         /**
-         * Asserts that a page of the given size, by the id as the exercise sorts, is ordered so, that the first name
-         * is the staff member's, and that each count is the number of rentals the staff member handled, counted again
+         * Asserts that a page of the given size, by the id as the exercise sorts, is ordered so, that each staff member
+         * is the one of its id, and that each count is the number of rentals the staff member handled, counted again
          * through {@link RentalRepository}.
          *
          * @param size the size of the page.
@@ -274,12 +273,12 @@ class StaffRepository_SpringBootIT
             assertPage(page);
             assertThat(page.getContent())
                     .isNotEmpty()
-                    .isSortedAccordingTo(Comparator.comparing(StaffRentalCount::getStaffId))
+                    .isSortedAccordingTo(Comparator.comparing(column("staff", Staff.class, Staff::getStaffId)))
                     .allSatisfy(c -> {
-                        final var staff = repositoryInstance().findById(c.getStaffId()).orElseThrow();
-                        assertThat(staff.getFirstName()).isEqualTo(c.getFirstName());
-                        assertThat(c.getRentals()).as("rentals of staff %d", c.getStaffId())
-                                .isEqualTo(countRentalsOf(c.getStaffId()));
+                        final var staff = c.get("staff", Staff.class);
+                        assertThat(repositoryInstance().findById(staff.getStaffId())).hasValue(staff);
+                        assertThat(c.get("rentals", Long.class)).as("rentals of staff %d", staff.getStaffId())
+                                .isEqualTo(countRentalsOf(staff.getStaffId()));
                     });
         }
 
@@ -291,7 +290,7 @@ class StaffRepository_SpringBootIT
         void __AddUp() {
             final var page = repositoryInstance().selectRentalCounts(PageRequest.of(0, 5, BY_STAFF_ID));
             assumeThat(page.hasNext()).isFalse();
-            final var sum = page.getContent().stream().mapToLong(StaffRentalCount::getRentals).sum();
+            final var sum = page.getContent().stream().mapToLong(c -> c.get("rentals", Long.class)).sum();
             assertThat(sum).isEqualTo(rentalRepository.count());
         }
     }
@@ -365,7 +364,7 @@ class StaffRepository_SpringBootIT
     @Nested
     class SelectBestDays_Test {
 
-        private static final Sort BY_STAFF_ID = Sort.by("staffId");
+        private static final Sort BY_STAFF_ID = Sort.by("s.staffId");
 
         private static Stream<Staff> staff() {
             return StaffRepository_SpringBootIT.staff();
@@ -379,8 +378,8 @@ class StaffRepository_SpringBootIT
         void __Expected() {
             final var page = repositoryInstance().selectBestDays(Pageable.unpaged(BY_STAFF_ID));
             assertThat(page.getContent())
-                    .extracting(StaffBestDay::getStaffId, StaffBestDay::getPaymentDay, StaffBestDay::getPayments,
-                                d -> d.getTotal().doubleValue())
+                    .extracting(column("staff", Staff.class, Staff::getStaffId), column("paymentDay", LocalDate.class),
+                                column("payments", Long.class), d -> d.get("total", BigDecimal.class).doubleValue())
                     .containsExactly(
                             tuple(1, LocalDate.of(2005, 8, 1), 345L, 1442.55d),
                             tuple(2, LocalDate.of(2005, 7, 31), 351L, 1517.49d)
@@ -399,11 +398,11 @@ class StaffRepository_SpringBootIT
         void __(final Staff staff) {
             final var page = repositoryInstance().selectBestDays(Pageable.unpaged(BY_STAFF_ID));
             assertThat(page.getContent())
-                    .filteredOn(d -> d.getStaffId().equals(staff.getStaffId()))
+                    .filteredOn(d -> d.get("staff", Staff.class).equals(staff))
                     .singleElement()
                     .satisfies(d -> {
-                        assertThat(d.getPayments()).isPositive();
-                        assertThat(d.getTotal()).isPositive();
+                        assertThat(d.get("payments", Long.class)).isPositive();
+                        assertThat(d.get("total", BigDecimal.class)).isPositive();
                     });
         }
 
@@ -419,8 +418,9 @@ class StaffRepository_SpringBootIT
             for (final var expected : all) {
                 assertPage(page);
                 assertThat(page.getContent())
-                        .extracting(StaffBestDay::getStaffId, StaffBestDay::getPaymentDay)
-                        .containsExactly(tuple(expected.getStaffId(), expected.getPaymentDay()));
+                        .extracting(column("staff", Staff.class), column("paymentDay", LocalDate.class))
+                        .containsExactly(tuple(expected.get("staff", Staff.class),
+                                               expected.get("paymentDay", LocalDate.class)));
                 if (page.hasNext()) {
                     page = repositoryInstance().selectBestDays(page.nextPageable());
                 }

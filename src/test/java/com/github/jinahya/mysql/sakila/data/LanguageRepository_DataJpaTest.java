@@ -1,6 +1,5 @@
 package com.github.jinahya.mysql.sakila.data;
 
-import com.github.jinahya.mysql.sakila.data.LanguageRepository.LanguageFilmCount;
 import com.github.jinahya.mysql.sakila.persistence.Language;
 import com.github.jinahya.mysql.sakila.persistence.Language_;
 import org.junit.jupiter.api.Nested;
@@ -13,6 +12,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -199,7 +199,7 @@ class LanguageRepository_DataJpaTest
     @Nested
     class SelectFilmCounts_Test {
 
-        private static final Sort BY_LANGUAGE_ID_ALIAS = Sort.by("languageId");
+        private static final Sort BY_L_LANGUAGE_ID = Sort.by("l.languageId");
 
         /**
          * Saves a language with two films and one with none, and asserts that both are selected, by id as the
@@ -211,14 +211,13 @@ class LanguageRepository_DataJpaTest
             final var none = saveLanguage(randomLanguageName());
             fixtures().film(two);
             fixtures().film(two);
-            final var page = repositoryInstance().selectFilmCounts(Pageable.unpaged(BY_LANGUAGE_ID_ALIAS));
+            final var page = repositoryInstance().selectFilmCounts(Pageable.unpaged(BY_L_LANGUAGE_ID));
             assertThat(page.getContent())
-                    .extracting(LanguageFilmCount::getLanguageId, LanguageFilmCount::getName,
-                                LanguageFilmCount::getFilms)
-                    .containsSubsequence(tuple(two.getLanguageId(), two.getName(), 2L),
-                                         tuple(none.getLanguageId(), none.getName(), 0L));
+                    .extracting(column("language", Language.class), column("films", Long.class))
+                    .containsSubsequence(tuple(two, 2L), tuple(none, 0L));
             assertThat(page.getContent())
-                    .isSortedAccordingTo((c1, c2) -> c1.getLanguageId().compareTo(c2.getLanguageId()));
+                    .isSortedAccordingTo(Comparator.comparing(column("language", Language.class,
+                                                                     Language::getLanguageId)));
             assertThat(page.getTotalElements()).isEqualTo(repositoryInstance().count());
         }
 
@@ -237,8 +236,8 @@ class LanguageRepository_DataJpaTest
             final var page = repositoryInstance().selectFilmCounts(
                     PageRequest.of(0, 1, Sort.by(Sort.Direction.DESC, "films")));
             assertThat(page.getContent())
-                    .extracting(LanguageFilmCount::getLanguageId, LanguageFilmCount::getFilms)
-                    .containsExactly(tuple(most.getLanguageId(), 3L));
+                    .extracting(column("language", Language.class), column("films", Long.class))
+                    .containsExactly(tuple(most, 3L));
             assertThat(page.getTotalElements()).isEqualTo(repositoryInstance().count());
             assertThat(page.hasNext()).isTrue();
         }

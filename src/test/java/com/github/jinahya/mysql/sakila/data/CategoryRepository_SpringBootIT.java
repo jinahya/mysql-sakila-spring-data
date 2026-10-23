@@ -1,13 +1,11 @@
 package com.github.jinahya.mysql.sakila.data;
 
-import com.github.jinahya.mysql.sakila.data.CategoryRepository.CategoryAverageLength;
-import com.github.jinahya.mysql.sakila.data.CategoryRepository.CategoryFilmCount;
-import com.github.jinahya.mysql.sakila.data.CategoryRepository.CategoryMostRentedFilm;
-import com.github.jinahya.mysql.sakila.data.CategoryRepository.CategoryRunningFilmCount;
 import com.github.jinahya.mysql.sakila.persistence.Category;
 import com.github.jinahya.mysql.sakila.persistence.Category_;
+import com.github.jinahya.mysql.sakila.persistence.Film;
 import com.github.jinahya.mysql.sakila.persistence.FilmCategory;
 import com.github.jinahya.mysql.sakila.persistence.FilmCategory_;
+import jakarta.persistence.Tuple;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -232,7 +230,7 @@ class CategoryRepository_SpringBootIT
     class SelectFilmCounts_Test {
 
         private static final Sort BY_FILMS_DESC_THEN_NAME =
-                Sort.by(Sort.Direction.DESC, "films").and(Sort.by("name"));
+                Sort.by(Sort.Direction.DESC, "films").and(Sort.by("c.name"));
 
         /**
          * Asserts that the first page of five, the most films first, holds the five categories of the exercise's
@@ -242,7 +240,7 @@ class CategoryRepository_SpringBootIT
         void __Exercise() {
             final var page = repositoryInstance().selectFilmCounts(PageRequest.of(0, 5, BY_FILMS_DESC_THEN_NAME));
             assertThat(page.getContent())
-                    .extracting(CategoryFilmCount::getName, CategoryFilmCount::getFilms)
+                    .extracting(column("category", Category.class, Category::getName), column("films", Long.class))
                     .containsExactly(
                             tuple("Sports", 74L),
                             tuple("Foreign", 73L),
@@ -255,7 +253,7 @@ class CategoryRepository_SpringBootIT
 
         /**
          * Asserts that a page of the given size is ordered as the exercise sorts, and that each count is the number of
-         * the category's {@code film_category} links.
+         * the selected category's {@code film_category} links.
          *
          * @param size the size of the page.
          */
@@ -266,12 +264,10 @@ class CategoryRepository_SpringBootIT
             assertPage(page);
             assertThat(page.getContent())
                     .hasSize(size)
-                    .isSortedAccordingTo(Comparator.comparingLong(CategoryFilmCount::getFilms).reversed()
-                                                 .thenComparing(CategoryFilmCount::getName))
+                    .isSortedAccordingTo(Comparator.comparing(column("films", Long.class)).reversed()
+                                                 .thenComparing(column("category", Category.class, Category::getName)))
                     .allSatisfy(c -> {
-                        final var category = repositoryInstance().findAll(
-                                (r, q, b) -> b.equal(r.get(Category_.name), c.getName())).getFirst();
-                        assertThat(filmsOf(category)).isEqualTo(c.getFilms());
+                        assertThat(filmsOf(c.get("category", Category.class))).isEqualTo(c.get("films", Long.class));
                     });
         }
     }
@@ -292,7 +288,8 @@ class CategoryRepository_SpringBootIT
         void __Exercise() {
             final var page = repositoryInstance().selectAverageLengths(PageRequest.of(0, 1, BY_AVERAGE_LENGTH_DESC));
             assertThat(page.getContent())
-                    .extracting(CategoryAverageLength::getName, CategoryAverageLength::getAverageLength)
+                    .extracting(column("category", Category.class, Category::getName),
+                                column("averageLength", Double.class))
                     .containsExactly(tuple("Sports", 128.20d));
             assertThat(page.getTotalElements()).isEqualTo(16L);
         }
@@ -306,9 +303,9 @@ class CategoryRepository_SpringBootIT
         @ValueSource(ints = {3, 7})
         @ParameterizedTest
         void __Paged(final int size) {
-            final var walked = new ArrayList<CategoryAverageLength>();
+            final var walked = new ArrayList<Tuple>();
             var page = repositoryInstance().selectAverageLengths(
-                    PageRequest.of(0, size, BY_AVERAGE_LENGTH_DESC.and(Sort.by("name"))));
+                    PageRequest.of(0, size, BY_AVERAGE_LENGTH_DESC.and(Sort.by("c.name"))));
             walked.addAll(page.getContent());
             while (page.hasNext()) {
                 page = repositoryInstance().selectAverageLengths(page.nextPageable());
@@ -316,9 +313,9 @@ class CategoryRepository_SpringBootIT
             }
             assertThat(walked)
                     .hasSize(NAMES.size())
-                    .isSortedAccordingTo(Comparator.comparingDouble(CategoryAverageLength::getAverageLength)
+                    .isSortedAccordingTo(Comparator.comparing(column("averageLength", Double.class))
                                                  .reversed())
-                    .extracting(CategoryAverageLength::getName)
+                    .extracting(column("category", Category.class, Category::getName))
                     .containsExactlyInAnyOrderElementsOf(NAMES);
         }
     }
@@ -330,7 +327,7 @@ class CategoryRepository_SpringBootIT
     class SelectRunningFilmCounts_Test {
 
         private static final Sort BY_FILMS_DESC_THEN_NAME =
-                Sort.by(Sort.Direction.DESC, "films").and(Sort.by("name"));
+                Sort.by(Sort.Direction.DESC, "films").and(Sort.by("c.name"));
 
         /**
          * Asserts that the rows, the most films first and then by name, are the sixteen of the exercise's expected
@@ -338,10 +335,11 @@ class CategoryRepository_SpringBootIT
          */
         @Test
         void __Exercise() {
-            final var page = repositoryInstance().selectRunningFilmCounts(PageRequest.of(0, 16, BY_FILMS_DESC_THEN_NAME));
+            final var page = repositoryInstance().selectRunningFilmCounts(
+                    PageRequest.of(0, 16, BY_FILMS_DESC_THEN_NAME));
             assertThat(page.getContent())
-                    .extracting(CategoryRunningFilmCount::getName, CategoryRunningFilmCount::getFilms,
-                                CategoryRunningFilmCount::getRunningFilms, CategoryRunningFilmCount::getRunningPercent)
+                    .extracting(column("category", Category.class, Category::getName), column("films", Long.class),
+                                column("runningFilms", Long.class), column("runningPercent", Double.class))
                     .containsExactly(
                             tuple("Sports", 74L, 74L, 7.4d),
                             tuple("Foreign", 73L, 147L, 14.7d),
@@ -376,8 +374,10 @@ class CategoryRepository_SpringBootIT
             long running = 0L;
             while (true) {
                 for (final var row : page.getContent()) {
-                    running += row.getFilms();
-                    assertThat(row.getRunningFilms()).as("running films of %s", row.getName()).isEqualTo(running);
+                    running += row.get("films", Long.class);
+                    assertThat(row.get("runningFilms", Long.class))
+                            .as("running films of %s", row.get("category", Category.class).getName())
+                            .isEqualTo(running);
                 }
                 if (!page.hasNext()) {
                     break;
@@ -399,10 +399,11 @@ class CategoryRepository_SpringBootIT
          */
         @Test
         void __Exercise() {
-            final var page = repositoryInstance().selectMostRentedFilms(PageRequest.of(0, 16, Sort.by("name")));
+            final var page = repositoryInstance().selectMostRentedFilms(PageRequest.of(0, 16, Sort.by("c.name")));
             assertThat(page.getContent())
-                    .extracting(CategoryMostRentedFilm::getName, CategoryMostRentedFilm::getTitle,
-                                CategoryMostRentedFilm::getRentals)
+                    .extracting(column("category", Category.class, Category::getName),
+                                column("film", Film.class, Film::getTitle),
+                                column("rentals", Long.class))
                     .containsExactly(
                             tuple("Action", "RUGRATS SHAKESPEARE", 30L),
                             tuple("Animation", "JUGGLER HARDLY", 32L),
@@ -430,12 +431,12 @@ class CategoryRepository_SpringBootIT
         @Test
         void __Paged() {
             final var names = new ArrayList<String>();
-            var page = repositoryInstance().selectMostRentedFilms(PageRequest.of(0, 5, Sort.by("name")));
+            var page = repositoryInstance().selectMostRentedFilms(PageRequest.of(0, 5, Sort.by("c.name")));
             assertThat(page.getTotalElements()).isEqualTo(16L);
-            names.addAll(page.map(CategoryMostRentedFilm::getName).getContent());
+            names.addAll(page.map(column("category", Category.class, Category::getName)).getContent());
             while (page.hasNext()) {
                 page = repositoryInstance().selectMostRentedFilms(page.nextPageable());
-                names.addAll(page.map(CategoryMostRentedFilm::getName).getContent());
+                names.addAll(page.map(column("category", Category.class, Category::getName)).getContent());
             }
             assertThat(names).containsExactlyElementsOf(NAMES);
         }

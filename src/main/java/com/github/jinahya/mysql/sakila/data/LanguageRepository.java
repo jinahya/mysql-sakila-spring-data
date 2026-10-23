@@ -4,6 +4,7 @@ import com.github.jinahya.mysql.sakila.persistence.Film;
 import com.github.jinahya.mysql.sakila.persistence.Film_;
 import com.github.jinahya.mysql.sakila.persistence.Language;
 import com.github.jinahya.mysql.sakila.persistence.Language_;
+import jakarta.persistence.Tuple;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -39,11 +40,15 @@ import java.util.stream.Stream;
  * {@code list...}, which builds a {@link Specification} with the Criteria API and runs it through
  * {@link org.springframework.data.jpa.repository.JpaSpecificationExecutor}. An exercise that shows columns, grouped
  * and counted, cannot be a {@link Specification}, which only filters; such a method, {@code select...}, declares its
- * JPQL with {@link Query}, with a count query of its own since Spring Data cannot derive one from a grouped select,
- * and returns a projection, one of the interfaces declared here, which Spring Data backs with the selected columns,
- * each aliased with the name of the getter it feeds. Those aliases are what the {@code Pageable} sorts by; an
- * interface rather than a record, because Spring Data rewrites a record projection into a constructor expression,
- * which drops the aliases, and the sort with them.
+ * JPQL with {@link Query}, with a count query of its own since Spring Data cannot derive one from a grouped select.
+ * Such a query selects entities, not their columns: a language is selected whole ({@code SELECT l AS language}), and
+ * grouped by itself ({@code GROUP BY l}) where the query groups; what is computed, a count, is a column of its own
+ * beside it. A result that is a single entity is that entity; any other comes back as a
+ * {@link jakarta.persistence.Tuple}, each element read by its alias, with its type
+ * ({@code tuple.get("language", Language.class)}, {@code tuple.get("films", Long.class)}). The {@code Pageable} sorts
+ * a computed column by its alias ({@code Sort.by(DESC, "films")}), and an attribute of a selected entity by its path
+ * from the query's identification variable ({@code Sort.by("l.languageId")}); each method's javadoc names its
+ * aliases and identification variables.
  *
  * @see Language
  * @see Language_
@@ -53,34 +58,6 @@ public interface LanguageRepository
         extends _Repository<Language, Integer> {
 
     // ----------------------------------------------------------------------------------------------------- exercises
-
-    /**
-     * A language, by id and name, and how many films are in it: a projection of {@link #selectFilmCounts(Pageable)},
-     * sortable by {@code languageId}, {@code name} and {@code films}.
-     */
-    interface LanguageFilmCount {
-
-        /**
-         * Returns the id of the language.
-         *
-         * @return the id of the language.
-         */
-        Integer getLanguageId();
-
-        /**
-         * Returns the name of the language.
-         *
-         * @return the name of the language.
-         */
-        String getName();
-
-        /**
-         * Returns the number of films whose language it is.
-         *
-         * @return the number of films; {@code 0} for a language no film is in.
-         */
-        long getFilms();
-    }
 
     /**
      * Finds every language ({@code SAKILA-LANGUAGE-B-01}, the book's pick, which orders by
@@ -116,25 +93,27 @@ public interface LanguageRepository
 
     /**
      * Selects every language, with how many films are in it ({@code SAKILA-LANGUAGE-I-01}, the book's pick, which
-     * orders by {@code languageId}).
+     * orders by {@code l.languageId}).
      * <p>
      * The language's {@link Language_#FILMS} are joined with a {@code LEFT JOIN}, so a language no film is in is
      * selected too, with a count of zero: {@code COUNT(f)} counts the films, not the rows, and the one row such a
-     * language joins has no film. Every language is a group, so the count query counts the languages.
+     * language joins has no film. The languages are grouped by the language itself, which selects the language
+     * whole. Every language is a group, so the count query counts the languages.
      *
-     * @param pageable the page to return, and its sort, by {@code languageId}, {@code name} or {@code films}; must
-     *                 not be {@code null}.
-     * @return a page of the languages, with their numbers of films.
+     * @param pageable the page to return, and its sort, by {@code films}, or by an attribute of the language through
+     *                 {@code l} ({@code l.languageId}, {@code l.name}); must not be {@code null}.
+     * @return a page of the languages, with their numbers of films, each a tuple of {@code language}
+     *         ({@link Language}) and {@code films} ({@link Long}).
      */
     @Query(value = """
-            SELECT l.languageId AS languageId, l.name AS name, COUNT(f) AS films
+            SELECT l AS language, COUNT(f) AS films
             FROM Language l
             LEFT JOIN l.films f
-            GROUP BY l.languageId, l.name""",
+            GROUP BY l""",
            countQuery = """
                    SELECT COUNT(l)
                    FROM Language l""")
-    Page<LanguageFilmCount> selectFilmCounts(Pageable pageable);
+    Page<Tuple> selectFilmCounts(Pageable pageable);
 
     /**
      * Lists the languages no film uses, either as its language or as its original language

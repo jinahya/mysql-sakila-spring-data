@@ -1,7 +1,5 @@
 package com.github.jinahya.mysql.sakila.data;
 
-import com.github.jinahya.mysql.sakila.data.FilmRepository.RatingAverageRentalRate;
-import com.github.jinahya.mysql.sakila.data.FilmRepository.RatingCount;
 import com.github.jinahya.mysql.sakila.persistence.Film;
 import com.github.jinahya.mysql.sakila.persistence.Film_;
 import org.junit.jupiter.api.Nested;
@@ -172,7 +170,7 @@ class FilmRepository_DataJpaTest
             saveFilm(null);
             final var list = repositoryInstance().selectRatingCounts();
             assertThat(list)
-                    .extracting(RatingCount::getRating, RatingCount::getFilms)
+                    .extracting(column("rating", Film.Rating.class), column("films", Long.class))
                     .containsExactlyInAnyOrder(tuple(Film.Rating.G, 2L), tuple(Film.Rating.PG, 1L));
         }
 
@@ -189,7 +187,7 @@ class FilmRepository_DataJpaTest
             saveFilm(Film.Rating.G);
             final var list = repositoryInstance().selectRatingCounts();
             assertThat(list)
-                    .extracting(RatingCount::getRating)
+                    .extracting(column("rating", Film.Rating.class))
                     .containsExactly(Film.Rating.G, Film.Rating.PG);
         }
     }
@@ -287,7 +285,7 @@ class FilmRepository_DataJpaTest
             saveFilm(null, "4.99");
             try (var stream = repositoryInstance().selectAverageRentalRates()) {
                 assertThat(stream.toList())
-                        .extracting(RatingAverageRentalRate::getRating, RatingAverageRentalRate::getAverageRentalRate)
+                        .extracting(column("rating", Film.Rating.class), column("averageRentalRate", Double.class))
                         .containsExactly(tuple(Film.Rating.G, 1.50d), tuple(Film.Rating.PG, 1.00d));
             }
         }
@@ -368,13 +366,13 @@ class FilmRepository_DataJpaTest
     class SelectRentalCounts_Test {
 
         private static final Sort BY_RENTALS_DESC_THEN_FILM_ID =
-                Sort.by(Sort.Direction.DESC, "rentals").and(Sort.by("filmId"));
+                Sort.by(Sort.Direction.DESC, "rentals").and(Sort.by("f.filmId"));
 
         /**
          * Saves a film, and asserts that the page is empty, with no elements in all.
          * <p>
          * No copy, and so no rental, can be persisted into the H2, so no film was rented; what the test proves is
-         * that the grouped query and its count query run, with the sort by the aliases.
+         * that the grouped query and its count query run, with the sort by the alias and the identification variable.
          */
         @Test
         void _Empty_NoRental() {
@@ -434,7 +432,7 @@ class FilmRepository_DataJpaTest
             final var page = repositoryInstance().selectRatingCountsOfLongerThanRatingAverage(
                     PageRequest.of(0, 5, BY_RATING));
             assertThat(page.getContent())
-                    .extracting(RatingCount::getRating, RatingCount::getFilms)
+                    .extracting(column("rating", Film.Rating.class), column("films", Long.class))
                     .containsExactlyInAnyOrder(tuple(Film.Rating.G, 1L), tuple(Film.Rating.PG_13, 1L));
             assertThat(page.getTotalElements()).isEqualTo(2L);
         }
@@ -454,13 +452,13 @@ class FilmRepository_DataJpaTest
             final var page0 = repositoryInstance().selectRatingCountsOfLongerThanRatingAverage(
                     PageRequest.of(0, 1, BY_RATING));
             assertThat(page0.getContent())
-                    .extracting(RatingCount::getRating)
+                    .extracting(column("rating", Film.Rating.class))
                     .containsExactly(Film.Rating.G);
             assertThat(page0.getTotalElements()).isEqualTo(2L);
             assertThat(page0.getTotalPages()).isEqualTo(2);
             final var page1 = repositoryInstance().selectRatingCountsOfLongerThanRatingAverage(page0.nextPageable());
             assertThat(page1.getContent())
-                    .extracting(RatingCount::getRating)
+                    .extracting(column("rating", Film.Rating.class))
                     .containsExactly(Film.Rating.PG_13);
         }
 

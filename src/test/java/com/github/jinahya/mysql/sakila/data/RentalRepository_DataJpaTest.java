@@ -106,7 +106,7 @@ class RentalRepository_DataJpaTest
     @Nested
     class SelectNotReturnedCountsByStore_Test {
 
-        private static final Sort BY_STORE_ID = Sort.by("storeId");
+        private static final Sort BY_STORE_ID = Sort.by("st.storeId");
 
         /**
          * Asserts that the grouped select, sorted by the store id as the exercise sorts, runs on the empty table and

@@ -1,4 +1,4 @@
-SELECT FID, title, actors
-FROM nicer_but_slower_film_list
-WHERE FID = 1
+SELECT n.*
+FROM nicer_but_slower_film_list n
+WHERE n.FID = 1
 ;

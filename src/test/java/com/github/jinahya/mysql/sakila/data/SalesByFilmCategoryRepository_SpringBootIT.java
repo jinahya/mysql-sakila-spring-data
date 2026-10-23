@@ -1,10 +1,8 @@
 package com.github.jinahya.mysql.sakila.data;
 
-import com.github.jinahya.mysql.sakila.data.SalesByFilmCategoryRepository.CategoryGap;
-import com.github.jinahya.mysql.sakila.data.SalesByFilmCategoryRepository.CategoryRunningTotal;
-import com.github.jinahya.mysql.sakila.data.SalesByFilmCategoryRepository.CategorySalesShare;
 import com.github.jinahya.mysql.sakila.persistence.SalesByFilmCategory;
 import com.github.jinahya.mysql.sakila.persistence.SalesByFilmCategory_;
+import jakarta.persistence.Tuple;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -243,13 +241,14 @@ class SalesByFilmCategoryRepository_SpringBootIT
         @ParameterizedTest
         void __(final SalesByFilmCategory salesByFilmCategory) {
             final var totals = repositoryInstance().selectSalesTotals();
-            assertThat(totals.getByCategory()).isNotNull().isPositive();
-            assertThat(totals.getAllPayments()).isNotNull().isEqualByComparingTo(totals.getByCategory());
+            final var byCategory = totals.get("byCategory", BigDecimal.class);
+            assertThat(byCategory).isNotNull().isPositive();
+            assertThat(totals.get("allPayments", BigDecimal.class)).isNotNull().isEqualByComparingTo(byCategory);
             final var summed = repositoryInstance().findAll(Pageable.unpaged()).stream()
                     .map(SalesByFilmCategory::getTotalSales)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
-            assertThat(totals.getByCategory()).isEqualByComparingTo(summed);
-            assertThat(salesByFilmCategory.getTotalSales()).isLessThanOrEqualTo(totals.getByCategory());
+            assertThat(byCategory).isEqualByComparingTo(summed);
+            assertThat(salesByFilmCategory.getTotalSales()).isLessThanOrEqualTo(byCategory);
             assertThat(paymentRepository.count()).isPositive();
         }
     }
@@ -262,7 +261,7 @@ class SalesByFilmCategoryRepository_SpringBootIT
     class SelectSalesShares_Test {
 
         private static final Sort BY_TOTAL_SALES_DESC_THEN_CATEGORY =
-                Sort.by(Sort.Direction.DESC, "totalSales").and(Sort.by("category"));
+                Sort.by(Sort.Direction.DESC, "s.totalSales").and(Sort.by("s.category"));
 
         private static Stream<SalesByFilmCategory> salesByFilmCategories() {
             return SalesByFilmCategoryRepository_SpringBootIT.salesByFilmCategories();
@@ -277,8 +276,11 @@ class SalesByFilmCategoryRepository_SpringBootIT
             final var page = repositoryInstance().selectSalesShares(
                     PageRequest.of(0, 5, BY_TOTAL_SALES_DESC_THEN_CATEGORY));
             assertThat(page.getContent())
-                    .extracting(CategorySalesShare::getCategory, c -> c.getTotalSales().doubleValue(),
-                                c -> c.getPercent().doubleValue())
+                    .extracting(column("salesByFilmCategory", SalesByFilmCategory.class,
+                                       SalesByFilmCategory::getCategory),
+                                c -> c.get("salesByFilmCategory", SalesByFilmCategory.class)
+                                        .getTotalSales().doubleValue(),
+                                c -> c.get("percent", BigDecimal.class).doubleValue())
                     .containsExactly(
                             tuple("Sports", 5314.21d, 7.88d),
                             tuple("Sci-Fi", 4756.98d, 7.06d),
@@ -291,7 +293,7 @@ class SalesByFilmCategoryRepository_SpringBootIT
 
         /**
          * Asserts that the shares of all rows add up to a hundred, give or take the rounding, and that a selected row
-         * is among them with its own sales.
+         * is among them, the row itself, with its own sales.
          *
          * @param salesByFilmCategory one of the rows selected in
          *                            {@link SalesByFilmCategoryRepository_SpringBootIT#__()}.
@@ -300,14 +302,16 @@ class SalesByFilmCategoryRepository_SpringBootIT
         @ParameterizedTest
         void __(final SalesByFilmCategory salesByFilmCategory) {
             final var all = repositoryInstance().selectSalesShares(Pageable.unpaged(BY_TOTAL_SALES_DESC_THEN_CATEGORY));
-            final var percent = all.stream().map(CategorySalesShare::getPercent).reduce(BigDecimal.ZERO,
+            final var percent = all.stream().map(column("percent", BigDecimal.class)).reduce(BigDecimal.ZERO,
                                                                                          BigDecimal::add);
             assertThat(percent.doubleValue()).isBetween(99.9d, 100.1d);
             assertThat(all.getContent())
-                    .filteredOn(c -> c.getCategory().equals(salesByFilmCategory.getCategory()))
+                    .filteredOn(c -> c.get("salesByFilmCategory", SalesByFilmCategory.class)
+                            .equals(salesByFilmCategory))
                     .singleElement()
                     .satisfies(c -> {
-                        assertThat(c.getTotalSales()).isEqualByComparingTo(salesByFilmCategory.getTotalSales());
+                        assertThat(c.get("salesByFilmCategory", SalesByFilmCategory.class).getTotalSales())
+                                .isEqualByComparingTo(salesByFilmCategory.getTotalSales());
                     });
         }
 
@@ -324,8 +328,12 @@ class SalesByFilmCategoryRepository_SpringBootIT
             assertPage(page);
             assertThat(page.getContent())
                     .hasSize(size)
-                    .isSortedAccordingTo(Comparator.comparing(CategorySalesShare::getTotalSales).reversed()
-                                                 .thenComparing(CategorySalesShare::getCategory));
+                    .isSortedAccordingTo(
+                            Comparator.comparing(column("salesByFilmCategory", SalesByFilmCategory.class,
+                                                        SalesByFilmCategory::getTotalSales))
+                                    .reversed()
+                                    .thenComparing(column("salesByFilmCategory", SalesByFilmCategory.class,
+                                                          SalesByFilmCategory::getCategory)));
         }
     }
 
@@ -337,7 +345,7 @@ class SalesByFilmCategoryRepository_SpringBootIT
     class SelectRunningTotals_Test {
 
         private static final Sort BY_TOTAL_SALES_DESC_THEN_CATEGORY =
-                Sort.by(Sort.Direction.DESC, "totalSales").and(Sort.by("category"));
+                Sort.by(Sort.Direction.DESC, "s.totalSales").and(Sort.by("s.category"));
 
         private static Stream<SalesByFilmCategory> salesByFilmCategories() {
             return SalesByFilmCategoryRepository_SpringBootIT.salesByFilmCategories();
@@ -353,8 +361,12 @@ class SalesByFilmCategoryRepository_SpringBootIT
                     Pageable.unpaged(BY_TOTAL_SALES_DESC_THEN_CATEGORY));
             assertThat(page.getContent())
                     .hasSize(16)
-                    .extracting(CategoryRunningTotal::getCategory, c -> c.getTotalSales().doubleValue(),
-                                c -> c.getRunningTotal().doubleValue(), c -> c.getRunningPercent().doubleValue())
+                    .extracting(column("salesByFilmCategory", SalesByFilmCategory.class,
+                                       SalesByFilmCategory::getCategory),
+                                c -> c.get("salesByFilmCategory", SalesByFilmCategory.class)
+                                        .getTotalSales().doubleValue(),
+                                c -> c.get("runningTotal", BigDecimal.class).doubleValue(),
+                                c -> c.get("runningPercent", BigDecimal.class).doubleValue())
                     .startsWith(
                             tuple("Sports", 5314.21d, 5314.21d, 7.88d),
                             tuple("Sci-Fi", 4756.98d, 10071.19d, 14.94d),
@@ -380,11 +392,16 @@ class SalesByFilmCategoryRepository_SpringBootIT
                     Pageable.unpaged(BY_TOTAL_SALES_DESC_THEN_CATEGORY)).getContent();
             var previous = BigDecimal.ZERO;
             for (final var c : all) {
-                assertThat(c.getRunningTotal()).isEqualByComparingTo(previous.add(c.getTotalSales()));
-                previous = c.getRunningTotal();
+                final var runningTotal = c.get("runningTotal", BigDecimal.class);
+                final var totalSales = c.get("salesByFilmCategory", SalesByFilmCategory.class).getTotalSales();
+                assertThat(runningTotal).isEqualByComparingTo(previous.add(totalSales));
+                previous = runningTotal;
             }
-            assertThat(all.getLast().getRunningPercent()).isEqualByComparingTo(BigDecimal.valueOf(100L));
-            assertThat(all).anySatisfy(c -> assertThat(c.getCategory()).isEqualTo(salesByFilmCategory.getCategory()));
+            assertThat(all.getLast().get("runningPercent", BigDecimal.class))
+                    .isEqualByComparingTo(BigDecimal.valueOf(100L));
+            assertThat(all).anySatisfy(
+                    c -> assertThat(c.get("salesByFilmCategory", SalesByFilmCategory.class))
+                            .isEqualTo(salesByFilmCategory));
         }
 
         /**
@@ -401,7 +418,7 @@ class SalesByFilmCategoryRepository_SpringBootIT
             var page = repositoryInstance().selectRunningTotals(PageRequest.of(0, size,
                                                                                BY_TOTAL_SALES_DESC_THEN_CATEGORY));
             assertThat(page.getTotalElements()).isEqualTo(all.size());
-            final var walked = new ArrayList<CategoryRunningTotal>();
+            final var walked = new ArrayList<Tuple>();
             while (true) {
                 assertPage(page);
                 walked.addAll(page.getContent());
@@ -411,9 +428,13 @@ class SalesByFilmCategoryRepository_SpringBootIT
                 page = repositoryInstance().selectRunningTotals(page.nextPageable());
             }
             assertThat(walked)
-                    .extracting(CategoryRunningTotal::getCategory, CategoryRunningTotal::getRunningTotal)
+                    .extracting(column("salesByFilmCategory", SalesByFilmCategory.class),
+                                column("runningTotal", BigDecimal.class))
                     .containsExactlyElementsOf(
-                            all.stream().map(c -> tuple(c.getCategory(), c.getRunningTotal())).toList());
+                            all.stream()
+                                    .map(c -> tuple(c.get("salesByFilmCategory", SalesByFilmCategory.class),
+                                                    c.get("runningTotal", BigDecimal.class)))
+                                    .toList());
         }
     }
 
@@ -424,7 +445,10 @@ class SalesByFilmCategoryRepository_SpringBootIT
     class SelectGaps_Test {
 
         private static final Sort BY_GAP_DESC_THEN_CATEGORY =
-                Sort.by(Sort.Direction.DESC, "gap").and(Sort.by("category"));
+                Sort.by(Sort.Direction.DESC, "gap").and(Sort.by("s.category"));
+
+        private static final Sort BY_S_TOTAL_SALES_DESC_THEN_S_CATEGORY =
+                Sort.by(Sort.Direction.DESC, "s.totalSales").and(Sort.by("s.category"));
 
         private static Stream<SalesByFilmCategory> salesByFilmCategories() {
             return SalesByFilmCategoryRepository_SpringBootIT.salesByFilmCategories();
@@ -439,8 +463,13 @@ class SalesByFilmCategoryRepository_SpringBootIT
         void __Expected() {
             final var page = repositoryInstance().selectGaps(PageRequest.of(0, 3, BY_GAP_DESC_THEN_CATEGORY));
             assertThat(page.getContent())
-                    .extracting(CategoryGap::getCategory, c -> c.getTotalSales().doubleValue(),
-                                CategoryGap::getNextCategory, c -> c.getGap().doubleValue())
+                    .extracting(column("salesByFilmCategory", SalesByFilmCategory.class,
+                                       SalesByFilmCategory::getCategory),
+                                c -> c.get("salesByFilmCategory", SalesByFilmCategory.class)
+                                        .getTotalSales().doubleValue(),
+                                column("nextSalesByFilmCategory", SalesByFilmCategory.class,
+                                       SalesByFilmCategory::getCategory),
+                                c -> c.get("gap", BigDecimal.class).doubleValue())
                     .containsExactly(
                             tuple("Sports", 5314.21d, "Sci-Fi", 557.23d),
                             tuple("Documentary", 4217.52d, "Horror", 494.98d),
@@ -451,8 +480,8 @@ class SalesByFilmCategoryRepository_SpringBootIT
 
         /**
          * Asserts that the pairs, in the exercise's order of the categories, chain each category to the one next
-         * down, with the difference of their sales as the gap; and that a selected row is the category of exactly
-         * one pair, unless it is the last.
+         * down, each row compared with the one of the view itself, with the difference of their sales as the gap;
+         * and that a selected row is the first of exactly one pair, unless it is the last.
          *
          * @param salesByFilmCategory one of the rows selected in
          *                            {@link SalesByFilmCategoryRepository_SpringBootIT#__()}.
@@ -462,18 +491,19 @@ class SalesByFilmCategoryRepository_SpringBootIT
         void __(final SalesByFilmCategory salesByFilmCategory) {
             final var ordered = repositoryInstance().listAll(Pageable.unpaged(BY_TOTAL_SALES_DESC_THEN_CATEGORY))
                     .getContent();
-            final var gaps = repositoryInstance().selectGaps(Pageable.unpaged(BY_TOTAL_SALES_DESC_THEN_CATEGORY));
+            final var gaps = repositoryInstance().selectGaps(Pageable.unpaged(BY_S_TOTAL_SALES_DESC_THEN_S_CATEGORY));
             assertThat(gaps.getContent()).hasSize(ordered.size() - 1);
             for (int i = 0; i < gaps.getNumberOfElements(); i++) {
                 final var gap = gaps.getContent().get(i);
-                assertThat(gap.getCategory()).isEqualTo(ordered.get(i).getCategory());
-                assertThat(gap.getNextCategory()).isEqualTo(ordered.get(i + 1).getCategory());
-                assertThat(gap.getGap()).isEqualByComparingTo(
+                assertThat(gap.get("salesByFilmCategory", SalesByFilmCategory.class)).isEqualTo(ordered.get(i));
+                assertThat(gap.get("nextSalesByFilmCategory", SalesByFilmCategory.class)).isEqualTo(ordered.get(i + 1));
+                assertThat(gap.get("gap", BigDecimal.class)).isEqualByComparingTo(
                         ordered.get(i).getTotalSales().subtract(ordered.get(i + 1).getTotalSales()));
             }
             final var last = ordered.getLast().getCategory().equals(salesByFilmCategory.getCategory());
             assertThat(gaps.getContent())
-                    .filteredOn(g -> g.getCategory().equals(salesByFilmCategory.getCategory()))
+                    .filteredOn(g -> g.get("salesByFilmCategory", SalesByFilmCategory.class)
+                            .equals(salesByFilmCategory))
                     .hasSize(last ? 0 : 1);
         }
     }

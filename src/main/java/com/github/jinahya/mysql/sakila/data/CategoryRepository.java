@@ -2,6 +2,8 @@ package com.github.jinahya.mysql.sakila.data;
 
 import com.github.jinahya.mysql.sakila.persistence.Category;
 import com.github.jinahya.mysql.sakila.persistence.Category_;
+import com.github.jinahya.mysql.sakila.persistence.Film;
+import jakarta.persistence.Tuple;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
@@ -31,9 +33,15 @@ import java.util.stream.Stream;
  * {@code LIMIT}, are the caller's {@code PageRequest}; each method's javadoc says which sort that is. Every one of them
  * shows columns, grouped and counted or averaged, which a {@link org.springframework.data.jpa.domain.Specification},
  * which only filters, cannot do; such a method, {@code select...}, declares its JPQL with {@link Query}, with a count
- * query of its own since Spring Data cannot derive one from a grouped select, and returns a projection, one of the
- * interfaces declared here, which Spring Data backs with the selected columns, each aliased with the name of the
- * getter it feeds. Those aliases are what the {@code Pageable} sorts by.
+ * query of its own since Spring Data cannot derive one from a grouped select. Such a query selects entities, not
+ * their columns: a category is selected whole ({@code SELECT c AS category}), and grouped by itself
+ * ({@code GROUP BY c}) where the query groups; what is computed, a count, an average, a running total, is a column of
+ * its own beside it. A result that is a single entity is that entity; any other comes back as a
+ * {@link jakarta.persistence.Tuple}, each element read by its alias, with its type
+ * ({@code tuple.get("category", Category.class)}, {@code tuple.get("films", Long.class)}). The {@code Pageable} sorts
+ * a computed column by its alias ({@code Sort.by(DESC, "films")}), and an attribute of a selected entity by its path
+ * from the query's identification variable ({@code Sort.by("c.name")}); each method's javadoc names its aliases and
+ * identification variables.
  *
  * @see Category
  * @see Category_
@@ -43,112 +51,6 @@ public interface CategoryRepository
         extends _Repository<Category, Integer> {
 
     // ----------------------------------------------------------------------------------------------------- exercises
-
-    /**
-     * A category, by name, and how many films it has: a projection of {@link #selectFilmCounts(Pageable)}, sortable by
-     * {@code name} and {@code films}.
-     */
-    interface CategoryFilmCount {
-
-        /**
-         * Returns the name of the category.
-         *
-         * @return the name of the category.
-         */
-        String getName();
-
-        /**
-         * Returns the number of films of the category.
-         *
-         * @return the number of films.
-         */
-        long getFilms();
-    }
-
-    /**
-     * A category, by name, and the average length of its films: a projection of
-     * {@link #selectAverageLengths(Pageable)}, sortable by {@code name} and {@code averageLength}.
-     */
-    interface CategoryAverageLength {
-
-        /**
-         * Returns the name of the category.
-         *
-         * @return the name of the category.
-         */
-        String getName();
-
-        /**
-         * Returns the average length of the films of the category, in minutes, rounded to two decimal places.
-         *
-         * @return the average length.
-         */
-        double getAverageLength();
-    }
-
-    /**
-     * A category, by name, its number of films, and the running total of the films up to it: a projection of
-     * {@link #selectRunningFilmCounts(Pageable)}, sortable by {@code name}, {@code films}, {@code runningFilms} and
-     * {@code runningPercent}.
-     */
-    interface CategoryRunningFilmCount {
-
-        /**
-         * Returns the name of the category.
-         *
-         * @return the name of the category.
-         */
-        String getName();
-
-        /**
-         * Returns the number of films of the category.
-         *
-         * @return the number of films.
-         */
-        long getFilms();
-
-        /**
-         * Returns the number of films of the category and of every category before it.
-         *
-         * @return the running number of films.
-         */
-        long getRunningFilms();
-
-        /**
-         * Returns the running number of films as a percentage of all, rounded to one decimal place.
-         *
-         * @return the running percentage.
-         */
-        double getRunningPercent();
-    }
-
-    /**
-     * A category, by name, and its film rented the most, with how many times: a projection of
-     * {@link #selectMostRentedFilms(Pageable)}, sortable by {@code name}, {@code title} and {@code rentals}.
-     */
-    interface CategoryMostRentedFilm {
-
-        /**
-         * Returns the name of the category.
-         *
-         * @return the name of the category.
-         */
-        String getName();
-
-        /**
-         * Returns the title of the film.
-         *
-         * @return the title of the film.
-         */
-        String getTitle();
-
-        /**
-         * Returns the number of rentals of the film.
-         *
-         * @return the number of rentals.
-         */
-        long getRentals();
-    }
 
     /**
      * Finds every category, by {@link Category_#NAME} ({@code SAKILA-CATEGORY-B-01}, the book's pick, which orders by
@@ -181,68 +83,75 @@ public interface CategoryRepository
 
     /**
      * Selects the categories which have a film, with how many ({@code SAKILA-CATEGORY-I-01}, this module's own extra,
-     * which orders by {@code films} descending, then by {@code name}).
+     * which orders by {@code films} descending, then by {@code c.name}).
      * <p>
      * The films are counted through the category's {@link Category_#FILM_CATEGORIES} links, by an inner join, so a
-     * category with no film is not in the page; the count query counts the categories that have one.
+     * category with no film is not in the page; the categories are grouped by the category itself, which selects the
+     * category whole. The count query counts the categories that have a film.
      *
-     * @param pageable the page to return, and its sort, by {@code name} or {@code films}; must not be {@code null}.
-     * @return a page of the categories which have a film, with their numbers of films.
+     * @param pageable the page to return, and its sort, by {@code films}, or by an attribute of the category through
+     *                 {@code c} ({@code c.name}, {@code c.categoryId}, ...); must not be {@code null}.
+     * @return a page of the categories which have a film, with their numbers of films, each a tuple of
+     *         {@code category} ({@link Category}) and {@code films} ({@link Long}).
      */
     @Query(value = """
-            SELECT c.name AS name, COUNT(fc) AS films
+            SELECT c AS category, COUNT(fc) AS films
             FROM Category c
                      JOIN c.filmCategories fc
-            GROUP BY c.categoryId, c.name""",
+            GROUP BY c""",
            countQuery = """
                    SELECT COUNT(c)
                    FROM Category c
                    WHERE c.filmCategories IS NOT EMPTY""")
-    Page<CategoryFilmCount> selectFilmCounts(Pageable pageable);
+    Page<Tuple> selectFilmCounts(Pageable pageable);
 
     /**
      * Selects the categories which have a film, with the average length of their films
      * ({@code SAKILA-CATEGORY-I-02}, the book's pick, which takes the first one by {@code averageLength} descending).
      * <p>
      * The films are reached through the category's {@link Category_#FILM_CATEGORIES} links, by inner joins, so a
-     * category with no film is not in the page; the count query counts the categories that have one. The average is
-     * rounded to two decimal places in the select, so two categories whose averages differ further down sort as
-     * equal.
+     * category with no film is not in the page; the categories are grouped by the category itself, which selects the
+     * category whole, and the count query counts the categories that have a film. The average is rounded to two
+     * decimal places in the select, so two categories whose averages differ further down sort as equal.
      *
-     * @param pageable the page to return, and its sort, by {@code name} or {@code averageLength}; must not be
-     *                 {@code null}.
-     * @return a page of the categories which have a film, with the average lengths of their films.
+     * @param pageable the page to return, and its sort, by {@code averageLength}, or by an attribute of the category
+     *                 through {@code c} ({@code c.name}, ...); must not be {@code null}.
+     * @return a page of the categories which have a film, with the average lengths of their films, each a tuple of
+     *         {@code category} ({@link Category}) and {@code averageLength} ({@link Double}).
      */
     @Query(value = """
-            SELECT c.name AS name, ROUND(AVG(f.length), 2) AS averageLength
+            SELECT c AS category, ROUND(AVG(f.length), 2) AS averageLength
             FROM Category c
                      JOIN c.filmCategories fc
                      JOIN fc.film f
-            GROUP BY c.categoryId, c.name""",
+            GROUP BY c""",
            countQuery = """
                    SELECT COUNT(c)
                    FROM Category c
                    WHERE c.filmCategories IS NOT EMPTY""")
-    Page<CategoryAverageLength> selectAverageLengths(Pageable pageable);
+    Page<Tuple> selectAverageLengths(Pageable pageable);
 
     /**
      * Selects the categories which have a film, each with its number of films and the running total of the films, in
      * number and in percent, category by category, the most films first ({@code SAKILA-CATEGORY-A-01}, the book's
-     * pick, which orders by {@code films} descending, then by {@code name}).
+     * pick, which orders by {@code films} descending, then by {@code c.name}).
      * <p>
      * JPQL has no window function, so the running total is a join: each category {@code c} is paired with every
      * {@code film_category} link whose category comes no later than {@code c} in the exercise's order, the more films
      * first and then by name, and those links are counted. The running total is so computed in the exercise's order,
      * whatever the caller's sort; sort as the exercise does to see it run up to all films. The category's own number of
-     * films, and the number of all links, are subqueries in the select. The count query counts the categories that
-     * have a film.
+     * films, and the number of all links, are subqueries in the select; the categories are grouped by the category
+     * itself, which selects the category whole. The count query counts the categories that have a film.
      *
-     * @param pageable the page to return, and its sort, by {@code name}, {@code films}, {@code runningFilms} or
-     *                 {@code runningPercent}; must not be {@code null}.
-     * @return a page of the categories which have a film, with their numbers of films and the running totals.
+     * @param pageable the page to return, and its sort, by {@code films}, {@code runningFilms} or
+     *                 {@code runningPercent}, or by an attribute of the category through {@code c} ({@code c.name},
+     *                 ...); must not be {@code null}.
+     * @return a page of the categories which have a film, with their numbers of films and the running totals, each a
+     *         tuple of {@code category} ({@link Category}), {@code films} and {@code runningFilms} ({@link Long}), and
+     *         {@code runningPercent} ({@link Double}).
      */
     @Query(value = """
-            SELECT c.name AS name,
+            SELECT c AS category,
                    (SELECT COUNT(fc1) FROM FilmCategory fc1 WHERE fc1.category = c) AS films,
                    COUNT(fc) AS runningFilms,
                    ROUND(COUNT(fc) * 100.0 / (SELECT COUNT(fc2) FROM FilmCategory fc2), 1) AS runningPercent
@@ -251,35 +160,38 @@ public interface CategoryRepository
             WHERE c.filmCategories IS NOT EMPTY
               AND (SIZE(c2.filmCategories) > SIZE(c.filmCategories)
                    OR (SIZE(c2.filmCategories) = SIZE(c.filmCategories) AND c2.name <= c.name))
-            GROUP BY c.categoryId, c.name""",
+            GROUP BY c""",
            countQuery = """
                    SELECT COUNT(c)
                    FROM Category c
                    WHERE c.filmCategories IS NOT EMPTY""")
-    Page<CategoryRunningFilmCount> selectRunningFilmCounts(Pageable pageable);
+    Page<Tuple> selectRunningFilmCounts(Pageable pageable);
 
     /**
      * Selects, for each category, the film of the category rented the most, with how many times
-     * ({@code SAKILA-CATEGORY-A-02}, this module's own extra, which orders by {@code name}).
+     * ({@code SAKILA-CATEGORY-A-02}, this module's own extra, which orders by {@code c.name}).
      * <p>
      * The rentals of each film of each category are counted, from the category through its {@code film_category}
      * links, the films, their copies and the copies' rentals. A film is kept when no film of its category was rented
      * more, and no film of its category with an earlier title was rented as many times, so a tie keeps the first title,
      * and each category has one row; JPQL has no window function, so the two conditions are {@code HAVING ... ALL}
-     * subqueries. The count query counts the categories that have a rented film.
+     * subqueries. The rows are grouped by the category and the film themselves, which selects the two whole. The
+     * count query counts the categories that have a rented film.
      *
-     * @param pageable the page to return, and its sort, by {@code name}, {@code title} or {@code rentals}; must not be
-     *                 {@code null}.
-     * @return a page of the categories which have a rented film, each with its film rented the most.
+     * @param pageable the page to return, and its sort, by {@code rentals}, or by an attribute of the category through
+     *                 {@code c} ({@code c.name}, ...) or of the film through {@code f} ({@code f.title}, ...); must not
+     *                 be {@code null}.
+     * @return a page of the categories which have a rented film, each with its film rented the most, as a tuple of
+     *         {@code category} ({@link Category}), {@code film} ({@link Film}) and {@code rentals} ({@link Long}).
      */
     @Query(value = """
-            SELECT c.name AS name, f.title AS title, COUNT(r) AS rentals
+            SELECT c AS category, f AS film, COUNT(r) AS rentals
             FROM Category c
                      JOIN c.filmCategories fc
                      JOIN fc.film f
                      JOIN f.inventories i
                      JOIN i.rentals r
-            GROUP BY c.categoryId, c.name, f.filmId, f.title
+            GROUP BY c, f
             HAVING COUNT(r) >= ALL (SELECT COUNT(r2)
                                     FROM FilmCategory fc2
                                              JOIN fc2.film f2
@@ -302,5 +214,5 @@ public interface CategoryRepository
                             JOIN fc.film f
                             JOIN f.inventories i
                             JOIN i.rentals r""")
-    Page<CategoryMostRentedFilm> selectMostRentedFilms(Pageable pageable);
+    Page<Tuple> selectMostRentedFilms(Pageable pageable);
 }

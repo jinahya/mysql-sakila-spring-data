@@ -221,17 +221,17 @@ class NicerButSlowerFilmListRepository_SpringBootIT {
             final var list = repository.listActorsOfFilmOne();
             list.forEach(r -> log.debug("row: {}", r));
             assertThat(list).singleElement().satisfies(r -> {
-                assertThat(r.fid()).isEqualTo(1);
-                assertThat(r.title()).isEqualTo("ACADEMY DINOSAUR");
-                assertThat(namesOf(r.actors())).containsExactlyInAnyOrder(
+                assertThat(r.getFid()).isEqualTo(1);
+                assertThat(r.getTitle()).isEqualTo("ACADEMY DINOSAUR");
+                assertThat(namesOf(r.getActors())).containsExactlyInAnyOrder(
                         "Penelope Guiness", "Christian Gable", "Lucille Tracy", "Sandra Peck", "Johnny Cage",
                         "Mena Temple", "Warren Nolte", "Oprah Kilmer", "Rock Dukakis", "Mary Keitel");
             });
             final var filmList = filmListRepository.listActorsOfFilmOne();
             assertThat(filmList).hasSameSizeAs(list);
             for (int i = 0; i < list.size(); i++) {
-                assertThat(list.get(i).title()).isEqualTo(filmList.get(i).title());
-                assertCapitalized(list.get(i).actors(), filmList.get(i).actors());
+                assertThat(list.get(i).getTitle()).isEqualTo(filmList.get(i).getTitle());
+                assertCapitalized(list.get(i).getActors(), filmList.get(i).getActors());
             }
         }
     }
@@ -275,13 +275,23 @@ class NicerButSlowerFilmListRepository_SpringBootIT {
             final var list = repository.listFilmsWithNoActor();
             list.forEach(r -> log.debug("row: {}", r));
             assertThat(list)
-                    .extracting(FilmListRepository.FilmInCategory::fid, FilmListRepository.FilmInCategory::title,
-                                FilmListRepository.FilmInCategory::category)
+                    .extracting(NicerButSlowerFilmList::getFid, NicerButSlowerFilmList::getTitle,
+                                NicerButSlowerFilmList::getCategory)
                     .containsExactly(
                             tuple(257, "DRUMLINE CYCLONE", "Travel"),
                             tuple(323, "FLIGHT LIES", "Sports"),
                             tuple(803, "SLACKER LIAISONS", "Drama"));
-            assertThat(list).isEqualTo(filmListRepository.listFilmsWithNoActor());
+            assertThat(list).extracting(NicerButSlowerFilmList::getActors).containsOnlyNulls();
+            assertThat(list)
+                    .extracting(NicerButSlowerFilmList::getFid, NicerButSlowerFilmList::getTitle,
+                                NicerButSlowerFilmList::getDescription, NicerButSlowerFilmList::getCategory,
+                                NicerButSlowerFilmList::getPrice, NicerButSlowerFilmList::getLength,
+                                NicerButSlowerFilmList::getRating)
+                    .containsExactlyElementsOf(
+                            filmListRepository.listFilmsWithNoActor().stream()
+                                    .map(r -> tuple(r.getFid(), r.getTitle(), r.getDescription(), r.getCategory(),
+                                                    r.getPrice(), r.getLength(), r.getRating()))
+                                    .toList());
         }
     }
 

@@ -125,7 +125,7 @@ class StaffRepository_DataJpaTest
     @Nested
     class SelectRentalCounts_Test {
 
-        private static final Sort BY_STAFF_ID = Sort.by("staffId");
+        private static final Sort BY_STAFF_ID = Sort.by("s.staffId");
 
         /**
          * Asserts that the joined and grouped select, sorted by the id as the exercise sorts, runs on the empty
@@ -189,7 +189,7 @@ class StaffRepository_DataJpaTest
     @Nested
     class SelectBestDays_Test {
 
-        private static final Sort BY_STAFF_ID = Sort.by("staffId");
+        private static final Sort BY_STAFF_ID = Sort.by("s.staffId");
 
         /**
          * Asserts that the grouped select, with its {@code HAVING ... >= ALL} on a correlated subquery, and its count

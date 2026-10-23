@@ -216,7 +216,7 @@ class CountryRepository_DataJpaTest
     class SelectCustomerCounts_Test {
 
         private static final Sort BY_CUSTOMERS_DESC_THEN_COUNTRY =
-                Sort.by(Sort.Direction.DESC, "customers").and(Sort.by("country"));
+                Sort.by(Sort.Direction.DESC, "customers").and(Sort.by("co.country"));
 
         /**
          * Saves a country with a city and an address, but no customer, which the H2 cannot hold, and asserts that the
