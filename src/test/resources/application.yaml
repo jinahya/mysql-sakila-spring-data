@@ -1,0 +1,58 @@
+#
+# Test configuration for mysql-sakila-spring-data: the Sakila database that mysql-sakila-persistence brings up, not an
+# in-memory stand-in.
+#
+# Start it from the sibling checkout, which owns the compose file and the init scripts:
+#
+#     cd ../mysql-sakila-persistence && ./_docker-compose-up.sh
+#
+# That runs mysql:9.7 as the container `mysql-sakila`, publishes 3306, and loads docker-entrypoint-initdb.d
+# (01-sakila-schema.sql, then 02-sakila-data.sql) into an empty database; Ctrl-C takes it down again.
+#
+# These are the same coordinates upstream's own integration-test persistence unit uses
+# (../mysql-sakila-persistence/src/test/resources/META-INF/persistence.xml, `sakila-it`); keep the two in step.
+#
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/sakila?characterEncoding=UTF-8
+    # root, as upstream's sakila-it unit connects; MYSQL_ROOT_PASSWORD of its docker-compose.yml.
+    username: root
+    password: ${SAKILA_PASSWORD:password}
+    # Hikari can infer this from the URL; named anyway so a missing driver on the test classpath fails as "driver not
+    # found" rather than as a pool timeout.
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      # The sample data is loaded by the init scripts and is the fixture the tests read. Nothing here may touch the
+      # schema. `none` is already the default for a non-embedded datasource; spelled out because the cost of getting it
+      # wrong is the database.
+      ddl-auto: none
+    properties:
+      hibernate:
+        # Named rather than detected. Hibernate would otherwise pick the dialect from the JDBC metadata of a first
+        # connection, and when that connection fails (no container on 3306) it logs the real cause as HHH000342 and
+        # throws "Unable to determine Dialect" instead. With the dialect named, a missing database fails at the first
+        # query with the MySQL error itself. MySQLDialect still reads the server version from that metadata when it
+        # can, so nothing version-specific is lost.
+        # NOTE: this file follows a @DataJpaTest onto H2 too, where this dialect is wrong; such a test has to override
+        # it (see _Repository_DataJpaTest_Configuration).
+        dialect: org.hibernate.dialect.MySQLDialect
+        format_sql: true
+        highlight_sql: true
+    # No web layer in these tests: a lazy association touched outside a transaction should fail loudly instead of
+    # quietly opening a session to satisfy it.
+    open-in-view: false
+    # Deliberately not `show-sql: true`, which writes straight to System.out and would print every statement twice
+    # next to the logger below.
+    show-sql: false
+
+logging:
+  level:
+    # The statement, and then its bind parameters -- the pair upstream's logback-test.xml turns on. Drop to `info`
+    # when the output gets in the way.
+    org.hibernate.SQL: debug
+    org.hibernate.orm.jdbc.bind: trace
+    # This project's own code, the tests included. Boot leaves everything not named here at the root's INFO, so a
+    # log.debug(...) in a test prints nothing without this.
+    com.github.jinahya.mysql.sakila.persistence.data: debug

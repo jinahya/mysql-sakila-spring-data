@@ -1,0 +1,407 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <!--
+    Modelled on the sibling oracle-sample-schemas-spring-data: its root pom, with its one-module-per-schema layout
+    folded into this single jar, as mysql-sakila-persistence is a single jar too. Parent-less, as that one is.
+    -->
+  <groupId>com.github.jinahya</groupId>
+  <artifactId>mysql-sakila-spring-data</artifactId>
+  <version>0.0.1-SNAPSHOT</version>
+  <packaging>jar</packaging>
+
+  <name>${project.artifactId}</name>
+  <description>Spring Data for the MySQL Sakila Sample Database</description>
+  <url>https://github.com/jinahya/${project.artifactId}</url>
+  <inceptionYear>2026</inceptionYear>
+  <organization>
+    <name>Jinahya, Inc.</name>
+    <url>https://jinahya.com</url>
+  </organization>
+
+  <developers>
+    <developer>
+      <id>onacit</id>
+      <name>Kwon, Jin</name>
+      <email>onacit@gmail.com</email>
+      <url>https://github.com/onacit</url>
+      <roles>
+        <role>developer</role>
+      </roles>
+      <timezone>Asia/Seoul</timezone>
+    </developer>
+  </developers>
+
+  <scm>
+    <connection>scm:git:git@github.com:jinahya/${project.artifactId}.git</connection>
+    <developerConnection>scm:git:git@github.com:jinahya/${project.artifactId}.git</developerConnection>
+    <url>https://github.com/jinahya/${project.artifactId}</url>
+    <tag>HEAD</tag>
+  </scm>
+  <issueManagement>
+    <system>GitHub Issues</system>
+    <url>https://github.com/jinahya/${project.artifactId}/issues</url>
+  </issueManagement>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+
+    <!--
+      Upstream (mysql-sakila-persistence) compiles its main sources at release 17 and its tests at 25; 17 is
+      therefore the floor for anything compiled against its entities. Both halves here are 25, as the oracle sibling.
+      -->
+    <maven.compiler.source>25</maven.compiler.source>
+    <maven.compiler.target>${maven.compiler.source}</maven.compiler.target>
+    <maven.compiler.release>${maven.compiler.target}</maven.compiler.release>
+    <maven.compiler.testSource>${maven.compiler.source}</maven.compiler.testSource>
+    <maven.compiler.testTarget>${maven.compiler.testSource}</maven.compiler.testTarget>
+    <maven.compiler.testRelease>${maven.compiler.testSource}</maven.compiler.testRelease>
+    <!--
+      Keep parameter names in the class files, as upstream does: method validation reports them
+      (findAllByTitle.offset, not .arg1), and Spring Data and MyBatis can bind named parameters by them.
+      -->
+    <maven.compiler.parameters>true</maven.compiler.parameters>
+
+    <!--
+      Boot 4, not 3: it manages jakarta.persistence-api 3.2, which the upstream mappings are written against
+      (upstream: persistence.version 3.2, jakarta.jakartaee-bom 11.0.0). Boot 3.x manages 3.1. Do not downgrade.
+      -->
+    <!-- https://docs.spring.io/spring-boot/appendix/dependency-versions/coordinates.html -->
+    <version.org.springframework.boot>4.1.1</version.org.springframework.boot>
+
+    <!-- Local SNAPSHOT only: `./mvnw -DskipTests install` the sibling checkout to pick up a change there. -->
+    <version.mysql-sakila-persistence>0.0.1-SNAPSHOT</version.mysql-sakila-persistence>
+
+    <!--
+      The versions below are the ones upstream's pom names (version.* properties of the same name), so that what
+      compiles here against its test-companion jar is what that jar was compiled against.
+      -->
+    <!-- https://central.sonatype.com/artifact/io.github.jinahya/jinahya-persistence-test-utils/versions -->
+    <version.jinahya-persistence>0.6.7</version.jinahya-persistence>
+    <!-- https://central.sonatype.com/artifact/uk.co.jemos.podam/podam/versions -->
+    <version.uk.co.jemos.podam>8.0.2.RELEASE</version.uk.co.jemos.podam>
+    <!-- https://central.sonatype.com/artifact/org.projectlombok/lombok/versions -->
+    <version.org.projectlombok>1.18.48</version.org.projectlombok>
+    <!-- https://dev.mysql.com/downloads/connector/j/ -->
+    <!-- https://central.sonatype.com/artifact/com.mysql/mysql-connector-j/versions -->
+    <version.com.mysql>26.7.0</version.com.mysql>
+    <!-- https://central.sonatype.com/artifact/com.h2database/h2/versions -->
+    <version.com.h2database>2.5.252</version.com.h2database>
+
+    <!--
+      Not in Boot's BOM. mybatis-spring-boot 4.1.0 is built against Boot 4.1.0, MyBatis 3.5.19 and
+      mybatis-spring 4.1.0.
+      https://central.sonatype.com/artifact/org.mybatis.spring.boot/mybatis-spring-boot-starter/versions
+      -->
+    <version.org.mybatis.spring.boot>4.1.0</version.org.mybatis.spring.boot>
+    <!-- https://central.sonatype.com/artifact/org.mybatis/mybatis-spring/versions -->
+    <version.org.mybatis.mybatis-spring>4.1.0</version.org.mybatis.mybatis-spring>
+  </properties>
+
+  <dependencyManagement>
+    <dependencies>
+      <!--
+        Imported, not inherited: this pom is parent-less. Every Spring, Boot and Hibernate version comes from here,
+        so dependencies on them carry no <version>. A direct entry below beats an imported one, which is how the
+        pins that follow it work.
+        -->
+      <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-dependencies</artifactId>
+        <version>${version.org.springframework.boot}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+
+      <!-- The upstream entity jar. -->
+      <dependency>
+        <groupId>io.github.jinahya</groupId>
+        <artifactId>mysql-sakila-persistence</artifactId>
+        <version>${version.mysql-sakila-persistence}</version>
+      </dependency>
+      <!--
+        Its randomizers and persisters, published as a second jar of the same artifact classified test-companion; a
+        classifier needs an entry of its own. The jar brings none of its dependencies, so podam and
+        jinahya-persistence-test-utils are declared below.
+        -->
+      <dependency>
+        <groupId>io.github.jinahya</groupId>
+        <artifactId>mysql-sakila-persistence</artifactId>
+        <version>${version.mysql-sakila-persistence}</version>
+        <classifier>test-companion</classifier>
+      </dependency>
+
+      <dependency>
+        <groupId>io.github.jinahya</groupId>
+        <artifactId>jinahya-persistence-utils</artifactId>
+        <version>${version.jinahya-persistence}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.github.jinahya</groupId>
+        <artifactId>jinahya-persistence-test-utils</artifactId>
+        <version>${version.jinahya-persistence}</version>
+      </dependency>
+      <dependency>
+        <groupId>uk.co.jemos.podam</groupId>
+        <artifactId>podam</artifactId>
+        <version>${version.uk.co.jemos.podam}</version>
+      </dependency>
+
+      <!--
+        Pinned over the BOM's 1.18.46, which fails on JDK 27 (ExceptionInInitializerError:
+        com.sun.tools.javac.tree.EndPosTable), and to upstream's. Drop the pin once the BOM manages 1.18.48 or later.
+        -->
+      <dependency>
+        <groupId>org.projectlombok</groupId>
+        <artifactId>lombok</artifactId>
+        <version>${version.org.projectlombok}</version>
+      </dependency>
+      <!--
+        Pinned over the BOM's (9.7.0 and 2.4.240) to upstream's, so that the integration tests here hit the Sakila
+        container through the driver upstream's own do, and the unit tests run the same H2 (MODE=MySQL) upstream
+        generates its schema into.
+        -->
+      <dependency>
+        <groupId>com.mysql</groupId>
+        <artifactId>mysql-connector-j</artifactId>
+        <version>${version.com.mysql}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.h2database</groupId>
+        <artifactId>h2</artifactId>
+        <version>${version.com.h2database}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>org.mybatis</groupId>
+        <artifactId>mybatis-spring</artifactId>
+        <version>${version.org.mybatis.mybatis-spring}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.mybatis.spring.boot</groupId>
+        <artifactId>mybatis-spring-boot-starter</artifactId>
+        <version>${version.org.mybatis.spring.boot}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.mybatis.spring.boot</groupId>
+        <artifactId>mybatis-spring-boot-starter-test</artifactId>
+        <version>${version.org.mybatis.spring.boot}</version>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
+  <dependencies>
+    <!--
+      main =======================================================================================
+      The entities, and their static metamodel, that the repositories are for. Upstream's jar carries entities and
+      metamodel only; its persistence.xml is test-only, so this project supplies its own datasource and JPA
+      configuration. Its jakarta.* and driver dependencies are provided there, so none arrive transitively.
+      -->
+    <dependency>
+      <groupId>io.github.jinahya</groupId>
+      <artifactId>mysql-sakila-persistence</artifactId>
+    </dependency>
+    <!--
+      The plain artifacts, not spring-boot-starter-data-jpa: the repositories need Spring Data JPA, not Boot, so the
+      published pom names no starter. It is provided; a consumer brings its own Spring Data JPA and JPA provider. The
+      starter reaches the tests through spring-boot-starter-data-jpa-test.
+
+      jakarta.persistence-api is declared, provided, since main code may use JPA types itself (an EntityManager in a
+      view repository); spring-data-jpa does not bring it.
+      -->
+    <dependency>
+      <groupId>org.springframework.data</groupId>
+      <artifactId>spring-data-jpa</artifactId>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>jakarta.persistence</groupId>
+      <artifactId>jakarta.persistence-api</artifactId>
+      <scope>provided</scope>
+    </dependency>
+    <!--
+      Bean Validation constraints on repository method parameters (@NotBlank, @Positive, ...). The API only, provided:
+      enforcing them takes a provider and @Validated, which the application brings.
+      -->
+    <dependency>
+      <groupId>jakarta.validation</groupId>
+      <artifactId>jakarta.validation-api</artifactId>
+      <scope>provided</scope>
+    </dependency>
+    <!--
+      Main and test sources alike. Provided: Lombok is a compile-time tool only, so it is neither packaged nor passed
+      on to consumers of this jar.
+      -->
+    <dependency>
+      <groupId>org.projectlombok</groupId>
+      <artifactId>lombok</artifactId>
+      <scope>provided</scope>
+    </dependency>
+
+    <!--
+      test starters ==============================================================================
+      Boot 4 pairs each starter with a spring-boot-starter-<technology>-test, and each of those brings
+      spring-boot-starter-test, so that one is not declared.
+      -->
+    <!-- @DataJpaTest, @AutoConfigureTestDatabase, TestEntityManager -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-data-jpa-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <!-- Jackson 3, for an injected JsonMapper. Not part of the @DataJpaTest slice, so only a @SpringBootTest gets one. -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-jackson-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <!--
+      Hibernate Validator, and Boot's method validation, which enforces the repositories' constraints; through
+      spring-boot-starter-validation, which this brings.
+      -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-validation-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <!--
+      MyBatis, test scope only, for native SQL against the views upstream maps without @Entity, as the oracle sibling
+      does. mybatis-spring is what mappers compile against; the starter brings it too.
+      -->
+    <dependency>
+      <groupId>org.mybatis</groupId>
+      <artifactId>mybatis-spring</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.mybatis.spring.boot</groupId>
+      <artifactId>mybatis-spring-boot-starter</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <!-- @MybatisTest -->
+    <dependency>
+      <groupId>org.mybatis.spring.boot</groupId>
+      <artifactId>mybatis-spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <!--
+      test runtime ===============================================================================
+      The driver for the Sakila container upstream brings up (docker-compose.yml there; localhost:3306/sakila). Test
+      scope, so consumers get no driver.
+      -->
+    <dependency>
+      <groupId>com.mysql</groupId>
+      <artifactId>mysql-connector-j</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <!--
+      The embedded database @DataJpaTest swaps in for MySQL. Without one on the classpath, @AutoConfigureTestDatabase
+      fails.
+      -->
+    <dependency>
+      <groupId>com.h2database</groupId>
+      <artifactId>h2</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <!-- test tools ================================================================================= -->
+    <!-- The upstream randomizers and persisters. -->
+    <dependency>
+      <groupId>io.github.jinahya</groupId>
+      <artifactId>mysql-sakila-persistence</artifactId>
+      <classifier>test-companion</classifier>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.github.jinahya</groupId>
+      <artifactId>jinahya-persistence-utils</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.github.jinahya</groupId>
+      <artifactId>jinahya-persistence-test-utils</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <!-- What the upstream randomizers fill instances with. -->
+    <dependency>
+      <groupId>uk.co.jemos.podam</groupId>
+      <artifactId>podam</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-compiler-plugin</artifactId>
+          <!-- https://central.sonatype.com/artifact/org.apache.maven.plugins/maven-compiler-plugin/versions -->
+          <version>3.16.0</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-enforcer-plugin</artifactId>
+          <!-- https://central.sonatype.com/artifact/org.apache.maven.plugins/maven-enforcer-plugin/versions -->
+          <version>3.6.3</version>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+    <plugins>
+      <!--
+        Lombok on the processor path of both executions, default-compile and default-testCompile. The <path> takes
+        its version from dependencyManagement, so the processor and the annotations stay in step.
+        -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <configuration>
+          <annotationProcessorPaths>
+            <path>
+              <groupId>org.projectlombok</groupId>
+              <artifactId>lombok</artifactId>
+            </path>
+          </annotationProcessorPaths>
+        </configuration>
+      </plugin>
+      <!--
+        Dependency convergence is a build defect, not a warning, as upstream treats it. Resolve jakarta.* at the
+        platform level (the Boot BOM) instead of pinning individual API artifacts.
+        -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-enforcer-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>enforce-dependency-convergence</id>
+            <goals>
+              <goal>enforce</goal>
+            </goals>
+            <configuration>
+              <rules>
+                <dependencyConvergence/>
+              </rules>
+            </configuration>
+          </execution>
+          <execution>
+            <!-- The build JDK: the compiler release above is 25. -->
+            <id>enforce-require-java-version</id>
+            <goals>
+              <goal>enforce</goal>
+            </goals>
+            <configuration>
+              <rules>
+                <requireJavaVersion>
+                  <version>[25,)</version>
+                </requireJavaVersion>
+              </rules>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+</project>
