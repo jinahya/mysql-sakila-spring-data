@@ -89,15 +89,16 @@ public interface CountryRepository
     }
 
     /**
-     * Selects the countries that have a customer, with how many ({@code SAKILA_COUNTRY_I_02}, the book's pick, which
-     * takes the first five by {@code customers} descending, then by {@code co.country}).
+     * Selects the countries that have a customer, with how many, the most first ({@code SAKILA_COUNTRY_I_02}, the
+     * book's pick: the five countries with the most customers, where five is the size of the page).
      * <p>
      * The customers are joined along their address chain, to the address, its city and the city's country, grouped by
      * the country itself, which selects the country whole, and counted. The count query counts the countries that
-     * some customer lives in, through an {@code EXISTS} along the same chain.
+     * some customer lives in, through an {@code EXISTS} along the same chain. The exercise's order, by
+     * {@code customers} descending and then by the country's name, is in the query; a sort of the pageable comes
+     * after it.
      *
-     * @param pageable the page to return, and its sort, by {@code customers}, or by an attribute of the country
-     *                 through {@code co} ({@code co.country}, {@code co.countryId}, ...); must not be {@code null}.
+     * @param pageable the page to return; its size is the exercise's five; must not be {@code null}.
      * @return a page of the countries that have a customer, with their numbers of customers, each a tuple of
      *         {@code country} ({@link Country}) and {@code customers} ({@link Long}).
      */
@@ -107,7 +108,8 @@ public interface CountryRepository
             JOIN cu.address a
             JOIN a.city c
             JOIN c.country co
-            GROUP BY co""",
+            GROUP BY co
+            ORDER BY COUNT(cu) DESC, co.country""",
            countQuery = """
                    SELECT COUNT(co)
                    FROM Country co

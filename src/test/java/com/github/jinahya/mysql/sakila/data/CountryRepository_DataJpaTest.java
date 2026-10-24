@@ -215,19 +215,15 @@ class CountryRepository_DataJpaTest
     @Nested
     class SelectCustomerCounts_Test {
 
-        private static final Sort BY_CUSTOMERS_DESC_THEN_COUNTRY =
-                Sort.by(Sort.Direction.DESC, "customers").and(Sort.by("co.country"));
-
         /**
          * Saves a country with a city and an address, but no customer, which the H2 cannot hold, and asserts that the
-         * joined and grouped select, sorted as the exercise sorts, runs and selects an empty page, with no countries
-         * in all.
+         * joined and grouped select, in the query's own order, runs and selects an empty page, with no countries in
+         * all.
          */
         @Test
         void _Empty_NoCustomers() {
             fixtures().address(fixtures().city(saveCountry(randomName())));
-            final var page = repositoryInstance().selectCustomerCounts(
-                    PageRequest.of(0, 5, BY_CUSTOMERS_DESC_THEN_COUNTRY));
+            final var page = repositoryInstance().selectCustomerCounts(PageRequest.of(0, 5));
             assertThat(page).isEmpty();
             assertThat(page.getTotalElements()).isZero();
         }

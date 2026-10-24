@@ -235,22 +235,18 @@ class CountryRepository_SpringBootIT
     @Nested
     class SelectCustomerCounts_Test {
 
-        private static final Sort BY_CUSTOMERS_DESC_THEN_COUNTRY =
-                Sort.by(Sort.Direction.DESC, "customers").and(Sort.by("co.country"));
-
         private static Stream<Country> countries() {
             return CountryRepository_SpringBootIT.countries();
         }
 
         /**
-         * Asserts that the first five, by {@code customers} descending, then by {@code co.country}, are the five the
-         * exercise's SQL gives, and that the next page goes on from there, as many groups in all as the count query
-         * says.
+         * Asserts that the first page of five, which the query orders by customers descending and then by the
+         * country's name, holds the five the exercise's SQL gives, and that the next page goes on from there, as
+         * many groups in all as the count query says.
          */
         @Test
         void __TopFive() {
-            final var page = repositoryInstance().selectCustomerCounts(
-                    PageRequest.of(0, 5, BY_CUSTOMERS_DESC_THEN_COUNTRY));
+            final var page = repositoryInstance().selectCustomerCounts(PageRequest.of(0, 5));
             assertPage(page);
             assertThat(page.getContent())
                     .extracting(column("country", Country.class, Country::getCountry), column("customers", Long.class))
@@ -260,7 +256,7 @@ class CountryRepository_SpringBootIT
                             tuple("United States", 36L),
                             tuple("Japan", 31L),
                             tuple("Mexico", 30L));
-            final var all = repositoryInstance().selectCustomerCounts(Pageable.unpaged(BY_CUSTOMERS_DESC_THEN_COUNTRY));
+            final var all = repositoryInstance().selectCustomerCounts(Pageable.unpaged());
             assertThat(page.getTotalElements()).isEqualTo(all.getContent().size());
             final var next = repositoryInstance().selectCustomerCounts(page.nextPageable());
             assertThat(next.getContent())
@@ -278,7 +274,7 @@ class CountryRepository_SpringBootIT
         @MethodSource("countries")
         @ParameterizedTest
         void __(final Country country) {
-            final var all = repositoryInstance().selectCustomerCounts(Pageable.unpaged(BY_CUSTOMERS_DESC_THEN_COUNTRY));
+            final var all = repositoryInstance().selectCustomerCounts(Pageable.unpaged());
             final var customers = countCustomersIn(country);
             final var rows = all.getContent().stream()
                     .filter(c -> c.get("country", Country.class).equals(country))
