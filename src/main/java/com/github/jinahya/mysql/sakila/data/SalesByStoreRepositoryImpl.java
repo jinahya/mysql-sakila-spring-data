@@ -59,25 +59,25 @@ public class SalesByStoreRepositoryImpl
             sql(SalesByStoreRepositoryImpl.class, "SALES_BY_STORE_SUM_TOTAL_SALES.sql");
 
     /**
-     * The statement of {@link #listSales()}, {@code SAKILA-SALES_BY_STORE-B-01}.
+     * The statement of {@link #listSales()}, {@code SAKILA_SALES_BY_STORE_B_01}.
      */
     private static final String SQL_LIST_SALES =
             sql(SalesByStoreRepositoryImpl.class, "SALES_BY_STORE_LIST_SALES.sql");
 
     /**
-     * The statement of {@link #selectSalesDifference()}, {@code SAKILA-SALES_BY_STORE-B-02}.
+     * The statement of {@link #selectSalesDifference()}, {@code SAKILA_SALES_BY_STORE_B_02}.
      */
     private static final String SQL_SELECT_SALES_DIFFERENCE =
             sql(SalesByStoreRepositoryImpl.class, "SALES_BY_STORE_SELECT_SALES_DIFFERENCE.sql");
 
     /**
-     * The statement of {@link #sumByStoreAndWithARental()}, {@code SAKILA-SALES_BY_STORE-I-01}.
+     * The statement of {@link #sumByStoreAndWithARental()}, {@code SAKILA_SALES_BY_STORE_I_01}.
      */
     private static final String SQL_SUM_BY_STORE_AND_WITH_A_RENTAL =
             sql(SalesByStoreRepositoryImpl.class, "SALES_BY_STORE_SUM_BY_STORE_AND_WITH_A_RENTAL.sql");
 
     /**
-     * The statement of {@link #listSalesAndTakenByManager()}, {@code SAKILA-SALES_BY_STORE-I-02}.
+     * The statement of {@link #listSalesAndTakenByManager()}, {@code SAKILA_SALES_BY_STORE_I_02}.
      */
     private static final String SQL_LIST_SALES_AND_TAKEN_BY_MANAGER =
             sql(SalesByStoreRepositoryImpl.class, "SALES_BY_STORE_LIST_SALES_AND_TAKEN_BY_MANAGER.sql");

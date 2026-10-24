@@ -67,7 +67,7 @@ class SalesByFilmCategoryRepository_DataJpaTest
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * Tests {@link SalesByFilmCategoryRepository#listAll(Pageable)} ({@code SAKILA-SALES_BY_FILM_CATEGORY-B-01}).
+     * Tests {@link SalesByFilmCategoryRepository#listAll(Pageable)} ({@code SAKILA_SALES_BY_FILM_CATEGORY_B_01}).
      */
     @Nested
     class ListAll_Test {
@@ -101,7 +101,7 @@ class SalesByFilmCategoryRepository_DataJpaTest
 
     /**
      * Tests {@link SalesByFilmCategoryRepository#findAllByTotalSalesBetweenOrderByCategoryAsc(BigDecimal, BigDecimal)}
-     * ({@code SAKILA-SALES_BY_FILM_CATEGORY-B-02}).
+     * ({@code SAKILA_SALES_BY_FILM_CATEGORY_B_02}).
      */
     @Nested
     class FindAllByTotalSalesBetweenOrderByCategoryAsc_Test {
@@ -136,7 +136,7 @@ class SalesByFilmCategoryRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link SalesByFilmCategoryRepository#selectSalesTotals()} ({@code SAKILA-SALES_BY_FILM_CATEGORY-I-01}).
+     * Tests {@link SalesByFilmCategoryRepository#selectSalesTotals()} ({@code SAKILA_SALES_BY_FILM_CATEGORY_I_01}).
      */
     @Nested
     class SelectSalesTotals_Test {
@@ -160,7 +160,7 @@ class SalesByFilmCategoryRepository_DataJpaTest
 
     /**
      * Tests {@link SalesByFilmCategoryRepository#selectSalesShares(Pageable)}
-     * ({@code SAKILA-SALES_BY_FILM_CATEGORY-I-02}).
+     * ({@code SAKILA_SALES_BY_FILM_CATEGORY_I_02}).
      */
     @Nested
     class SelectSalesShares_Test {
@@ -197,7 +197,7 @@ class SalesByFilmCategoryRepository_DataJpaTest
 
     /**
      * Tests {@link SalesByFilmCategoryRepository#selectRunningTotals(Pageable)}
-     * ({@code SAKILA-SALES_BY_FILM_CATEGORY-A-01}).
+     * ({@code SAKILA_SALES_BY_FILM_CATEGORY_A_01}).
      */
     @Nested
     class SelectRunningTotals_Test {
@@ -233,7 +233,7 @@ class SalesByFilmCategoryRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link SalesByFilmCategoryRepository#selectGaps(Pageable)} ({@code SAKILA-SALES_BY_FILM_CATEGORY-A-02}).
+     * Tests {@link SalesByFilmCategoryRepository#selectGaps(Pageable)} ({@code SAKILA_SALES_BY_FILM_CATEGORY_A_02}).
      */
     @Nested
     class SelectGaps_Test {

@@ -31,7 +31,7 @@ import java.util.stream.Stream;
  * {@code (root, query, builder) -> builder.isTrue(root.get(Staff_.active))}.
  * <p>
  * The methods below answer the exercises of upstream's {@code EXERCISES.asciidoc} on the {@code staff} table, one
- * method per exercise, named in each method's javadoc by the exercise's id ({@code SAKILA-STAFF-B-01}, ...) and its
+ * method per exercise, named in each method's javadoc by the exercise's id ({@code SAKILA_STAFF_B_01}, ...) and its
  * role: the book's pick, or this module's own extra. A Basic exercise is plain: its method takes no {@link Pageable},
  * the order the exercise asks for is written in the query, and it returns a {@link List} (the book's pick) or a
  * {@link Stream} (this module's own extra). An Intermediate or Advanced exercise takes a {@link Pageable}, the page and
@@ -61,7 +61,7 @@ public interface StaffRepository
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * Finds every staff member, with the store they work at ({@code SAKILA-STAFF-B-01}, the book's pick, which orders
+     * Finds every staff member, with the store they work at ({@code SAKILA_STAFF_B_01}, the book's pick, which orders
      * by {@link Staff_#STAFF_ID}).
      * <p>
      * The query is derived from the method name, whose {@code OrderBy} is the exercise's order. The
@@ -74,7 +74,7 @@ public interface StaffRepository
     List<Staff> findAllByOrderByStaffIdAsc();
 
     /**
-     * Finds the staff members who have no password, as a stream ({@code SAKILA-STAFF-B-02}, this module's own extra,
+     * Finds the staff members who have no password, as a stream ({@code SAKILA_STAFF_B_02}, this module's own extra,
      * which orders by {@link Staff_#STAFF_ID}).
      * <p>
      * The query is derived from the method name: an {@code IS NULL} on {@link Staff_#PASSWORD}, and the exercise's
@@ -92,7 +92,7 @@ public interface StaffRepository
     Stream<Staff> findAllByPasswordIsNullOrderByStaffIdAsc();
 
     /**
-     * Selects the staff members who handled at least one rental, with how many ({@code SAKILA-STAFF-I-01}, this
+     * Selects the staff members who handled at least one rental, with how many ({@code SAKILA_STAFF_I_01}, this
      * module's own extra, which orders by {@code s.staffId}).
      * <p>
      * The staff member has no collection of rentals, so the query starts from {@code Rental}, joins its
@@ -118,7 +118,7 @@ public interface StaffRepository
     Page<Tuple> selectRentalCounts(Pageable pageable);
 
     /**
-     * Lists the staff members who manage the very store they work at ({@code SAKILA-STAFF-I-02}, the book's pick,
+     * Lists the staff members who manage the very store they work at ({@code SAKILA_STAFF_I_02}, the book's pick,
      * which orders by {@link Staff_#STAFF_ID}).
      * <p>
      * A {@link Specification} with a join: the staff member's {@link Staff_#STORE} is joined, and its
@@ -139,7 +139,7 @@ public interface StaffRepository
 
     /**
      * Selects, for each staff member, the day on which the staff member took the most, with how many payments and
-     * how much ({@code SAKILA-STAFF-A-01}, the book's pick, which orders by {@code s.staffId}).
+     * how much ({@code SAKILA_STAFF_A_01}, the book's pick, which orders by {@code s.staffId}).
      * <p>
      * The payments are grouped by the staff member itself, selected whole, and by day, the date part of
      * {@code paymentDate}, and a group is kept by a {@code HAVING} when its sum is not less than {@code ALL} the sums

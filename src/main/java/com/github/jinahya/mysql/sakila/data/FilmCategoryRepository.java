@@ -35,7 +35,7 @@ import java.util.List;
  * <p>
  * The methods below answer the exercises of upstream's {@code EXERCISES.asciidoc} on the {@code film_category}
  * table, one method per exercise, in the order of the exercises' ids, each named in its javadoc by the id
- * ({@code SAKILA-FILM_CATEGORY-B-02}, ...) and by its role: the book's pick or this module's own extra. The exercises
+ * ({@code SAKILA_FILM_CATEGORY_B_02}, ...) and by its role: the book's pick or this module's own extra. The exercises
  * are context, not contract. A Basic one is plain: no {@link Pageable}, the order the exercise asks for written in
  * the query, a {@link List} for the book's pick. An Intermediate or Advanced one takes a {@link Pageable}, the page
  * and the sort, and returns a {@link Page}, so the order the exercise asks for, and its {@code LIMIT}, are the
@@ -64,7 +64,7 @@ public interface FilmCategoryRepository
 
     /**
      * Finds the links whose value of {@link FilmCategory_#FILM_ID} attribute is between the specified values,
-     * inclusive ({@code SAKILA-FILM_CATEGORY-B-02}, the book's pick, which asks for the films {@code 1} to
+     * inclusive ({@code SAKILA_FILM_CATEGORY_B_02}, the book's pick, which asks for the films {@code 1} to
      * {@code 10}, and orders by {@link FilmCategory_#FILM_ID}).
      * <p>
      * The query, and its order, are derived from the method name. A film of more than one category would have a link
@@ -78,7 +78,7 @@ public interface FilmCategoryRepository
 
     /**
      * Selects the films which have more than the specified number of categories, with their counts
-     * ({@code SAKILA-FILM_CATEGORY-I-01}, the book's pick, which asks for more than one, {@code 1}, and names no
+     * ({@code SAKILA_FILM_CATEGORY_I_01}, the book's pick, which asks for more than one, {@code 1}, and names no
      * order; the sample data has none, since every film has exactly one category).
      * <p>
      * The links are joined with their film, grouped by the film itself, which selects the film whole, and counted;
@@ -108,7 +108,7 @@ public interface FilmCategoryRepository
     Page<Tuple> selectFilmsWithMoreCategoriesThan(long categories, Pageable pageable);
 
     /**
-     * Selects the films which have no category ({@code SAKILA-FILM_CATEGORY-I-02}, this module's own extra, which
+     * Selects the films which have no category ({@code SAKILA_FILM_CATEGORY_I_02}, this module's own extra, which
      * asks how many; that is the page's {@link Page#getTotalElements()}, whatever its size, and the exercise names no
      * order; the sample data has none).
      * <p>
@@ -128,7 +128,7 @@ public interface FilmCategoryRepository
     Page<Film> selectFilmsWithoutCategory(Pageable pageable);
 
     /**
-     * Selects the longest film of each category ({@code SAKILA-FILM_CATEGORY-A-01}, this module's own extra, which
+     * Selects the longest film of each category ({@code SAKILA_FILM_CATEGORY_A_01}, this module's own extra, which
      * orders by {@code c.name}; of films of the same length, the one of the smallest id is the longest).
      * <p>
      * A link is kept when no other link of its category has a longer film, or a film as long with a smaller id, which
@@ -167,7 +167,7 @@ public interface FilmCategoryRepository
 
     /**
      * Selects the pairs of categories which have the same number of films, with that number
-     * ({@code SAKILA-FILM_CATEGORY-A-02}, the book's pick, which orders by {@code films} descending, then by
+     * ({@code SAKILA_FILM_CATEGORY_A_02}, the book's pick, which orders by {@code films} descending, then by
      * {@code c1.name}, then by {@code c2.name}).
      * <p>
      * Each category is paired with every category of a greater name, so each pair is selected once, the smaller name

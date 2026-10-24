@@ -32,7 +32,7 @@ import java.util.stream.Stream;
  * {@code (root, query, builder) -> builder.isTrue(root.get(Customer_.active))}.
  * <p>
  * The methods below answer the exercises of upstream's {@code EXERCISES.asciidoc} on the {@code customer} table, one
- * method per exercise, named in each method's javadoc by the exercise's id ({@code SAKILA-CUSTOMER-B-01}, ...), and
+ * method per exercise, named in each method's javadoc by the exercise's id ({@code SAKILA_CUSTOMER_B_01}, ...), and
  * by its role: the book's pick, which every data module answers, this module's own extra, or a native-only one. A
  * Basic method is plain: the book's pick returns a {@link List}, this module's own extra a {@link Stream}, in the
  * order the exercise asks for, written in the query. An Intermediate or Advanced method takes a {@link Pageable}, the
@@ -67,7 +67,7 @@ public interface CustomerRepository
 
     /**
      * Selects each value of the {@link Customer_#ACTIVE} flag with the number of customers who have it, as a stream
-     * ({@code SAKILA-CUSTOMER-B-01}, this module's own extra, which orders by {@code active}).
+     * ({@code SAKILA_CUSTOMER_B_01}, this module's own extra, which orders by {@code active}).
      * <p>
      * The customers are grouped by the flag and counted, in the order of the flag, written in the query. The flag is a
      * {@link Boolean} here, mapped from the {@code 0} / {@code 1} of the column, so the stream yields at most two rows,
@@ -90,7 +90,7 @@ public interface CustomerRepository
     Stream<Tuple> selectActiveCounts();
 
     /**
-     * Selects each store with the number of its customers ({@code SAKILA-CUSTOMER-B-02}, the book's pick, which
+     * Selects each store with the number of its customers ({@code SAKILA_CUSTOMER_B_02}, the book's pick, which
      * orders by the store's id).
      * <p>
      * The customers are joined with their {@link Customer_#STORE}, grouped by the store itself, which selects the
@@ -108,7 +108,7 @@ public interface CustomerRepository
     List<Tuple> selectStoreCounts();
 
     /**
-     * Selects the customers who paid at least once, with the sum of their payments ({@code SAKILA-CUSTOMER-I-01},
+     * Selects the customers who paid at least once, with the sum of their payments ({@code SAKILA_CUSTOMER_I_01},
      * the book's pick, which takes the first five by {@code paid} descending, then by {@code c.customerId}, so that
      * the five are always the same five).
      * <p>
@@ -133,7 +133,7 @@ public interface CustomerRepository
     Page<Tuple> selectPaidTotals(Pageable pageable);
 
     /**
-     * Lists the customers who never rented ({@code SAKILA-CUSTOMER-I-02}, this module's own extra, which shows the
+     * Lists the customers who never rented ({@code SAKILA_CUSTOMER_I_02}, this module's own extra, which shows the
      * whole rows, in no particular order; give it one, such as by {@link Customer_#CUSTOMER_ID}; the installed sample
      * data has none).
      * <p>
@@ -150,7 +150,7 @@ public interface CustomerRepository
     }
 
     /**
-     * Selects the three customers who paid the most at each store ({@code SAKILA-CUSTOMER-A-01}, native-only, ordered
+     * Selects the three customers who paid the most at each store ({@code SAKILA_CUSTOMER_A_01}, native-only, ordered
      * by {@code store_id}, then by {@code paid} descending, then by {@code customer_id}, in the query).
      * <p>
      * The payments are summed by customer, and the customers numbered within their store by {@code ROW_NUMBER()}, the
@@ -176,7 +176,7 @@ public interface CustomerRepository
 
     /**
      * Selects, for each store, how many of its customers paid more than the store's average paying customer, with
-     * that average ({@code SAKILA-CUSTOMER-A-02}, the book's pick, which orders by {@code s.storeId}).
+     * that average ({@code SAKILA_CUSTOMER_A_02}, the book's pick, which orders by {@code s.storeId}).
      * <p>
      * JPQL has no common table expression, so the sums are correlated subqueries: a customer's own sum of payments,
      * against the sum of all payments to customers of the store divided by the number of the store's customers who

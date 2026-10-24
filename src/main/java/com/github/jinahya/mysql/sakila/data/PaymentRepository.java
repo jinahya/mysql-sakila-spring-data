@@ -33,7 +33,7 @@ import java.util.stream.Stream;
  * {@code (root, query, builder) -> builder.equal(root.get(Payment_.customer), customer)}.
  * <p>
  * The methods below answer the exercises of upstream's {@code EXERCISES.asciidoc} on the {@code payment} table, one
- * method per exercise, named in each method's javadoc by the exercise's id ({@code SAKILA-PAYMENT-B-02}, ...) and its
+ * method per exercise, named in each method's javadoc by the exercise's id ({@code SAKILA_PAYMENT_B_02}, ...) and its
  * role: the book's pick, this module's own extra, native-only, or not a pick at all. The exercises are context, not
  * contract. A Basic one is plain: the book's pick returns a {@link List}, this module's own extra a {@link Stream},
  * and the order the exercise asks for is written in the query. An Intermediate or Advanced one takes a
@@ -66,7 +66,7 @@ public interface PaymentRepository
 
     /**
      * Selects each staff member who took a payment, with the number of payments the staff member took and their sum,
-     * as a stream ({@code SAKILA-PAYMENT-B-01}, this module's own extra, which orders by the staff member's id).
+     * as a stream ({@code SAKILA_PAYMENT_B_01}, this module's own extra, which orders by the staff member's id).
      * <p>
      * The payments are grouped by their {@link Payment_#STAFF}, joined, and counted and summed; the staff member is
      * selected whole, and the payments grouped by the staff member itself. The order is the exercise's, written in
@@ -92,7 +92,7 @@ public interface PaymentRepository
 
     /**
      * Selects each month in which a payment was made, with the number of payments made in it and their sum
-     * ({@code SAKILA-PAYMENT-B-02}, the book's pick, which orders by the month, that is by the year and then by the
+     * ({@code SAKILA_PAYMENT_B_02}, the book's pick, which orders by the month, that is by the year and then by the
      * month).
      * <p>
      * JPQL has no {@code DATE_FORMAT}, so the month the exercise writes as {@code YYYY-MM} is two columns here, the
@@ -114,7 +114,7 @@ public interface PaymentRepository
     List<Tuple> selectMonthlyTotals();
 
     /**
-     * Counts the payments which refer to no rental ({@code SAKILA-PAYMENT-B-03}, not a pick; a count is not a list).
+     * Counts the payments which refer to no rental ({@code SAKILA_PAYMENT_B_03}, not a pick; a count is not a list).
      * <p>
      * A {@link Specification} of one predicate, {@code isNull} on the payment's {@link Payment_#RENTAL}, which
      * Hibernate renders as a test of the foreign key column, counted through
@@ -128,7 +128,7 @@ public interface PaymentRepository
     }
 
     /**
-     * Lists the payments whose amount is the largest of all ({@code SAKILA-PAYMENT-I-01}, the book's pick, which
+     * Lists the payments whose amount is the largest of all ({@code SAKILA_PAYMENT_I_01}, the book's pick, which
      * shows the largest amount and how many payments are that large: the amount of any payment of the page, and the
      * page's total number of elements; sort by {@link Payment_#PAYMENT_ID}).
      * <p>
@@ -152,7 +152,7 @@ public interface PaymentRepository
 
     /**
      * Selects the customers whose payments add up to more than the specified amount, with the sums
-     * ({@code SAKILA-PAYMENT-I-02}, this module's own extra, which asks for more than {@code 180}, and orders by
+     * ({@code SAKILA_PAYMENT_I_02}, this module's own extra, which asks for more than {@code 180}, and orders by
      * {@code total} descending, then by {@code c.customerId}).
      * <p>
      * The payments are grouped by their {@link Payment_#CUSTOMER}, joined, and summed; the customer is selected
@@ -183,7 +183,7 @@ public interface PaymentRepository
 
     /**
      * Selects the payments of the customer of the specified id, each with the running total of the customer's
-     * payments up to and including it ({@code SAKILA-PAYMENT-A-01}, the book's pick, which asks for the customer
+     * payments up to and including it ({@code SAKILA_PAYMENT_A_01}, the book's pick, which asks for the customer
      * {@code 1}, orders by {@code p.paymentDate}, then by {@code p.paymentId}, and takes the first ten).
      * <p>
      * JPQL has no window function, so the running total is a self-join: each payment {@code p} of the customer is
@@ -215,7 +215,7 @@ public interface PaymentRepository
     Page<Tuple> selectRunningTotals(Integer customerId, Pageable pageable);
 
     /**
-     * Selects the runs of consecutive days on which payments were made ({@code SAKILA-PAYMENT-A-02}, native-only,
+     * Selects the runs of consecutive days on which payments were made ({@code SAKILA_PAYMENT_A_02}, native-only,
      * which orders by {@code first_day}).
      * <p>
      * The gaps-and-islands of the days: the distinct days of the payments, each less its row number in days, give

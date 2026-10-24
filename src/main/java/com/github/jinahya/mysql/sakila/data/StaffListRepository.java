@@ -28,7 +28,7 @@ import java.util.List;
  * {@code (root, query, builder) -> builder.equal(root.get(StaffList_.sid), sid)}.
  * <p>
  * The methods below answer the exercises of upstream's {@code EXERCISES.asciidoc} on the {@code staff_list} view, one
- * method per exercise, named in each method's javadoc by the exercise's id ({@code SAKILA-STAFF_LIST-B-01}, ...) and
+ * method per exercise, named in each method's javadoc by the exercise's id ({@code SAKILA_STAFF_LIST_B_01}, ...) and
  * its role: the book's pick, or this module's own extra; the section has no more. A Basic exercise is plain: its
  * method takes no {@link Pageable}, the order the exercise asks for is written in the query, and it returns a
  * {@link List}. An Intermediate exercise that lists rows takes a {@link Pageable}, the page and the sort, and returns a
@@ -54,7 +54,7 @@ public interface StaffListRepository
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * Finds every row of the view ({@code SAKILA-STAFF_LIST-B-01}, the book's pick, which orders by
+     * Finds every row of the view ({@code SAKILA_STAFF_LIST_B_01}, the book's pick, which orders by
      * {@link StaffList_#ID}).
      * <p>
      * The query is derived from the method name, whose {@code OrderBy} is the exercise's order. The sample data has
@@ -66,7 +66,7 @@ public interface StaffListRepository
 
     /**
      * Selects how many rows the view has, next to how many staff members the {@code staff} table has
-     * ({@code SAKILA-STAFF_LIST-I-01}, this module's own extra, which checks that the two are equal; one row, so
+     * ({@code SAKILA_STAFF_LIST_I_01}, this module's own extra, which checks that the two are equal; one row, so
      * no sort).
      * <p>
      * The view uses inner joins, so a staff member whose address chain is broken would be missing from it; the two
@@ -84,7 +84,7 @@ public interface StaffListRepository
 
     /**
      * Selects each row of the view, which carries the city the staff member lives in, the view's own
-     * {@link StaffList_#CITY}, with the city of the store the staff member works at ({@code SAKILA-STAFF_LIST-I-02},
+     * {@link StaffList_#CITY}, with the city of the store the staff member works at ({@code SAKILA_STAFF_LIST_I_02},
      * the book's pick, which orders by {@code l.id}).
      * <p>
      * The view names the store by its id only, {@link StaffList_#SID}, which is no association, so the store is a

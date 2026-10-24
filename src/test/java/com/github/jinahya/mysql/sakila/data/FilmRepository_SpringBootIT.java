@@ -148,7 +148,7 @@ class FilmRepository_SpringBootIT
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * Tests {@link FilmRepository#selectRatingCounts()} ({@code SAKILA-FILM-B-01}).
+     * Tests {@link FilmRepository#selectRatingCounts()} ({@code SAKILA_FILM_B_01}).
      */
     @Nested
     class SelectRatingCounts_Test {
@@ -208,7 +208,7 @@ class FilmRepository_SpringBootIT
     }
 
     /**
-     * Tests {@link FilmRepository#listLongerThan(int, Pageable)} ({@code SAKILA-FILM-B-02}, not a pick).
+     * Tests {@link FilmRepository#listLongerThan(int, Pageable)} ({@code SAKILA_FILM_B_02}, not a pick).
      */
     @Nested
     class ListLongerThan_Test {
@@ -250,7 +250,7 @@ class FilmRepository_SpringBootIT
     }
 
     /**
-     * Tests {@link FilmRepository#selectAverageRentalRates()} ({@code SAKILA-FILM-B-03}).
+     * Tests {@link FilmRepository#selectAverageRentalRates()} ({@code SAKILA_FILM_B_03}).
      */
     @Nested
     class SelectAverageRentalRates_Test {
@@ -294,7 +294,7 @@ class FilmRepository_SpringBootIT
     }
 
     /**
-     * Tests {@link FilmRepository#listWithoutInventory(Pageable)} ({@code SAKILA-FILM-I-01}).
+     * Tests {@link FilmRepository#listWithoutInventory(Pageable)} ({@code SAKILA_FILM_I_01}).
      */
     @Nested
     class ListWithoutInventory_Test {
@@ -342,7 +342,7 @@ class FilmRepository_SpringBootIT
     }
 
     /**
-     * Tests {@link FilmRepository#selectRentalCounts(Pageable)} ({@code SAKILA-FILM-I-02}).
+     * Tests {@link FilmRepository#selectRentalCounts(Pageable)} ({@code SAKILA_FILM_I_02}).
      */
     @Nested
     class SelectRentalCounts_Test {
@@ -399,7 +399,7 @@ class FilmRepository_SpringBootIT
     }
 
     /**
-     * Tests {@link FilmRepository#selectRatingCountsOfLongerThanRatingAverage(Pageable)} ({@code SAKILA-FILM-A-01}).
+     * Tests {@link FilmRepository#selectRatingCountsOfLongerThanRatingAverage(Pageable)} ({@code SAKILA_FILM_A_01}).
      */
     @Nested
     class SelectRatingCountsOfLongerThanRatingAverage_Test {

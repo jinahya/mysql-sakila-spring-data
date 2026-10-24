@@ -62,7 +62,7 @@ class CustomerListRepository_DataJpaTest
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * Tests {@link CustomerListRepository#findAllByCountryOrderByIdAsc(String)} ({@code SAKILA-CUSTOMER_LIST-B-01}).
+     * Tests {@link CustomerListRepository#findAllByCountryOrderByIdAsc(String)} ({@code SAKILA_CUSTOMER_LIST_B_01}).
      */
     @Nested
     class FindAllByCountryOrderByIdAsc_Test {
@@ -116,7 +116,7 @@ class CustomerListRepository_DataJpaTest
 
     /**
      * Tests {@link CustomerListRepository#selectCustomerCountsBySid(Pageable)}
-     * ({@code SAKILA-CUSTOMER_LIST-B-02}).
+     * ({@code SAKILA_CUSTOMER_LIST_B_02}).
      */
     @Nested
     class SelectCustomerCountsBySid_Test {
@@ -137,7 +137,7 @@ class CustomerListRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link CustomerListRepository#selectNotesCounts()} ({@code SAKILA-CUSTOMER_LIST-B-03}).
+     * Tests {@link CustomerListRepository#selectNotesCounts()} ({@code SAKILA_CUSTOMER_LIST_B_03}).
      */
     @Nested
     class SelectNotesCounts_Test {
@@ -154,7 +154,7 @@ class CustomerListRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link CustomerListRepository#selectRowCounts(Pageable)} ({@code SAKILA-CUSTOMER_LIST-I-01}).
+     * Tests {@link CustomerListRepository#selectRowCounts(Pageable)} ({@code SAKILA_CUSTOMER_LIST_I_01}).
      */
     @Nested
     class SelectRowCounts_Test {
@@ -201,7 +201,7 @@ class CustomerListRepository_DataJpaTest
 
     /**
      * Tests {@link CustomerListRepository#selectCitiesWithMoreCustomersThan(long, Pageable)}
-     * ({@code SAKILA-CUSTOMER_LIST-I-02}).
+     * ({@code SAKILA_CUSTOMER_LIST_I_02}).
      */
     @Nested
     class SelectCitiesWithMoreCustomersThan_Test {
@@ -244,7 +244,7 @@ class CustomerListRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link CustomerListRepository#selectTopThreeCountriesOfEachStore()} ({@code SAKILA-CUSTOMER_LIST-A-01}).
+     * Tests {@link CustomerListRepository#selectTopThreeCountriesOfEachStore()} ({@code SAKILA_CUSTOMER_LIST_A_01}).
      */
     @Nested
     class SelectTopThreeCountriesOfEachStore_Test {

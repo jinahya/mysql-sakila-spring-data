@@ -33,7 +33,7 @@ import java.util.stream.Stream;
  * <p>
  * The methods below answer the exercises of upstream's {@code EXERCISES.asciidoc} on the {@code film} table, one
  * method per exercise, in the order of the exercises' ids, each named in its javadoc by the id
- * ({@code SAKILA-FILM-B-01}, ...) and by its role: the book's pick, this module's own extra, or not a pick, kept from
+ * ({@code SAKILA_FILM_B_01}, ...) and by its role: the book's pick, this module's own extra, or not a pick, kept from
  * before the picks. The exercises are context, not contract. A Basic one is plain: no {@link Pageable}, the order the
  * exercise asks for written in the query, a {@link List} for the book's pick and a {@link Stream} for this module's
  * own extra. An Intermediate or Advanced one takes a {@link Pageable}, the page and the sort, and returns a
@@ -64,7 +64,7 @@ public interface FilmRepository
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * Selects the ratings, with how many films each has ({@code SAKILA-FILM-B-01}, the book's pick, which orders by
+     * Selects the ratings, with how many films each has ({@code SAKILA_FILM_B_01}, the book's pick, which orders by
      * {@code rating}).
      * <p>
      * The films are grouped by rating and counted, so it is a {@link Query}, not a {@link Specification}, and the
@@ -85,7 +85,7 @@ public interface FilmRepository
 
     /**
      * Lists the films whose value of {@link Film_#LENGTH} attribute is greater than the specified value
-     * ({@code SAKILA-FILM-B-02}, not a pick, which takes the first five by {@link Film_#LENGTH} descending, then by
+     * ({@code SAKILA_FILM_B_02}, not a pick, which takes the first five by {@link Film_#LENGTH} descending, then by
      * {@link Film_#TITLE}; the exercise asks for more than three hours, {@code 180}).
      * <p>
      * A {@link Specification} of one comparison; no join. A film with no length is not longer than anything, so it
@@ -102,7 +102,7 @@ public interface FilmRepository
     }
 
     /**
-     * Selects the ratings, with the average rental rate of the films of each, as a stream ({@code SAKILA-FILM-B-03},
+     * Selects the ratings, with the average rental rate of the films of each, as a stream ({@code SAKILA_FILM_B_03},
      * this module's own extra, which orders by {@code rating}).
      * <p>
      * The films are grouped by rating, and the average of their {@link Film_#RENTAL_RATE} is rounded to two decimal
@@ -127,7 +127,7 @@ public interface FilmRepository
     Stream<Tuple> selectAverageRentalRates();
 
     /**
-     * Lists the films which have no copy in the inventory ({@code SAKILA-FILM-I-01}, this module's own extra, which
+     * Lists the films which have no copy in the inventory ({@code SAKILA_FILM_I_01}, this module's own extra, which
      * asks how many; that is the page's {@link Page#getTotalElements()}, whatever its size, and the exercise names no
      * order).
      * <p>
@@ -145,7 +145,7 @@ public interface FilmRepository
     }
 
     /**
-     * Selects the films which were rented at least once, with how many times ({@code SAKILA-FILM-I-02}, the book's
+     * Selects the films which were rented at least once, with how many times ({@code SAKILA_FILM_I_02}, the book's
      * pick, which takes the first five by {@code rentals} descending, then by {@code f.filmId}, so that the five
      * are always the same five).
      * <p>
@@ -175,7 +175,7 @@ public interface FilmRepository
 
     /**
      * Selects the ratings, with how many of their films are longer than the average film of the rating
-     * ({@code SAKILA-FILM-A-01}, the book's pick, which orders by {@code rating}).
+     * ({@code SAKILA_FILM_A_01}, the book's pick, which orders by {@code rating}).
      * <p>
      * A correlated subquery averages the {@link Film_#LENGTH} of the films of the outer film's rating; the films
      * longer than it are grouped by rating and counted. The count query counts the distinct ratings that keep a film

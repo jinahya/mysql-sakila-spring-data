@@ -96,49 +96,49 @@ public class FilmListRepositoryImpl
     private static final String SQL_COUNT_ALL = sql(FilmListRepositoryImpl.class, "FILM_LIST_COUNT_ALL.sql");
 
     /**
-     * The statement of {@link #countActionFilms()}, {@code SAKILA-FILM_LIST-B-01}.
+     * The statement of {@link #countActionFilms()}, {@code SAKILA_FILM_LIST_B_01}.
      */
     private static final String SQL_COUNT_ACTION_FILMS =
             sql(FilmListRepositoryImpl.class, "FILM_LIST_COUNT_ACTION_FILMS.sql");
 
     /**
-     * The statement of {@link #listActorsOfFilmOne()}, {@code SAKILA-FILM_LIST-B-02}.
+     * The statement of {@link #listActorsOfFilmOne()}, {@code SAKILA_FILM_LIST_B_02}.
      */
     private static final String SQL_LIST_ACTORS_OF_FILM_ONE =
             sql(FilmListRepositoryImpl.class, "FILM_LIST_LIST_ACTORS_OF_FILM_ONE.sql");
 
     /**
-     * The statement of {@link #listChildrenFilmsRatedG()}, {@code SAKILA-FILM_LIST-B-03}.
+     * The statement of {@link #listChildrenFilmsRatedG()}, {@code SAKILA_FILM_LIST_B_03}.
      */
     private static final String SQL_LIST_CHILDREN_FILMS_RATED_G =
             sql(FilmListRepositoryImpl.class, "FILM_LIST_LIST_CHILDREN_FILMS_RATED_G.sql");
 
     /**
-     * The statement of {@link #listFilmsWithNoActor()}, {@code SAKILA-FILM_LIST-B-04}.
+     * The statement of {@link #listFilmsWithNoActor()}, {@code SAKILA_FILM_LIST_B_04}.
      */
     private static final String SQL_LIST_FILMS_WITH_NO_ACTOR =
             sql(FilmListRepositoryImpl.class, "FILM_LIST_LIST_FILMS_WITH_NO_ACTOR.sql");
 
     /**
-     * The statement of {@link #countFilmListAndFilmsWithACategory()}, {@code SAKILA-FILM_LIST-I-01}.
+     * The statement of {@link #countFilmListAndFilmsWithACategory()}, {@code SAKILA_FILM_LIST_I_01}.
      */
     private static final String SQL_COUNT_FILM_LIST_AND_FILMS_WITH_A_CATEGORY =
             sql(FilmListRepositoryImpl.class, "FILM_LIST_COUNT_FILM_LIST_AND_FILMS_WITH_A_CATEGORY.sql");
 
     /**
-     * The statement of {@link #countFilmsByRatingAndPrice()}, {@code SAKILA-FILM_LIST-I-02}.
+     * The statement of {@link #countFilmsByRatingAndPrice()}, {@code SAKILA_FILM_LIST_I_02}.
      */
     private static final String SQL_COUNT_FILMS_BY_RATING_AND_PRICE =
             sql(FilmListRepositoryImpl.class, "FILM_LIST_COUNT_FILMS_BY_RATING_AND_PRICE.sql");
 
     /**
-     * The statement of {@link #listFilmsMiscountingActors()}, {@code SAKILA-FILM_LIST-I-03}.
+     * The statement of {@link #listFilmsMiscountingActors()}, {@code SAKILA_FILM_LIST_I_03}.
      */
     private static final String SQL_LIST_FILMS_MISCOUNTING_ACTORS =
             sql(FilmListRepositoryImpl.class, "FILM_LIST_LIST_FILMS_MISCOUNTING_ACTORS.sql");
 
     /**
-     * The statement of {@link #countLongerThanAverageByCategory()}, {@code SAKILA-FILM_LIST-A-01}.
+     * The statement of {@link #countLongerThanAverageByCategory()}, {@code SAKILA_FILM_LIST_A_01}.
      */
     private static final String SQL_COUNT_LONGER_THAN_AVERAGE_BY_CATEGORY =
             sql(FilmListRepositoryImpl.class, "FILM_LIST_COUNT_LONGER_THAN_AVERAGE_BY_CATEGORY.sql");

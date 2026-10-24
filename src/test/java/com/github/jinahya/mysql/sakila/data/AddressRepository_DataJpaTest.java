@@ -111,7 +111,7 @@ class AddressRepository_DataJpaTest
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * Tests {@link AddressRepository#findAllByAddress2IsNullOrderByAddressIdAsc()} ({@code SAKILA-ADDRESS-B-03}).
+     * Tests {@link AddressRepository#findAllByAddress2IsNullOrderByAddressIdAsc()} ({@code SAKILA_ADDRESS_B_03}).
      */
     @Nested
     class FindAllByAddress2IsNullOrderByAddressIdAsc_Test {
@@ -137,7 +137,7 @@ class AddressRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link AddressRepository#findAllByDistrictOrderByAddressIdAsc(String)} ({@code SAKILA-ADDRESS-B-04}).
+     * Tests {@link AddressRepository#findAllByDistrictOrderByAddressIdAsc(String)} ({@code SAKILA_ADDRESS_B_04}).
      */
     @Nested
     class FindAllByDistrictOrderByAddressIdAsc_Test {
@@ -208,7 +208,7 @@ class AddressRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link AddressRepository#listWithCityAndCountry(Pageable)} ({@code SAKILA-ADDRESS-I-01}).
+     * Tests {@link AddressRepository#listWithCityAndCountry(Pageable)} ({@code SAKILA_ADDRESS_I_01}).
      */
     @Nested
     class ListWithCityAndCountry_Test {
@@ -248,7 +248,7 @@ class AddressRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link AddressRepository#selectDistrictsInMoreCountriesThan(long, Pageable)} ({@code SAKILA-ADDRESS-I-02}).
+     * Tests {@link AddressRepository#selectDistrictsInMoreCountriesThan(long, Pageable)} ({@code SAKILA_ADDRESS_I_02}).
      */
     @Nested
     class SelectDistrictsInMoreCountriesThan_Test {
@@ -306,7 +306,7 @@ class AddressRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link AddressRepository#listUnused(Pageable)} ({@code SAKILA-ADDRESS-A-01}).
+     * Tests {@link AddressRepository#listUnused(Pageable)} ({@code SAKILA_ADDRESS_A_01}).
      */
     @Nested
     class ListUnused_Test {
@@ -340,7 +340,7 @@ class AddressRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link AddressRepository#selectPairsSharingPostalCode(Pageable)} ({@code SAKILA-ADDRESS-A-02}).
+     * Tests {@link AddressRepository#selectPairsSharingPostalCode(Pageable)} ({@code SAKILA_ADDRESS_A_02}).
      */
     @Nested
     class SelectPairsSharingPostalCode_Test {
@@ -411,7 +411,7 @@ class AddressRepository_DataJpaTest
 
     /**
      * Tests {@link AddressRepository#selectTopThreeDistrictsOfIndiaChinaAndUnitedStates()}
-     * ({@code SAKILA-ADDRESS-A-03}).
+     * ({@code SAKILA_ADDRESS_A_03}).
      */
     @Nested
     class SelectTopThreeDistrictsOfIndiaChinaAndUnitedStates_Test {

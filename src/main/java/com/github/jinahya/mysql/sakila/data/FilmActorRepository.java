@@ -37,7 +37,7 @@ import java.util.Optional;
  * <p>
  * The methods below answer the exercises of upstream's {@code EXERCISES.asciidoc} on the {@code film_actor} table,
  * one method per exercise, in the order of the exercises' ids, each named in its javadoc by the id
- * ({@code SAKILA-FILM_ACTOR-I-01}, ...) and by its role: the book's pick, this module's own extra, or native-only.
+ * ({@code SAKILA_FILM_ACTOR_I_01}, ...) and by its role: the book's pick, this module's own extra, or native-only.
  * The exercises are context, not contract: a method that shows rows takes a {@link Pageable}, the page and the sort,
  * and returns a {@link Page}, so the order the exercise asks for, and its {@code LIMIT}, are the caller's
  * {@code PageRequest}; each method's javadoc says which sort that is. Every exercise of this table groups and counts
@@ -64,7 +64,7 @@ public interface FilmActorRepository
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * Selects the films which have at least one actor, with how many ({@code SAKILA-FILM_ACTOR-I-01}, this module's
+     * Selects the films which have at least one actor, with how many ({@code SAKILA_FILM_ACTOR_I_01}, this module's
      * own extra, which takes the first five by {@code actors} descending, then by {@code f.filmId}, so that the five
      * are always the same five).
      * <p>
@@ -88,7 +88,7 @@ public interface FilmActorRepository
 
     /**
      * Selects how many actors a film has, on average, over the films which have at least one
-     * ({@code SAKILA-FILM_ACTOR-I-02}, the book's pick, which rounds to two decimal places).
+     * ({@code SAKILA_FILM_ACTOR_I_02}, the book's pick, which rounds to two decimal places).
      * <p>
      * The average of the counts of each film is the number of links divided by the number of distinct films among
      * them, so one aggregate query does it, with no subquery, rounded in the query, as the exercise does. The division
@@ -106,7 +106,7 @@ public interface FilmActorRepository
     Optional<Double> selectAverageActors();
 
     /**
-     * Selects the numbers of actors the films have, with how many films have each ({@code SAKILA-FILM_ACTOR-I-04},
+     * Selects the numbers of actors the films have, with how many films have each ({@code SAKILA_FILM_ACTOR_I_04},
      * native-only, which orders by {@code actors}).
      * <p>
      * A {@link NativeQuery} with the exercise's SQL, which upstream answers in SQL only: the films are counted by
@@ -125,7 +125,7 @@ public interface FilmActorRepository
 
     /**
      * Selects the pairs of actors who appear in a film together, with how many films
-     * ({@code SAKILA-FILM_ACTOR-A-01}, the book's pick, which takes the first three by {@code films} descending, then
+     * ({@code SAKILA_FILM_ACTOR_A_01}, the book's pick, which takes the first three by {@code films} descending, then
      * by {@code a1.actorId}, then by {@code a2.actorId}).
      * <p>
      * A self-join: every link is paired with every other link of the same film whose actor's id is greater, so each
@@ -161,7 +161,7 @@ public interface FilmActorRepository
     Page<Tuple> selectCoStarCounts(Pageable pageable);
 
     /**
-     * Selects the pairs of films which have exactly the same actors, with how many ({@code SAKILA-FILM_ACTOR-A-03},
+     * Selects the pairs of films which have exactly the same actors, with how many ({@code SAKILA_FILM_ACTOR_A_03},
      * this module's own extra, which orders by {@code f1.filmId}, then by {@code f2.filmId}).
      * <p>
      * A self-join: every link is paired with every other link of the same actor whose film's id is greater, so each

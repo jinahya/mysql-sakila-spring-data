@@ -37,7 +37,7 @@ import java.util.stream.Stream;
  * queries from their names, or declare them with {@link Query}.
  * <p>
  * The methods after the first two answer the exercises of upstream's {@code EXERCISES.asciidoc} on the {@code actor}
- * table, one method per exercise, named in each method's javadoc by the exercise's id ({@code SAKILA-ACTOR-B-01},
+ * table, one method per exercise, named in each method's javadoc by the exercise's id ({@code SAKILA_ACTOR_B_01},
  * ...), with its role: the book's pick, or this module's own extra. The exercises are context, not contract. A Basic
  * exercise is a derived query, with the order the exercise asks for in its name, and returns a {@link List} (the
  * book's pick) or a {@link Stream} (this module's own extra), with no {@link Pageable}. An Intermediate or Advanced
@@ -111,7 +111,7 @@ public interface ActorRepository
 
     /**
      * Finds the actors whose value of {@link Actor_#LAST_NAME} attribute is equal to the specified value, by
-     * {@link Actor_#ACTOR_ID} ({@code SAKILA-ACTOR-B-01}, the book's pick, which orders by {@link Actor_#ACTOR_ID}).
+     * {@link Actor_#ACTOR_ID} ({@code SAKILA_ACTOR_B_01}, the book's pick, which orders by {@link Actor_#ACTOR_ID}).
      * <p>
      * The query, and its order, are derived from the method name; the comparison is the database's, as in
      * {@link #findAllByFirstName(String, Pageable)}. The match is the whole list, which the exercise bounds by its
@@ -124,7 +124,7 @@ public interface ActorRepository
 
     /**
      * Finds the actors whose value of {@link Actor_#FIRST_NAME} attribute starts with the specified prefix, as a
-     * stream, by {@link Actor_#FIRST_NAME} and then by {@link Actor_#ACTOR_ID} ({@code SAKILA-ACTOR-B-02}, this
+     * stream, by {@link Actor_#FIRST_NAME} and then by {@link Actor_#ACTOR_ID} ({@code SAKILA_ACTOR_B_02}, this
      * module's own extra, which orders by {@link Actor_#FIRST_NAME}, then by {@link Actor_#ACTOR_ID} so that the order
      * is the same every time).
      * <p>
@@ -141,7 +141,7 @@ public interface ActorRepository
 
     /**
      * Selects the last names shared by more than the specified number of actors, with their counts
-     * ({@code SAKILA-ACTOR-I-01}, this module's own extra, which orders by {@code actors} descending, then by {@code lastName}).
+     * ({@code SAKILA_ACTOR_I_01}, this module's own extra, which orders by {@code actors} descending, then by {@code lastName}).
      * <p>
      * The actors are grouped by last name and counted; the filter is on the groups, so it is a {@code HAVING}, not a
      * {@code WHERE}, and a {@link Specification}, which filters rows, cannot do it. The count query counts the names
@@ -168,15 +168,15 @@ public interface ActorRepository
     Page<Tuple> selectLastNamesSharedByMoreThan(long actors, Pageable pageable);
 
     /**
-     * Selects the actors who appear in at least one film, with how many ({@code SAKILA-ACTOR-I-02}, the book's pick, which takes the
-     * first five by {@code films} descending, then by {@code a.actorId}, so that the five are always the same five).
+     * Selects the actors who appear in at least one film, with how many, the most first ({@code SAKILA_ACTOR_I_02},
+     * the book's pick: the top n actors by their number of films, where n is the size of the page).
      * <p>
      * The films are counted through the actor's {@link Actor_#FILM_ACTORS} links, by an inner join, so an actor with
      * no film is not in the page; the actors are grouped by the actor itself, which selects the actor whole. The count
-     * query counts the actors that have a film.
+     * query counts the actors that have a film. The exercise's order, by {@code films} descending and then by
+     * {@code actorId} so that a page is always the same page, is in the query; a sort of the pageable comes after it.
      *
-     * @param pageable the page to return, and its sort, by {@code films}, or by an attribute of the actor through
-     *                 {@code a} ({@code a.actorId}, {@code a.lastName}, ...); must not be {@code null}.
+     * @param pageable the page to return; its size is the exercise's n; must not be {@code null}.
      * @return a page of the actors who appear in a film, with their numbers of films, each a tuple of {@code actor}
      *         ({@link Actor}) and {@code films} ({@link Long}).
      */
@@ -184,7 +184,8 @@ public interface ActorRepository
             SELECT a AS actor, COUNT(fa) AS films
             FROM Actor a
             JOIN a.filmActors fa
-            GROUP BY a""",
+            GROUP BY a
+            ORDER BY COUNT(fa) DESC, a.actorId""",
            countQuery = """
                    SELECT COUNT(a)
                    FROM Actor a
@@ -192,7 +193,7 @@ public interface ActorRepository
     Page<Tuple> selectFilmCounts(Pageable pageable);
 
     /**
-     * Lists the actors who appear in a film of every rating ({@code SAKILA-ACTOR-A-01}, the book's pick, which takes the first five
+     * Lists the actors who appear in a film of every rating ({@code SAKILA_ACTOR_A_01}, the book's pick, which takes the first five
      * by {@link Actor_#ACTOR_ID}).
      * <p>
      * A relational division, as a {@link Specification} of two subqueries: an actor qualifies when the distinct
@@ -219,7 +220,7 @@ public interface ActorRepository
 
     /**
      * Selects, for each actor whose id is in the specified range, the actor's films of the longest length
-     * ({@code SAKILA-ACTOR-A-03}, this module's own extra, which takes the actors {@code 1} to {@code 5}, and orders by
+     * ({@code SAKILA_ACTOR_A_03}, this module's own extra, which takes the actors {@code 1} to {@code 5}, and orders by
      * {@code a.actorId}, then by {@code f.title}).
      * <p>
      * A correlated subquery finds the longest length of the films of the actor of each row, and the outer query keeps

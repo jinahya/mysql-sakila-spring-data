@@ -39,7 +39,7 @@ import java.util.stream.Stream;
  * method here runs them yet.
  * <p>
  * The methods below answer the exercises of upstream's {@code EXERCISES.asciidoc} on the {@code address} table, one
- * method per exercise, named in each method's javadoc by the exercise's id ({@code SAKILA-ADDRESS-B-03}, ...), with its
+ * method per exercise, named in each method's javadoc by the exercise's id ({@code SAKILA_ADDRESS_B_03}, ...), with its
  * role: the book's pick, this module's own extra, or native-only. The exercises are context, not contract. A Basic
  * exercise is a derived query, with the order the exercise asks for in its name, and returns a {@link List} (the
  * book's pick) or a {@link Stream} (this module's own extra), with no {@link Pageable}. An Intermediate or Advanced
@@ -72,7 +72,7 @@ public interface AddressRepository
 
     /**
      * Finds the addresses whose value of {@link Address_#ADDRESS2} attribute is {@code null}, by
-     * {@link Address_#ADDRESS_ID} ({@code SAKILA-ADDRESS-B-03}, the book's pick, which orders by
+     * {@link Address_#ADDRESS_ID} ({@code SAKILA_ADDRESS_B_03}, the book's pick, which orders by
      * {@link Address_#ADDRESS_ID}).
      * <p>
      * The query, and its order, are derived from the method name; {@code IsNull} is {@code IS NULL}, not
@@ -84,7 +84,7 @@ public interface AddressRepository
 
     /**
      * Finds the addresses whose value of {@link Address_#DISTRICT} attribute is equal to the specified value, as a
-     * stream, by {@link Address_#ADDRESS_ID} ({@code SAKILA-ADDRESS-B-04}, this module's own extra, which finds the
+     * stream, by {@link Address_#ADDRESS_ID} ({@code SAKILA_ADDRESS_B_04}, this module's own extra, which finds the
      * addresses with an empty district, {@code ""}, and orders by {@link Address_#ADDRESS_ID}).
      * <p>
      * The query, and its order, are derived from the method name. The stream is to be consumed inside a transaction
@@ -99,7 +99,7 @@ public interface AddressRepository
     Stream<Address> findAllByDistrictOrderByAddressIdAsc(String district);
 
     /**
-     * Lists the addresses, each with its city and the city's country fetched ({@code SAKILA-ADDRESS-I-01}, the book's
+     * Lists the addresses, each with its city and the city's country fetched ({@code SAKILA_ADDRESS_I_01}, the book's
      * pick, which takes the first five by {@link Address_#ADDRESS_ID}).
      * <p>
      * A {@link Specification} with no filter, which fetch-joins the {@link Address_#CITY} of each address and the
@@ -123,7 +123,7 @@ public interface AddressRepository
 
     /**
      * Selects the districts whose addresses are in more than the specified number of countries, with those numbers
-     * ({@code SAKILA-ADDRESS-I-02}, this module's own extra, which takes the districts in more than one country, and
+     * ({@code SAKILA_ADDRESS_I_02}, this module's own extra, which takes the districts in more than one country, and
      * orders by {@code countries} descending, then by {@code district}).
      * <p>
      * The addresses with a name of a district, not an empty one, are grouped by district, and the distinct countries
@@ -156,7 +156,7 @@ public interface AddressRepository
     Page<Tuple> selectDistrictsInMoreCountriesThan(long countries, Pageable pageable);
 
     /**
-     * Lists the addresses no customer, staff member or store has ({@code SAKILA-ADDRESS-A-01}, the book's pick, which
+     * Lists the addresses no customer, staff member or store has ({@code SAKILA_ADDRESS_A_01}, the book's pick, which
      * orders by {@link Address_#ADDRESS_ID}).
      * <p>
      * An address does not map the entities that refer to it, so a {@link Specification} of three {@code NOT EXISTS}
@@ -184,7 +184,7 @@ public interface AddressRepository
     }
 
     /**
-     * Selects the pairs of addresses which share a postal code ({@code SAKILA-ADDRESS-A-02}, this module's own extra,
+     * Selects the pairs of addresses which share a postal code ({@code SAKILA_ADDRESS_A_02}, this module's own extra,
      * which orders by {@code a1.addressId}, then by {@code a2.addressId}).
      * <p>
      * A self-join of {@code Address}, on the postal code, which keeps each pair once, the lower id first, and leaves
@@ -212,7 +212,7 @@ public interface AddressRepository
 
     /**
      * Selects the three districts with the most addresses in each of India, China and the United States
-     * ({@code SAKILA-ADDRESS-A-03}, native-only, which orders by {@code country}, then by the rank of the district in
+     * ({@code SAKILA_ADDRESS_A_03}, native-only, which orders by {@code country}, then by the rank of the district in
      * the country: the most addresses first, then by {@code district}).
      * <p>
      * A top-N per group: {@code ROW_NUMBER()} over a partition by country numbers the districts, and the outer query

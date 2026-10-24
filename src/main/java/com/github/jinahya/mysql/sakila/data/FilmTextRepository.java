@@ -34,7 +34,7 @@ import java.util.Objects;
  * <p>
  * The methods below answer the exercises of upstream's {@code EXERCISES.asciidoc} on the {@code film_text} table,
  * one method per exercise, in the order of the exercises' ids, each named in its javadoc by the id
- * ({@code SAKILA-FILM_TEXT-B-01}, ...) and by its role: the book's pick, this module's own extra, not a pick (kept from
+ * ({@code SAKILA_FILM_TEXT_B_01}, ...) and by its role: the book's pick, this module's own extra, not a pick (kept from
  * before the picks), or native-only. The exercises are context, not contract. A Basic one is plain: no
  * {@link Pageable}, the order the exercise asks for written in the query, a {@link List} for the book's pick. An
  * Intermediate or Advanced one that shows rows takes a {@link Pageable}, the page and the sort, and returns a
@@ -64,7 +64,7 @@ public interface FilmTextRepository
 
     /**
      * Finds the rows whose value of {@link FilmText_#DESCRIPTION} attribute contains both specified words
-     * ({@code SAKILA-FILM_TEXT-B-01}, the book's pick, which asks for {@code Crocodile} and {@code Shark}, and orders
+     * ({@code SAKILA_FILM_TEXT_B_01}, the book's pick, which asks for {@code Crocodile} and {@code Shark}, and orders
      * by {@link FilmText_#FILM_ID}).
      * <p>
      * The query, and its order, are derived from the method name: two {@code LIKE}s on the same attribute, each with
@@ -79,7 +79,7 @@ public interface FilmTextRepository
     List<FilmText> findAllByDescriptionContainingAndDescriptionContainingOrderByFilmId(String word1, String word2);
 
     /**
-     * Selects how many rows {@code film_text} and {@code film} have, in one row ({@code SAKILA-FILM_TEXT-I-01},
+     * Selects how many rows {@code film_text} and {@code film} have, in one row ({@code SAKILA_FILM_TEXT_I_01},
      * this module's own extra; the triggers keep the two the same).
      * <p>
      * One aggregate query over {@code film_text}, with the count of {@code film} as a scalar subquery in its select,
@@ -96,7 +96,7 @@ public interface FilmTextRepository
 
     /**
      * Lists the rows whose title or description mention the specified word, by the full-text index
-     * ({@code SAKILA-FILM_TEXT-I-02}, the book's pick, which asks how many mention {@code drama}; that is the page's
+     * ({@code SAKILA_FILM_TEXT_I_02}, the book's pick, which asks how many mention {@code drama}; that is the page's
      * {@link Page#getTotalElements()}, whatever its size, and the exercise names no order).
      * <p>
      * A {@link NativeQuery}: {@code MATCH ... AGAINST} is MySQL's own, so the method runs on the Sakila database
@@ -121,7 +121,7 @@ public interface FilmTextRepository
     Page<FilmText> listMatching(String word, Pageable pageable);
 
     /**
-     * Lists the rows whose title differs from the title of their film ({@code SAKILA-FILM_TEXT-I-03}, not a pick,
+     * Lists the rows whose title differs from the title of their film ({@code SAKILA_FILM_TEXT_I_03}, not a pick,
      * which names no order; the triggers keep the two the same, so the sample data has none).
      * <p>
      * A {@link Specification} of one inequality between the row's {@link FilmText_#TITLE} and the
@@ -141,7 +141,7 @@ public interface FilmTextRepository
 
     /**
      * Counts the rows which match the specified search in boolean mode, by the full-text index
-     * ({@code SAKILA-FILM_TEXT-I-04}, native-only, which asks for a {@code boat} but not a {@code shark},
+     * ({@code SAKILA_FILM_TEXT_I_04}, native-only, which asks for a {@code boat} but not a {@code shark},
      * {@code +boat -shark}).
      * <p>
      * A {@link NativeQuery} with the exercise's SQL: {@code MATCH ... AGAINST ... IN BOOLEAN MODE} is MySQL's own, so
@@ -159,7 +159,7 @@ public interface FilmTextRepository
 
     /**
      * Selects how many rows mention either of two words, and how many mention both, by the full-text index, in one
-     * row ({@code SAKILA-FILM_TEXT-I-05}, native-only, which asks for {@code crocodile} and {@code shark}).
+     * row ({@code SAKILA_FILM_TEXT_I_05}, native-only, which asks for {@code crocodile} and {@code shark}).
      * <p>
      * A {@link NativeQuery} with the exercise's SQL: two counts, as scalar subqueries, one in the natural language
      * mode, which matches a row with either word, and one in boolean mode, which matches a row with both. The two
@@ -182,7 +182,7 @@ public interface FilmTextRepository
     Tuple selectEitherAndBothCounts(String word1, String word2);
 
     /**
-     * Selects the most common kind of story in each category ({@code SAKILA-FILM_TEXT-A-01}, native-only, which
+     * Selects the most common kind of story in each category ({@code SAKILA_FILM_TEXT_A_01}, native-only, which
      * orders by the category's {@code name}; of kinds as common, the first by name).
      * <p>
      * A {@link NativeQuery} with the exercise's SQL: the kind is the third word of the description, cut with
@@ -216,7 +216,7 @@ public interface FilmTextRepository
 
     /**
      * Selects the chain of titles from the specified film, each title starting with the last word of the one before
-     * ({@code SAKILA-FILM_TEXT-A-02}, native-only, which starts from {@code ACADEMY DINOSAUR}, the film {@code 1},
+     * ({@code SAKILA_FILM_TEXT_A_02}, native-only, which starts from {@code ACADEMY DINOSAUR}, the film {@code 1},
      * goes ten steps, and orders by {@code step}).
      * <p>
      * A {@link NativeQuery} with the exercise's SQL: a recursive {@code WITH} joins each step's row to the rows whose

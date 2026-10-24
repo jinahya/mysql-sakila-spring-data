@@ -280,7 +280,7 @@ class ActorRepository_SpringBootIT
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * Tests {@link ActorRepository#findAllByLastNameOrderByActorIdAsc(String)} ({@code SAKILA-ACTOR-B-01}).
+     * Tests {@link ActorRepository#findAllByLastNameOrderByActorIdAsc(String)} ({@code SAKILA_ACTOR_B_01}).
      */
     @Nested
     class FindAllByLastNameOrderByActorIdAsc_Test {
@@ -290,8 +290,8 @@ class ActorRepository_SpringBootIT
         }
 
         /**
-         * Asserts that the exercise's last name, {@code GUINESS}, finds the actors {@code 1}, {@code 90} and
-         * {@code 179}, in that order, as the exercise's expected output shows.
+         * Asserts that the exercise's example, the last name {@code GUINESS}, finds the actors {@code 1}, {@code 90}
+         * and {@code 179}, in that order, as the exercise's expected output shows.
          */
         @Test
         void __Exercise() {
@@ -322,7 +322,7 @@ class ActorRepository_SpringBootIT
 
     /**
      * Tests {@link ActorRepository#findAllByFirstNameStartingWithOrderByFirstNameAscActorIdAsc(String)}
-     * ({@code SAKILA-ACTOR-B-02}).
+     * ({@code SAKILA_ACTOR_B_02}).
      */
     @Nested
     class FindAllByFirstNameStartingWithOrderByFirstNameAscActorIdAsc_Test {
@@ -384,7 +384,7 @@ class ActorRepository_SpringBootIT
     }
 
     /**
-     * Tests {@link ActorRepository#selectLastNamesSharedByMoreThan(long, Pageable)} ({@code SAKILA-ACTOR-I-01}).
+     * Tests {@link ActorRepository#selectLastNamesSharedByMoreThan(long, Pageable)} ({@code SAKILA_ACTOR_I_01}).
      */
     @Nested
     class SelectLastNamesSharedByMoreThan_Test {
@@ -432,21 +432,18 @@ class ActorRepository_SpringBootIT
     }
 
     /**
-     * Tests {@link ActorRepository#selectFilmCounts(Pageable)} ({@code SAKILA-ACTOR-I-02}).
+     * Tests {@link ActorRepository#selectFilmCounts(Pageable)} ({@code SAKILA_ACTOR_I_02}).
      */
     @Nested
     class SelectFilmCounts_Test {
 
-        private static final Sort BY_FILMS_DESC_THEN_ACTOR_ID =
-                Sort.by(Sort.Direction.DESC, "films").and(Sort.by("a.actorId"));
-
         /**
-         * Asserts that the first page of five, the most filmed first, then by id, holds the five actors of the
-         * exercise's expected output, with their counts.
+         * Asserts that the first page of five, which the query orders by films descending and then by id, holds the
+         * five actors of the exercise's expected output, with their counts.
          */
         @Test
         void __Exercise() {
-            final var page = repositoryInstance().selectFilmCounts(PageRequest.of(0, 5, BY_FILMS_DESC_THEN_ACTOR_ID));
+            final var page = repositoryInstance().selectFilmCounts(PageRequest.of(0, 5));
             assertThat(page.getContent())
                     .extracting(column("actor", Actor.class, Actor::getActorId), column("films", Long.class))
                     .containsExactly(tuple(107, 42L), tuple(102, 41L), tuple(198, 40L), tuple(181, 39L),
@@ -454,16 +451,16 @@ class ActorRepository_SpringBootIT
         }
 
         /**
-         * Asserts that a page of the given size, the most filmed first as the exercise sorts, is ordered so, that each
-         * actor is the one of its id, and that each count is the number of the actor's {@code film_actor} links.
+         * Asserts that a page of the given size, with no sort of its own, comes in the exercise's order, the most
+         * filmed first and then by id, that each actor is the one of its id, and that each count is the number of the
+         * actor's {@code film_actor} links.
          *
          * @param size the size of the page.
          */
         @ValueSource(ints = {1, 5, 10})
         @ParameterizedTest
         void __(final int size) {
-            final var page = repositoryInstance().selectFilmCounts(
-                    PageRequest.of(0, size, BY_FILMS_DESC_THEN_ACTOR_ID));
+            final var page = repositoryInstance().selectFilmCounts(PageRequest.of(0, size));
             assertPage(page);
             assertThat(page.getContent())
                     .isNotEmpty()
@@ -478,7 +475,7 @@ class ActorRepository_SpringBootIT
     }
 
     /**
-     * Tests {@link ActorRepository#listInEveryRating(Pageable)} ({@code SAKILA-ACTOR-A-01}).
+     * Tests {@link ActorRepository#listInEveryRating(Pageable)} ({@code SAKILA_ACTOR_A_01}).
      */
     @Nested
     class ListInEveryRating_Test {
@@ -520,7 +517,7 @@ class ActorRepository_SpringBootIT
 
     /**
      * Tests {@link ActorRepository#selectLongestFilmsOfActorIdsBetween(int, int, Pageable)}
-     * ({@code SAKILA-ACTOR-A-03}).
+     * ({@code SAKILA_ACTOR_A_03}).
      */
     @Nested
     class SelectLongestFilmsOfActorIdsBetween_Test {

@@ -26,7 +26,7 @@ import java.util.List;
  * <p>
  * The methods after {@link #listAll(Pageable)} answer the exercises of upstream's {@code EXERCISES.asciidoc} on the
  * {@code nicer_but_slower_film_list} view, one method per exercise, in the order of their ids, each named in its
- * javadoc ({@code SAKILA-NICER_BUT_SLOWER_FILM_LIST-B-01}, ...). The view has no entity, so every one of them is
+ * javadoc ({@code SAKILA_NICER_BUT_SLOWER_FILM_LIST_B_01}, ...). The view has no entity, so every one of them is
  * native-only: it runs the exercise's SQL as {@code EXERCISES.asciidoc} has it, its literals, its {@code ORDER BY} and
  * its {@code LIMIT} included, from a {@code .sql} resource beside the implementation. A method whose statement selects
  * whole rows of the view, with {@code n.*}, returns them as {@link NicerButSlowerFilmList}s; one that counts or groups
@@ -88,7 +88,7 @@ public interface NicerButSlowerFilmListRepository
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * Lists the actors of the film {@code 1}, as this view writes them ({@code SAKILA-NICER_BUT_SLOWER_FILM_LIST-B-01};
+     * Lists the actors of the film {@code 1}, as this view writes them ({@code SAKILA_NICER_BUT_SLOWER_FILM_LIST_B_01};
      * native-only; no sort, the rows of one film), selecting the whole rows, to compare with the same row of
      * {@code film_list}.
      * <p>
@@ -101,7 +101,7 @@ public interface NicerButSlowerFilmListRepository
 
     /**
      * Counts the films {@code PENELOPE GUINESS} plays in, by the view's {@code actors}
-     * ({@code SAKILA-NICER_BUT_SLOWER_FILM_LIST-B-02}; native-only; no sort, a single value).
+     * ({@code SAKILA_NICER_BUT_SLOWER_FILM_LIST_B_02}; native-only; no sort, a single value).
      * <p>
      * The name is matched with {@code LIKE '%Penelope Guiness%'}, as this view writes it; the comparison is the
      * database's, case-insensitive by the collation of the column.
@@ -111,7 +111,7 @@ public interface NicerButSlowerFilmListRepository
     long countFilmsOfPenelopeGuiness();
 
     /**
-     * Lists the films which have no actors ({@code SAKILA-NICER_BUT_SLOWER_FILM_LIST-B-03}; native-only; sorted by
+     * Lists the films which have no actors ({@code SAKILA_NICER_BUT_SLOWER_FILM_LIST_B_03}; native-only; sorted by
      * {@code FID}), selecting the whole rows.
      *
      * @return the rows whose {@code actors} is {@code NULL}, by {@code FID}.
@@ -120,7 +120,7 @@ public interface NicerButSlowerFilmListRepository
 
     /**
      * Lists the five categories whose films are the longest, on average
-     * ({@code SAKILA-NICER_BUT_SLOWER_FILM_LIST-I-01}; native-only; sorted by {@code average_length}, descending, then
+     * ({@code SAKILA_NICER_BUT_SLOWER_FILM_LIST_I_01}; native-only; sorted by {@code average_length}, descending, then
      * by {@code category}, and limited to five).
      *
      * @return the five categories of the longest average length, with the number of their films and that average.
@@ -128,7 +128,7 @@ public interface NicerButSlowerFilmListRepository
     List<CategoryAverageLength> listFiveLongestCategoriesOnAverage();
 
     /**
-     * Counts the films which are short, medium and long ({@code SAKILA-NICER_BUT_SLOWER_FILM_LIST-I-02}; native-only;
+     * Counts the films which are short, medium and long ({@code SAKILA_NICER_BUT_SLOWER_FILM_LIST_I_02}; native-only;
      * sorted by {@code shortest}, which puts the bands in their own order).
      * <p>
      * The band is a {@code CASE} on the length, grouped by its alias, which MySQL allows.
@@ -139,7 +139,7 @@ public interface NicerButSlowerFilmListRepository
 
     /**
      * Counts the rows of the view that differ from the same row of {@code film_list} in any column but the actors
-     * ({@code SAKILA-NICER_BUT_SLOWER_FILM_LIST-A-01}; native-only; no sort, a single value, whose answer is
+     * ({@code SAKILA_NICER_BUT_SLOWER_FILM_LIST_A_01}; native-only; no sort, a single value, whose answer is
      * {@code 0}).
      * <p>
      * The two views are joined row by row, by {@code FID} and {@code category}, and a row counts when its
@@ -154,7 +154,7 @@ public interface NicerButSlowerFilmListRepository
 
     /**
      * Lists the longest length in each category, and how many films have it
-     * ({@code SAKILA-NICER_BUT_SLOWER_FILM_LIST-A-02}; native-only; sorted by {@code category}).
+     * ({@code SAKILA_NICER_BUT_SLOWER_FILM_LIST_A_02}; native-only; sorted by {@code category}).
      * <p>
      * The longest length is a correlated subquery over the view itself, for the category of the outer row.
      *
@@ -164,7 +164,7 @@ public interface NicerButSlowerFilmListRepository
 
     /**
      * Counts the films whose {@code actors} string names a different number of actors than {@code film_actor} has
-     * ({@code SAKILA-NICER_BUT_SLOWER_FILM_LIST-A-03}; native-only; no sort, a single value, whose answer is
+     * ({@code SAKILA_NICER_BUT_SLOWER_FILM_LIST_A_03}; native-only; no sort, a single value, whose answer is
      * {@code 0}).
      * <p>
      * The names are counted by their commas, with {@code CHAR_LENGTH}, and compared with a correlated count of the

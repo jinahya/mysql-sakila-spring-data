@@ -106,7 +106,7 @@ class LanguageRepository_DataJpaTest
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * Tests {@link LanguageRepository#findAllByOrderByLanguageIdAsc()} ({@code SAKILA-LANGUAGE-B-01}).
+     * Tests {@link LanguageRepository#findAllByOrderByLanguageIdAsc()} ({@code SAKILA_LANGUAGE_B_01}).
      */
     @Nested
     class FindAllByOrderByLanguageIdAsc_Test {
@@ -130,7 +130,7 @@ class LanguageRepository_DataJpaTest
 
     /**
      * Tests {@link LanguageRepository#findAllByNameInOrderByNameAsc(java.util.Collection)}
-     * ({@code SAKILA-LANGUAGE-B-03}).
+     * ({@code SAKILA_LANGUAGE_B_03}).
      */
     @Nested
     class FindAllByNameInOrderByNameAsc_Test {
@@ -194,7 +194,7 @@ class LanguageRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link LanguageRepository#selectFilmCounts(Pageable)} ({@code SAKILA-LANGUAGE-I-01}).
+     * Tests {@link LanguageRepository#selectFilmCounts(Pageable)} ({@code SAKILA_LANGUAGE_I_01}).
      */
     @Nested
     class SelectFilmCounts_Test {
@@ -255,7 +255,7 @@ class LanguageRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link LanguageRepository#listUnused(Pageable)} ({@code SAKILA-LANGUAGE-I-02}).
+     * Tests {@link LanguageRepository#listUnused(Pageable)} ({@code SAKILA_LANGUAGE_I_02}).
      */
     @Nested
     class ListUnused_Test {

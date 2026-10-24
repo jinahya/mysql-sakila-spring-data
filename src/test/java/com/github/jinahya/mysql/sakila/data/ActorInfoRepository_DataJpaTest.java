@@ -68,7 +68,7 @@ class ActorInfoRepository_DataJpaTest
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * Tests {@link ActorInfoRepository#selectFilmInfoHeadByActorId(int, int)} ({@code SAKILA-ACTOR_INFO-B-01}).
+     * Tests {@link ActorInfoRepository#selectFilmInfoHeadByActorId(int, int)} ({@code SAKILA_ACTOR_INFO_B_01}).
      */
     @Nested
     class SelectFilmInfoHeadByActorId_Test {
@@ -103,7 +103,7 @@ class ActorInfoRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link ActorInfoRepository#countByFilmInfoCategory(String)} ({@code SAKILA-ACTOR_INFO-B-02}).
+     * Tests {@link ActorInfoRepository#countByFilmInfoCategory(String)} ({@code SAKILA_ACTOR_INFO_B_02}).
      */
     @Nested
     class CountByFilmInfoCategory_Test {
@@ -121,7 +121,7 @@ class ActorInfoRepository_DataJpaTest
 
     /**
      * Tests {@link ActorInfoRepository#findAllByFilmInfoContainingOrderByActorIdAsc(String)}
-     * ({@code SAKILA-ACTOR_INFO-B-03}).
+     * ({@code SAKILA_ACTOR_INFO_B_03}).
      */
     @Nested
     class FindAllByFilmInfoContainingOrderByActorIdAsc_Test {
@@ -148,7 +148,7 @@ class ActorInfoRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link ActorInfoRepository#selectRowCounts(Pageable)} ({@code SAKILA-ACTOR_INFO-I-01}).
+     * Tests {@link ActorInfoRepository#selectRowCounts(Pageable)} ({@code SAKILA_ACTOR_INFO_I_01}).
      */
     @Nested
     class SelectRowCounts_Test {
@@ -183,7 +183,7 @@ class ActorInfoRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link ActorInfoRepository#listCoveringEveryCategory(Pageable)} ({@code SAKILA-ACTOR_INFO-I-02}).
+     * Tests {@link ActorInfoRepository#listCoveringEveryCategory(Pageable)} ({@code SAKILA_ACTOR_INFO_I_02}).
      */
     @Nested
     class ListCoveringEveryCategory_Test {
@@ -203,7 +203,7 @@ class ActorInfoRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link ActorInfoRepository#selectActorCountsByCategoryCount()} ({@code SAKILA-ACTOR_INFO-I-03}).
+     * Tests {@link ActorInfoRepository#selectActorCountsByCategoryCount()} ({@code SAKILA_ACTOR_INFO_I_03}).
      */
     @Nested
     class SelectActorCountsByCategoryCount_Test {
@@ -220,7 +220,7 @@ class ActorInfoRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link ActorInfoRepository#listDisagreeingOnCategories(Pageable)} ({@code SAKILA-ACTOR_INFO-A-01}).
+     * Tests {@link ActorInfoRepository#listDisagreeingOnCategories(Pageable)} ({@code SAKILA_ACTOR_INFO_A_01}).
      */
     @Nested
     class ListDisagreeingOnCategories_Test {

@@ -31,7 +31,7 @@ import java.util.stream.Stream;
  * {@code (root, query, builder) -> builder.equal(root.get(Language_.name), name)}.
  * <p>
  * The methods below answer the exercises of upstream's {@code EXERCISES.asciidoc} on the {@code language} table, one
- * method per exercise, named in each method's javadoc by the exercise's id ({@code SAKILA-LANGUAGE-B-01}, ...) and
+ * method per exercise, named in each method's javadoc by the exercise's id ({@code SAKILA_LANGUAGE_B_01}, ...) and
  * its role: the book's pick or this module's own extra. The exercises are context, not contract. A Basic one is
  * plain: the book's pick returns a {@link List}, this module's own extra a {@link Stream}, and the order the exercise
  * asks for is in the query, here in the method's name. An Intermediate one takes a {@link Pageable}, the page and the
@@ -60,7 +60,7 @@ public interface LanguageRepository
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * Finds every language ({@code SAKILA-LANGUAGE-B-01}, the book's pick, which orders by
+     * Finds every language ({@code SAKILA_LANGUAGE_B_01}, the book's pick, which orders by
      * {@link Language_#LANGUAGE_ID}).
      * <p>
      * The query is derived from the method name: no criteria, and the exercise's order, which {@code findAll()}
@@ -72,7 +72,7 @@ public interface LanguageRepository
 
     /**
      * Finds the languages whose value of {@link Language_#NAME} attribute is one of the specified names, as a stream
-     * ({@code SAKILA-LANGUAGE-B-03}, this module's own extra, which asks for English, French, German and Spanish, and
+     * ({@code SAKILA_LANGUAGE_B_03}, this module's own extra, which asks for English, French, German and Spanish, and
      * orders by {@link Language_#NAME}).
      * <p>
      * The query is derived from the method name, an {@code IN} on the name, in the exercise's order; a name no
@@ -92,7 +92,7 @@ public interface LanguageRepository
     Stream<Language> findAllByNameInOrderByNameAsc(Collection<String> names);
 
     /**
-     * Selects every language, with how many films are in it ({@code SAKILA-LANGUAGE-I-01}, the book's pick, which
+     * Selects every language, with how many films are in it ({@code SAKILA_LANGUAGE_I_01}, the book's pick, which
      * orders by {@code l.languageId}).
      * <p>
      * The language's {@link Language_#FILMS} are joined with a {@code LEFT JOIN}, so a language no film is in is
@@ -117,7 +117,7 @@ public interface LanguageRepository
 
     /**
      * Lists the languages no film uses, either as its language or as its original language
-     * ({@code SAKILA-LANGUAGE-I-02}, this module's own extra, which orders by {@link Language_#LANGUAGE_ID}).
+     * ({@code SAKILA_LANGUAGE_I_02}, this module's own extra, which orders by {@link Language_#LANGUAGE_ID}).
      * <p>
      * A {@link Specification} of one {@code NOT EXISTS}, on a subquery of the films whose
      * {@link Film_#LANGUAGE} or {@link Film_#ORIGINAL_LANGUAGE} is the language; a film with no original language

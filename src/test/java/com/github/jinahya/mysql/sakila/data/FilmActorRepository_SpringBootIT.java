@@ -141,7 +141,7 @@ class FilmActorRepository_SpringBootIT
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * Tests {@link FilmActorRepository#selectActorCounts(Pageable)} ({@code SAKILA-FILM_ACTOR-I-01}).
+     * Tests {@link FilmActorRepository#selectActorCounts(Pageable)} ({@code SAKILA_FILM_ACTOR_I_01}).
      */
     @Nested
     class SelectActorCounts_Test {
@@ -218,7 +218,7 @@ class FilmActorRepository_SpringBootIT
     }
 
     /**
-     * Tests {@link FilmActorRepository#selectAverageActors()} ({@code SAKILA-FILM_ACTOR-I-02}).
+     * Tests {@link FilmActorRepository#selectAverageActors()} ({@code SAKILA_FILM_ACTOR_I_02}).
      */
     @Nested
     class SelectAverageActors_Test {
@@ -249,7 +249,7 @@ class FilmActorRepository_SpringBootIT
     }
 
     /**
-     * Tests {@link FilmActorRepository#selectFilmCountsByActors()} ({@code SAKILA-FILM_ACTOR-I-04}).
+     * Tests {@link FilmActorRepository#selectFilmCountsByActors()} ({@code SAKILA_FILM_ACTOR_I_04}).
      */
     @Nested
     class SelectFilmCountsByActors_Test {
@@ -300,7 +300,7 @@ class FilmActorRepository_SpringBootIT
     }
 
     /**
-     * Tests {@link FilmActorRepository#selectCoStarCounts(Pageable)} ({@code SAKILA-FILM_ACTOR-A-01}).
+     * Tests {@link FilmActorRepository#selectCoStarCounts(Pageable)} ({@code SAKILA_FILM_ACTOR_A_01}).
      */
     @Nested
     class SelectCoStarCounts_Test {
@@ -357,7 +357,7 @@ class FilmActorRepository_SpringBootIT
     }
 
     /**
-     * Tests {@link FilmActorRepository#selectFilmPairsWithSameActors(Pageable)} ({@code SAKILA-FILM_ACTOR-A-03}).
+     * Tests {@link FilmActorRepository#selectFilmPairsWithSameActors(Pageable)} ({@code SAKILA_FILM_ACTOR_A_03}).
      */
     @Nested
     class SelectFilmPairsWithSameActors_Test {

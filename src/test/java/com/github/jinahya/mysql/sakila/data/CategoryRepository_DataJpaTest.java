@@ -111,7 +111,7 @@ class CategoryRepository_DataJpaTest
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * Tests {@link CategoryRepository#findAllByOrderByNameAsc()} ({@code SAKILA-CATEGORY-B-01}).
+     * Tests {@link CategoryRepository#findAllByOrderByNameAsc()} ({@code SAKILA_CATEGORY_B_01}).
      */
     @Nested
     class FindAllByOrderByNameAsc_Test {
@@ -135,7 +135,7 @@ class CategoryRepository_DataJpaTest
 
     /**
      * Tests {@link CategoryRepository#findAllByNameBetweenOrderByNameAsc(String, String)}
-     * ({@code SAKILA-CATEGORY-B-02}).
+     * ({@code SAKILA_CATEGORY_B_02}).
      */
     @Nested
     class FindAllByNameBetweenOrderByNameAsc_Test {
@@ -199,7 +199,7 @@ class CategoryRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link CategoryRepository#selectFilmCounts(Pageable)} ({@code SAKILA-CATEGORY-I-01}).
+     * Tests {@link CategoryRepository#selectFilmCounts(Pageable)} ({@code SAKILA_CATEGORY_I_01}).
      */
     @Nested
     class SelectFilmCounts_Test {
@@ -236,7 +236,7 @@ class CategoryRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link CategoryRepository#selectAverageLengths(Pageable)} ({@code SAKILA-CATEGORY-I-02}).
+     * Tests {@link CategoryRepository#selectAverageLengths(Pageable)} ({@code SAKILA_CATEGORY_I_02}).
      */
     @Nested
     class SelectAverageLengths_Test {
@@ -268,7 +268,7 @@ class CategoryRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link CategoryRepository#selectRunningFilmCounts(Pageable)} ({@code SAKILA-CATEGORY-A-01}).
+     * Tests {@link CategoryRepository#selectRunningFilmCounts(Pageable)} ({@code SAKILA_CATEGORY_A_01}).
      */
     @Nested
     class SelectRunningFilmCounts_Test {
@@ -323,7 +323,7 @@ class CategoryRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link CategoryRepository#selectMostRentedFilms(Pageable)} ({@code SAKILA-CATEGORY-A-02}).
+     * Tests {@link CategoryRepository#selectMostRentedFilms(Pageable)} ({@code SAKILA_CATEGORY_A_02}).
      */
     @Nested
     class SelectMostRentedFilms_Test {

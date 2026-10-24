@@ -84,7 +84,7 @@ class FilmTextRepository_DataJpaTest
 
     /**
      * Tests {@link FilmTextRepository#findAllByDescriptionContainingAndDescriptionContainingOrderByFilmId(String,
-     * String)} ({@code SAKILA-FILM_TEXT-B-01}).
+     * String)} ({@code SAKILA_FILM_TEXT_B_01}).
      */
     @Nested
     class FindAllByDescriptionContainingAndDescriptionContainingOrderByFilmId_Test {
@@ -121,7 +121,7 @@ class FilmTextRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link FilmTextRepository#selectRowCounts()} ({@code SAKILA-FILM_TEXT-I-01}).
+     * Tests {@link FilmTextRepository#selectRowCounts()} ({@code SAKILA_FILM_TEXT_I_01}).
      */
     @Nested
     class SelectRowCounts_Test {
@@ -153,7 +153,7 @@ class FilmTextRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link FilmTextRepository#listWithTitleDifferentFromFilm(Pageable)} ({@code SAKILA-FILM_TEXT-I-03}, not a
+     * Tests {@link FilmTextRepository#listWithTitleDifferentFromFilm(Pageable)} ({@code SAKILA_FILM_TEXT_I_03}, not a
      * pick).
      */
     @Nested

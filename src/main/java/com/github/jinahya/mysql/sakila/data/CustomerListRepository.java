@@ -29,7 +29,7 @@ import java.util.stream.Stream;
  * {@code (root, query, builder) -> builder.equal(root.get(CustomerList_.country), country)}.
  * <p>
  * The methods below answer the exercises of upstream's {@code EXERCISES.asciidoc} on the {@code customer_list} view,
- * one method per exercise, named in each method's javadoc by the exercise's id ({@code SAKILA-CUSTOMER_LIST-B-01},
+ * one method per exercise, named in each method's javadoc by the exercise's id ({@code SAKILA_CUSTOMER_LIST_B_01},
  * ...), and by its role: the book's pick, which every data module answers, this module's own extra, a native-only
  * one, or, for one kept from before the picks, not a pick. A Basic method is plain: the book's pick returns a
  * {@link List}, this module's own extra a {@link Stream}, in the order the exercise asks for, written in the query.
@@ -59,7 +59,7 @@ public interface CustomerListRepository
 
     /**
      * Finds the rows whose value of {@link CustomerList_#COUNTRY} attribute is equal to the specified value, ordered
-     * by {@link CustomerList_#ID}, as a stream ({@code SAKILA-CUSTOMER_LIST-B-01}, this module's own extra, which
+     * by {@link CustomerList_#ID}, as a stream ({@code SAKILA_CUSTOMER_LIST_B_01}, this module's own extra, which
      * asks for the customers in {@code Japan}, ordered by {@link CustomerList_#ID}).
      * <p>
      * The query is derived from the method name, its order too; an equality on the country as the view writes it, with
@@ -80,7 +80,7 @@ public interface CustomerListRepository
 
     /**
      * Selects each store's id, as the view's {@code SID} says it, with how many customers the view puts in that store
-     * ({@code SAKILA-CUSTOMER_LIST-B-02}, not a pick, which orders by {@code sid}).
+     * ({@code SAKILA_CUSTOMER_LIST_B_02}, not a pick, which orders by {@code sid}).
      * <p>
      * The rows are grouped by {@code SID} and counted, which a {@link Specification}, which filters rows, cannot do.
      * The count query counts the distinct {@code SID}s, which are the groups. The counts should match those taken from
@@ -101,7 +101,7 @@ public interface CustomerListRepository
 
     /**
      * Selects each value of the view's {@link CustomerList_#NOTES} with the number of customers who have it
-     * ({@code SAKILA-CUSTOMER_LIST-B-03}, the book's pick, which orders by {@code notes}).
+     * ({@code SAKILA_CUSTOMER_LIST_B_03}, the book's pick, which orders by {@code notes}).
      * <p>
      * The view writes {@code active} for an active customer and an empty string for an inactive one, so the rows are
      * grouped by that and counted, in the order of the notes, written in the query; the empty string sorts first.
@@ -118,7 +118,7 @@ public interface CustomerListRepository
 
     /**
      * Selects how many rows the view has, next to how many customers the {@code customer} table has
-     * ({@code SAKILA-CUSTOMER_LIST-I-01}, this module's own extra, which checks that the two are equal; one row, so
+     * ({@code SAKILA_CUSTOMER_LIST_I_01}, this module's own extra, which checks that the two are equal; one row, so
      * the sort, by {@code customerLists} or {@code customers}, changes nothing).
      * <p>
      * The view uses inner joins, so a customer whose address chain is broken would be missing from it; the two counts
@@ -142,7 +142,7 @@ public interface CustomerListRepository
 
     /**
      * Selects the cities, with their countries, where the view puts more than the specified number of customers
-     * ({@code SAKILA-CUSTOMER_LIST-I-02}, the book's pick, which asks for more than one customer, ordered by
+     * ({@code SAKILA_CUSTOMER_LIST_I_02}, the book's pick, which asks for more than one customer, ordered by
      * {@code city}, then by {@code country}).
      * <p>
      * The rows are grouped by city and country, since a city's name alone is not unique, and counted; the filter is on
@@ -172,7 +172,7 @@ public interface CustomerListRepository
     Page<Tuple> selectCitiesWithMoreCustomersThan(long customers, Pageable pageable);
 
     /**
-     * Selects the three countries with the most customers of each store ({@code SAKILA-CUSTOMER_LIST-A-01},
+     * Selects the three countries with the most customers of each store ({@code SAKILA_CUSTOMER_LIST_A_01},
      * native-only, ordered by {@code sid}, then by {@code customers} descending, then by {@code country}, in the
      * query).
      * <p>

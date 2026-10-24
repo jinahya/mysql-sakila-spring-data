@@ -68,7 +68,7 @@ class CustomerRepository_DataJpaTest
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * Tests {@link CustomerRepository#selectActiveCounts()} ({@code SAKILA-CUSTOMER-B-01}).
+     * Tests {@link CustomerRepository#selectActiveCounts()} ({@code SAKILA_CUSTOMER_B_01}).
      */
     @Nested
     class SelectActiveCounts_Test {
@@ -104,7 +104,7 @@ class CustomerRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link CustomerRepository#selectStoreCounts()} ({@code SAKILA-CUSTOMER-B-02}).
+     * Tests {@link CustomerRepository#selectStoreCounts()} ({@code SAKILA_CUSTOMER_B_02}).
      */
     @Nested
     class SelectStoreCounts_Test {
@@ -121,7 +121,7 @@ class CustomerRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link CustomerRepository#selectPaidTotals(Pageable)} ({@code SAKILA-CUSTOMER-I-01}).
+     * Tests {@link CustomerRepository#selectPaidTotals(Pageable)} ({@code SAKILA_CUSTOMER_I_01}).
      */
     @Nested
     class SelectPaidTotals_Test {
@@ -153,7 +153,7 @@ class CustomerRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link CustomerRepository#listNeverRented(Pageable)} ({@code SAKILA-CUSTOMER-I-02}).
+     * Tests {@link CustomerRepository#listNeverRented(Pageable)} ({@code SAKILA_CUSTOMER_I_02}).
      */
     @Nested
     class ListNeverRented_Test {
@@ -181,7 +181,7 @@ class CustomerRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link CustomerRepository#selectTopThreePayersOfEachStore()} ({@code SAKILA-CUSTOMER-A-01}).
+     * Tests {@link CustomerRepository#selectTopThreePayersOfEachStore()} ({@code SAKILA_CUSTOMER_A_01}).
      */
     @Nested
     class SelectTopThreePayersOfEachStore_Test {
@@ -198,7 +198,7 @@ class CustomerRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link CustomerRepository#selectAboveAveragePayerCounts(Pageable)} ({@code SAKILA-CUSTOMER-A-02}).
+     * Tests {@link CustomerRepository#selectAboveAveragePayerCounts(Pageable)} ({@code SAKILA_CUSTOMER_A_02}).
      */
     @Nested
     class SelectAboveAveragePayerCounts_Test {

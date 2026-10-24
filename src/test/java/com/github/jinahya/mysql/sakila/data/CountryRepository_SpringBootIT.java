@@ -129,7 +129,7 @@ class CountryRepository_SpringBootIT
 
     /**
      * Tests {@link CountryRepository#findAllByCountryStartingWithOrderByCountryAsc(String)}
-     * ({@code SAKILA-COUNTRY-B-02}).
+     * ({@code SAKILA_COUNTRY_B_02}).
      */
     @Nested
     class FindAllByCountryStartingWithOrderByCountryAsc_Test {
@@ -178,7 +178,7 @@ class CountryRepository_SpringBootIT
     }
 
     /**
-     * Tests {@link CountryRepository#listWithoutCities(Pageable)} ({@code SAKILA-COUNTRY-I-01}).
+     * Tests {@link CountryRepository#listWithoutCities(Pageable)} ({@code SAKILA_COUNTRY_I_01}).
      */
     @Nested
     class ListWithoutCities_Test {
@@ -230,7 +230,7 @@ class CountryRepository_SpringBootIT
     }
 
     /**
-     * Tests {@link CountryRepository#selectCustomerCounts(Pageable)} ({@code SAKILA-COUNTRY-I-02}).
+     * Tests {@link CountryRepository#selectCustomerCounts(Pageable)} ({@code SAKILA_COUNTRY_I_02}).
      */
     @Nested
     class SelectCustomerCounts_Test {
@@ -303,7 +303,7 @@ class CountryRepository_SpringBootIT
     }
 
     /**
-     * Tests {@link CountryRepository#selectHoldingHalfOfCustomers()} ({@code SAKILA-COUNTRY-A-01}).
+     * Tests {@link CountryRepository#selectHoldingHalfOfCustomers()} ({@code SAKILA_COUNTRY_A_01}).
      */
     @Nested
     class SelectHoldingHalfOfCustomers_Test {
@@ -351,7 +351,7 @@ class CountryRepository_SpringBootIT
     }
 
     /**
-     * Tests {@link CountryRepository#selectRankedTopTenByCustomers()} ({@code SAKILA-COUNTRY-A-02}).
+     * Tests {@link CountryRepository#selectRankedTopTenByCustomers()} ({@code SAKILA_COUNTRY_A_02}).
      */
     @Nested
     class SelectRankedTopTenByCustomers_Test {

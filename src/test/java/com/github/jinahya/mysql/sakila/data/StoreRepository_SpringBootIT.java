@@ -163,7 +163,7 @@ class StoreRepository_SpringBootIT
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * Tests {@link StoreRepository#findAllByOrderByStoreIdAsc()} ({@code SAKILA-STORE-B-01}).
+     * Tests {@link StoreRepository#findAllByOrderByStoreIdAsc()} ({@code SAKILA_STORE_B_01}).
      */
     @Nested
     class FindAllByOrderByStoreIdAsc_Test {
@@ -211,7 +211,7 @@ class StoreRepository_SpringBootIT
     }
 
     /**
-     * Tests {@link StoreRepository#listWithManagerAndCity(Pageable)} ({@code SAKILA-STORE-I-01}).
+     * Tests {@link StoreRepository#listWithManagerAndCity(Pageable)} ({@code SAKILA_STORE_I_01}).
      */
     @Nested
     class ListWithManagerAndCity_Test {
@@ -270,7 +270,7 @@ class StoreRepository_SpringBootIT
     }
 
     /**
-     * Tests {@link StoreRepository#selectCounts(Pageable)} ({@code SAKILA-STORE-I-02}).
+     * Tests {@link StoreRepository#selectCounts(Pageable)} ({@code SAKILA_STORE_I_02}).
      */
     @Nested
     class SelectCounts_Test {
@@ -320,7 +320,7 @@ class StoreRepository_SpringBootIT
     }
 
     /**
-     * Tests {@link StoreRepository#selectFilmCounts(Pageable)} ({@code SAKILA-STORE-A-01}).
+     * Tests {@link StoreRepository#selectFilmCounts(Pageable)} ({@code SAKILA_STORE_A_01}).
      */
     @Nested
     class SelectFilmCounts_Test {
@@ -362,7 +362,7 @@ class StoreRepository_SpringBootIT
     }
 
     /**
-     * Tests {@link StoreRepository#selectMonthlyRentalShares(Pageable)} ({@code SAKILA-STORE-A-02}).
+     * Tests {@link StoreRepository#selectMonthlyRentalShares(Pageable)} ({@code SAKILA_STORE_A_02}).
      */
     @Nested
     class SelectMonthlyRentalShares_Test {

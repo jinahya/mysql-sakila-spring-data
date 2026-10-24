@@ -25,7 +25,7 @@ import java.util.stream.Stream;
  * {@code (root, query, builder) -> builder.equal(root.get(Category_.name), name)}.
  * <p>
  * The methods below answer the exercises of upstream's {@code EXERCISES.asciidoc} on the {@code category} table, one
- * method per exercise, named in each method's javadoc by the exercise's id ({@code SAKILA-CATEGORY-B-01}, ...), with
+ * method per exercise, named in each method's javadoc by the exercise's id ({@code SAKILA_CATEGORY_B_01}, ...), with
  * its role: the book's pick, or this module's own extra. The exercises are context, not contract. A Basic exercise is
  * a derived query, with the order the exercise asks for in its name, and returns a {@link List} (the book's pick) or a
  * {@link Stream} (this module's own extra), with no {@link Pageable}. An Intermediate or Advanced one takes a
@@ -53,7 +53,7 @@ public interface CategoryRepository
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * Finds every category, by {@link Category_#NAME} ({@code SAKILA-CATEGORY-B-01}, the book's pick, which orders by
+     * Finds every category, by {@link Category_#NAME} ({@code SAKILA_CATEGORY_B_01}, the book's pick, which orders by
      * {@link Category_#NAME}).
      * <p>
      * The query, and its order, are derived from the method name; there is no filter, and the table is small, so the
@@ -65,7 +65,7 @@ public interface CategoryRepository
 
     /**
      * Finds the categories whose value of {@link Category_#NAME} attribute is between the specified values, as a
-     * stream, by {@link Category_#NAME} ({@code SAKILA-CATEGORY-B-02}, this module's own extra, which finds the names
+     * stream, by {@link Category_#NAME} ({@code SAKILA_CATEGORY_B_02}, this module's own extra, which finds the names
      * between {@code D} and {@code H}, and orders by {@link Category_#NAME}).
      * <p>
      * The query, and its order, are derived from the method name. {@code Between} is {@code BETWEEN}, both ends
@@ -82,7 +82,7 @@ public interface CategoryRepository
     Stream<Category> findAllByNameBetweenOrderByNameAsc(String from, String to);
 
     /**
-     * Selects the categories which have a film, with how many ({@code SAKILA-CATEGORY-I-01}, this module's own extra,
+     * Selects the categories which have a film, with how many ({@code SAKILA_CATEGORY_I_01}, this module's own extra,
      * which orders by {@code films} descending, then by {@code c.name}).
      * <p>
      * The films are counted through the category's {@link Category_#FILM_CATEGORIES} links, by an inner join, so a
@@ -107,7 +107,7 @@ public interface CategoryRepository
 
     /**
      * Selects the categories which have a film, with the average length of their films
-     * ({@code SAKILA-CATEGORY-I-02}, the book's pick, which takes the first one by {@code averageLength} descending).
+     * ({@code SAKILA_CATEGORY_I_02}, the book's pick, which takes the first one by {@code averageLength} descending).
      * <p>
      * The films are reached through the category's {@link Category_#FILM_CATEGORIES} links, by inner joins, so a
      * category with no film is not in the page; the categories are grouped by the category itself, which selects the
@@ -133,7 +133,7 @@ public interface CategoryRepository
 
     /**
      * Selects the categories which have a film, each with its number of films and the running total of the films, in
-     * number and in percent, category by category, the most films first ({@code SAKILA-CATEGORY-A-01}, the book's
+     * number and in percent, category by category, the most films first ({@code SAKILA_CATEGORY_A_01}, the book's
      * pick, which orders by {@code films} descending, then by {@code c.name}).
      * <p>
      * JPQL has no window function, so the running total is a join: each category {@code c} is paired with every
@@ -169,7 +169,7 @@ public interface CategoryRepository
 
     /**
      * Selects, for each category, the film of the category rented the most, with how many times
-     * ({@code SAKILA-CATEGORY-A-02}, this module's own extra, which orders by {@code c.name}).
+     * ({@code SAKILA_CATEGORY_A_02}, this module's own extra, which orders by {@code c.name}).
      * <p>
      * The rentals of each film of each category are counted, from the category through its {@code film_category}
      * links, the films, their copies and the copies' rentals. A film is kept when no film of its category was rented

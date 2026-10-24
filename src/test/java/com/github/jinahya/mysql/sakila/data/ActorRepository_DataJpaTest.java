@@ -271,7 +271,7 @@ class ActorRepository_DataJpaTest
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * Tests {@link ActorRepository#findAllByLastNameOrderByActorIdAsc(String)} ({@code SAKILA-ACTOR-B-01}).
+     * Tests {@link ActorRepository#findAllByLastNameOrderByActorIdAsc(String)} ({@code SAKILA_ACTOR_B_01}).
      */
     @Nested
     class FindAllByLastNameOrderByActorIdAsc_Test {
@@ -332,7 +332,7 @@ class ActorRepository_DataJpaTest
 
     /**
      * Tests {@link ActorRepository#findAllByFirstNameStartingWithOrderByFirstNameAscActorIdAsc(String)}
-     * ({@code SAKILA-ACTOR-B-02}).
+     * ({@code SAKILA_ACTOR_B_02}).
      */
     @Nested
     class FindAllByFirstNameStartingWithOrderByFirstNameAscActorIdAsc_Test {
@@ -398,7 +398,7 @@ class ActorRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link ActorRepository#selectLastNamesSharedByMoreThan(long, Pageable)} ({@code SAKILA-ACTOR-I-01}).
+     * Tests {@link ActorRepository#selectLastNamesSharedByMoreThan(long, Pageable)} ({@code SAKILA_ACTOR_I_01}).
      */
     @Nested
     class SelectLastNamesSharedByMoreThan_Test {
@@ -442,18 +442,15 @@ class ActorRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link ActorRepository#selectFilmCounts(Pageable)} ({@code SAKILA-ACTOR-I-02}).
+     * Tests {@link ActorRepository#selectFilmCounts(Pageable)} ({@code SAKILA_ACTOR_I_02}).
      */
     @Nested
     class SelectFilmCounts_Test {
 
-        private static final Sort BY_FILMS_DESC_THEN_ACTOR_ID =
-                Sort.by(Sort.Direction.DESC, "films").and(Sort.by("a.actorId"));
-
         /**
-         * Saves actors in three, two, one and no films, and asserts that a page of two by films holds the first two,
-         * with their counts, that the actors with a film are three in all, and that the actor in no film is never
-         * selected.
+         * Saves actors in three, two, one and no films, and asserts that a page of two, in the query's own order,
+         * holds the first two, with their counts, that the actors with a film are three in all, and that the actor in
+         * no film is never selected.
          */
         @Test
         void __() {
@@ -471,7 +468,7 @@ class ActorRepository_DataJpaTest
                 fixtures().filmActor(two, film);
             }
             fixtures().filmActor(one, film1);
-            final var page = repositoryInstance().selectFilmCounts(PageRequest.of(0, 2, BY_FILMS_DESC_THEN_ACTOR_ID));
+            final var page = repositoryInstance().selectFilmCounts(PageRequest.of(0, 2));
             assertThat(page.getContent())
                     .extracting(column("actor", Actor.class, Actor::getActorId),
                                 column("actor", Actor.class, Actor::getFirstName),
@@ -482,7 +479,7 @@ class ActorRepository_DataJpaTest
                             tuple(two.getActorId(), two.getFirstName(), two.getLastName(), 2L)
                     );
             assertThat(page.getTotalElements()).isEqualTo(3L);
-            final var all = repositoryInstance().selectFilmCounts(Pageable.unpaged(BY_FILMS_DESC_THEN_ACTOR_ID));
+            final var all = repositoryInstance().selectFilmCounts(Pageable.unpaged());
             assertThat(all.getContent())
                     .noneMatch(c -> c.get("actor", Actor.class).getActorId().equals(none.getActorId()))
                     .extracting(column("actor", Actor.class, Actor::getActorId), column("films", Long.class))
@@ -491,7 +488,7 @@ class ActorRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link ActorRepository#listInEveryRating(Pageable)} ({@code SAKILA-ACTOR-A-01}).
+     * Tests {@link ActorRepository#listInEveryRating(Pageable)} ({@code SAKILA_ACTOR_A_01}).
      */
     @Nested
     class ListInEveryRating_Test {
@@ -520,7 +517,7 @@ class ActorRepository_DataJpaTest
 
     /**
      * Tests {@link ActorRepository#selectLongestFilmsOfActorIdsBetween(int, int, Pageable)}
-     * ({@code SAKILA-ACTOR-A-03}).
+     * ({@code SAKILA_ACTOR_A_03}).
      */
     @Nested
     class SelectLongestFilmsOfActorIdsBetween_Test {

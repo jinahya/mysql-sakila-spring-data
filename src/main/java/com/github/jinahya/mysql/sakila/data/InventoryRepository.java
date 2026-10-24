@@ -36,7 +36,7 @@ import java.util.stream.Stream;
  * method here runs them yet. One that does is named after the query, and binds its parameters with {@code @Param}.
  * <p>
  * The methods below answer the exercises of upstream's {@code EXERCISES.asciidoc} on the {@code inventory} table,
- * one method per exercise, named in each method's javadoc by the exercise's id ({@code SAKILA-INVENTORY-B-01}, ...)
+ * one method per exercise, named in each method's javadoc by the exercise's id ({@code SAKILA_INVENTORY_B_01}, ...)
  * and its role: the book's pick, this module's own extra, or native-only. The exercises are context, not contract.
  * A Basic one is plain: the book's pick returns a {@link List}, this module's own extra a {@link Stream}, and the
  * order the exercise asks for is written in the query. An Intermediate or Advanced one takes a {@link Pageable}, the
@@ -66,7 +66,7 @@ public interface InventoryRepository
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * Selects the stores which have at least one copy, with how many ({@code SAKILA-INVENTORY-B-01}, the book's pick,
+     * Selects the stores which have at least one copy, with how many ({@code SAKILA_INVENTORY_B_01}, the book's pick,
      * which orders by the store's id).
      * <p>
      * The copies are grouped by their {@link Inventory_#STORE}, joined, and counted; the store is selected whole, and
@@ -85,7 +85,7 @@ public interface InventoryRepository
     List<Tuple> selectCopyCountsByStore();
 
     /**
-     * Finds the copies of the film of the specified id, as a stream ({@code SAKILA-INVENTORY-B-02}, this module's own
+     * Finds the copies of the film of the specified id, as a stream ({@code SAKILA_INVENTORY_B_02}, this module's own
      * extra, which orders by {@link Inventory_#INVENTORY_ID}).
      * <p>
      * The query is derived from the method name, on the read-only {@link Inventory_#FILM_ID}, so the film is not
@@ -103,7 +103,7 @@ public interface InventoryRepository
     Stream<Inventory> findAllByFilmIdOrderByInventoryIdAsc(Integer filmId);
 
     /**
-     * Selects the films which have at least one copy, with how many ({@code SAKILA-INVENTORY-I-01}, the book's pick,
+     * Selects the films which have at least one copy, with how many ({@code SAKILA_INVENTORY_I_01}, the book's pick,
      * which takes the first five by {@code copies} descending, then by {@code f.filmId}, so that the five are always
      * the same five).
      * <p>
@@ -127,7 +127,7 @@ public interface InventoryRepository
     Page<Tuple> selectCopyCountsByFilm(Pageable pageable);
 
     /**
-     * Lists the copies which were never rented ({@code SAKILA-INVENTORY-I-02}, this module's own extra, which asks
+     * Lists the copies which were never rented ({@code SAKILA_INVENTORY_I_02}, this module's own extra, which asks
      * how many there are: the page's total number of elements; sort by {@link Inventory_#INVENTORY_ID}).
      * <p>
      * A {@link Specification} of one {@code IS EMPTY} on the copy's {@link Inventory_#RENTALS}, which the provider
@@ -144,7 +144,7 @@ public interface InventoryRepository
     }
 
     /**
-     * Selects the five longest times a copy sat on the shelf between two rentals ({@code SAKILA-INVENTORY-A-01},
+     * Selects the five longest times a copy sat on the shelf between two rentals ({@code SAKILA_INVENTORY_A_01},
      * native-only, which orders by {@code idle_days} descending, then by {@code inventory_id} and by
      * {@code return_date}, and takes five).
      * <p>
@@ -175,7 +175,7 @@ public interface InventoryRepository
 
     /**
      * Selects the films every copy of which was rented at least once, with how many copies they have
-     * ({@code SAKILA-INVENTORY-A-02}, the book's pick, which asks how many such films there are: the page's total
+     * ({@code SAKILA_INVENTORY_A_02}, the book's pick, which asks how many such films there are: the page's total
      * number of elements, beside the total of {@link #selectCopyCountsByFilm(Pageable)}, the films with a copy at all;
      * sort by {@code f.filmId}).
      * <p>

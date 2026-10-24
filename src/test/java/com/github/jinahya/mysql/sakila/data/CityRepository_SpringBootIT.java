@@ -144,7 +144,7 @@ class CityRepository_SpringBootIT
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * Tests {@link CityRepository#findAllByCityStartingWithOrderByCityAsc(String)} ({@code SAKILA-CITY-B-01}).
+     * Tests {@link CityRepository#findAllByCityStartingWithOrderByCityAsc(String)} ({@code SAKILA_CITY_B_01}).
      */
     @Nested
     class FindAllByCityStartingWithOrderByCityAsc_Test {
@@ -199,7 +199,7 @@ class CityRepository_SpringBootIT
     }
 
     /**
-     * Tests {@link CityRepository#listByCountry(String, Pageable)} ({@code SAKILA-CITY-I-01}).
+     * Tests {@link CityRepository#listByCountry(String, Pageable)} ({@code SAKILA_CITY_I_01}).
      */
     @Nested
     class ListByCountry_Test {
@@ -261,7 +261,7 @@ class CityRepository_SpringBootIT
     }
 
     /**
-     * Tests {@link CityRepository#selectCityCounts(Pageable)} ({@code SAKILA-CITY-I-02}).
+     * Tests {@link CityRepository#selectCityCounts(Pageable)} ({@code SAKILA_CITY_I_02}).
      */
     @Nested
     class SelectCityCounts_Test {
@@ -321,7 +321,7 @@ class CityRepository_SpringBootIT
     }
 
     /**
-     * Tests {@link CityRepository#listOnlyCityOfCountry(Pageable)} ({@code SAKILA-CITY-A-01}).
+     * Tests {@link CityRepository#listOnlyCityOfCountry(Pageable)} ({@code SAKILA_CITY_A_01}).
      */
     @Nested
     class ListOnlyCityOfCountry_Test {
@@ -335,7 +335,7 @@ class CityRepository_SpringBootIT
 
         /**
          * Asserts that the first ten, by the country's name, then by id, are the ten the exercise's SQL gives, and
-         * that the cities in all are as many as the countries with exactly one city, which {@code SAKILA-COUNTRY-I-03}
+         * that the cities in all are as many as the countries with exactly one city, which {@code SAKILA_COUNTRY_I_03}
          * counts, forty-two.
          */
         @Test
@@ -378,7 +378,7 @@ class CityRepository_SpringBootIT
     }
 
     /**
-     * Tests {@link CityRepository#listAllCustomersInactive(Pageable)} ({@code SAKILA-CITY-A-02}).
+     * Tests {@link CityRepository#listAllCustomersInactive(Pageable)} ({@code SAKILA_CITY_A_02}).
      */
     @Nested
     class ListAllCustomersInactive_Test {

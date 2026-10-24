@@ -216,7 +216,7 @@ class FilmListRepository_SpringBootIT {
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * Tests {@link FilmListRepository#countActionFilms()} ({@code SAKILA-FILM_LIST-B-01}).
+     * Tests {@link FilmListRepository#countActionFilms()} ({@code SAKILA_FILM_LIST_B_01}).
      */
     @Nested
     class CountActionFilms_Test {
@@ -239,7 +239,7 @@ class FilmListRepository_SpringBootIT {
     }
 
     /**
-     * Tests {@link FilmListRepository#listActorsOfFilmOne()} ({@code SAKILA-FILM_LIST-B-02}).
+     * Tests {@link FilmListRepository#listActorsOfFilmOne()} ({@code SAKILA_FILM_LIST_B_02}).
      */
     @Nested
     class ListActorsOfFilmOne_Test {
@@ -266,7 +266,7 @@ class FilmListRepository_SpringBootIT {
     }
 
     /**
-     * Tests {@link FilmListRepository#listChildrenFilmsRatedG()} ({@code SAKILA-FILM_LIST-B-03}).
+     * Tests {@link FilmListRepository#listChildrenFilmsRatedG()} ({@code SAKILA_FILM_LIST_B_03}).
      */
     @Nested
     class ListChildrenFilmsRatedG_Test {
@@ -310,7 +310,7 @@ class FilmListRepository_SpringBootIT {
     }
 
     /**
-     * Tests {@link FilmListRepository#listFilmsWithNoActor()} ({@code SAKILA-FILM_LIST-B-04}).
+     * Tests {@link FilmListRepository#listFilmsWithNoActor()} ({@code SAKILA_FILM_LIST_B_04}).
      */
     @Nested
     class ListFilmsWithNoActor_Test {
@@ -338,7 +338,7 @@ class FilmListRepository_SpringBootIT {
     }
 
     /**
-     * Tests {@link FilmListRepository#countFilmListAndFilmsWithACategory()} ({@code SAKILA-FILM_LIST-I-01}).
+     * Tests {@link FilmListRepository#countFilmListAndFilmsWithACategory()} ({@code SAKILA_FILM_LIST_I_01}).
      */
     @Nested
     class CountFilmListAndFilmsWithACategory_Test {
@@ -360,7 +360,7 @@ class FilmListRepository_SpringBootIT {
     }
 
     /**
-     * Tests {@link FilmListRepository#countFilmsByRatingAndPrice()} ({@code SAKILA-FILM_LIST-I-02}).
+     * Tests {@link FilmListRepository#countFilmsByRatingAndPrice()} ({@code SAKILA_FILM_LIST_I_02}).
      */
     @Nested
     class CountFilmsByRatingAndPrice_Test {
@@ -391,7 +391,7 @@ class FilmListRepository_SpringBootIT {
     }
 
     /**
-     * Tests {@link FilmListRepository#listFilmsMiscountingActors()} ({@code SAKILA-FILM_LIST-I-03}).
+     * Tests {@link FilmListRepository#listFilmsMiscountingActors()} ({@code SAKILA_FILM_LIST_I_03}).
      */
     @Nested
     class ListFilmsMiscountingActors_Test {
@@ -406,7 +406,7 @@ class FilmListRepository_SpringBootIT {
     }
 
     /**
-     * Tests {@link FilmListRepository#countLongerThanAverageByCategory()} ({@code SAKILA-FILM_LIST-A-01}).
+     * Tests {@link FilmListRepository#countLongerThanAverageByCategory()} ({@code SAKILA_FILM_LIST_A_01}).
      */
     @Nested
     class CountLongerThanAverageByCategory_Test {

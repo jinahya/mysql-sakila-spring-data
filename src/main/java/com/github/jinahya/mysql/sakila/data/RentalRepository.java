@@ -31,7 +31,7 @@ import java.util.Objects;
  * {@code (root, query, builder) -> builder.isNull(root.get(Rental_.returnDate))}.
  * <p>
  * The methods below answer the exercises of upstream's {@code EXERCISES.asciidoc} on the {@code rental} table, one
- * method per exercise, named in each method's javadoc by the exercise's id ({@code SAKILA-RENTAL-B-02}, ...) and its
+ * method per exercise, named in each method's javadoc by the exercise's id ({@code SAKILA_RENTAL_B_02}, ...) and its
  * role: the book's pick, this module's own extra, native-only, or not a pick at all. The exercises are context, not
  * contract. A Basic one is plain, a {@link List} in the order the exercise asks for, written in the query. An
  * Intermediate or Advanced one takes a {@link Pageable}, the page and the sort, and returns a {@link Page}, so the
@@ -62,7 +62,7 @@ public interface RentalRepository
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * Counts the rentals not returned yet ({@code SAKILA-RENTAL-B-01}, not a pick; a count is not a list).
+     * Counts the rentals not returned yet ({@code SAKILA_RENTAL_B_01}, not a pick; a count is not a list).
      * <p>
      * A {@link Specification} of one predicate, {@code isNull} on the rental's {@link Rental_#RETURN_DATE}, counted
      * through {@link org.springframework.data.jpa.repository.JpaSpecificationExecutor#count(Specification)}.
@@ -76,7 +76,7 @@ public interface RentalRepository
 
     /**
      * Selects each month in which a rental was made, with the number of rentals made in it
-     * ({@code SAKILA-RENTAL-B-02}, the book's pick, which orders by the month, that is by the year and then by the
+     * ({@code SAKILA_RENTAL_B_02}, the book's pick, which orders by the month, that is by the year and then by the
      * month).
      * <p>
      * JPQL has no {@code DATE_FORMAT}, so the month the exercise writes as {@code YYYY-MM} is two columns here, the
@@ -96,7 +96,7 @@ public interface RentalRepository
     List<Tuple> selectMonthlyCounts();
 
     /**
-     * Selects each store with a rental not returned yet, with how many ({@code SAKILA-RENTAL-I-01}, the book's pick,
+     * Selects each store with a rental not returned yet, with how many ({@code SAKILA_RENTAL_I_01}, the book's pick,
      * which orders by {@code st.storeId}).
      * <p>
      * The rentals whose {@link Rental_#RETURN_DATE} is {@code null} are joined to their copies, and to the copies'
@@ -124,7 +124,7 @@ public interface RentalRepository
     Page<Tuple> selectNotReturnedCountsByStore(Pageable pageable);
 
     /**
-     * Selects each day on which a rental not returned yet was made, with how many ({@code SAKILA-RENTAL-I-02}, this
+     * Selects each day on which a rental not returned yet was made, with how many ({@code SAKILA_RENTAL_I_02}, this
      * module's own extra, which orders by {@code day}).
      * <p>
      * JPQL has no {@code DATE()}, but Hibernate's {@code EXTRACT(DATE FROM ..)} takes the date of a
@@ -147,7 +147,7 @@ public interface RentalRepository
     Page<Tuple> selectNotReturnedCountsByDay(Pageable pageable);
 
     /**
-     * Lists the rentals returned later than the film's rental duration allows ({@code SAKILA-RENTAL-A-01}, the
+     * Lists the rentals returned later than the film's rental duration allows ({@code SAKILA_RENTAL_A_01}, the
      * book's pick, which asks how many there are: the page's total number of elements; sort by the column
      * {@code rental_id}).
      * <p>
@@ -178,7 +178,7 @@ public interface RentalRepository
     Page<Rental> listReturnedLate(Pageable pageable);
 
     /**
-     * Selects the five longest waits between two rentals of a customer in 2005 ({@code SAKILA-RENTAL-A-02},
+     * Selects the five longest waits between two rentals of a customer in 2005 ({@code SAKILA_RENTAL_A_02},
      * native-only, which orders by {@code days} descending, then by {@code customer_id} and by {@code rental_date},
      * and takes five).
      * <p>
@@ -206,7 +206,7 @@ public interface RentalRepository
     List<Tuple> selectLongestWaitsBetweenRentals();
 
     /**
-     * Lists the rentals whose copy was rented out again before they came back ({@code SAKILA-RENTAL-A-03}, this
+     * Lists the rentals whose copy was rented out again before they came back ({@code SAKILA_RENTAL_A_03}, this
      * module's own extra, which asks whether a copy was ever rented out twice at the same time: whether the page's
      * total number of elements is not zero; sort by {@link Rental_#RENTAL_ID}).
      * <p>

@@ -70,7 +70,7 @@ class PaymentRepository_DataJpaTest
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * Tests {@link PaymentRepository#selectTotalsByStaff()} ({@code SAKILA-PAYMENT-B-01}).
+     * Tests {@link PaymentRepository#selectTotalsByStaff()} ({@code SAKILA_PAYMENT_B_01}).
      */
     @Nested
     class SelectTotalsByStaff_Test {
@@ -105,7 +105,7 @@ class PaymentRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link PaymentRepository#selectMonthlyTotals()} ({@code SAKILA-PAYMENT-B-02}).
+     * Tests {@link PaymentRepository#selectMonthlyTotals()} ({@code SAKILA_PAYMENT_B_02}).
      */
     @Nested
     class SelectMonthlyTotals_Test {
@@ -122,7 +122,7 @@ class PaymentRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link PaymentRepository#countWithoutRental()} ({@code SAKILA-PAYMENT-B-03}).
+     * Tests {@link PaymentRepository#countWithoutRental()} ({@code SAKILA_PAYMENT_B_03}).
      */
     @Nested
     class CountWithoutRental_Test {
@@ -138,7 +138,7 @@ class PaymentRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link PaymentRepository#listOfLargestAmount(Pageable)} ({@code SAKILA-PAYMENT-I-01}).
+     * Tests {@link PaymentRepository#listOfLargestAmount(Pageable)} ({@code SAKILA_PAYMENT_I_01}).
      */
     @Nested
     class ListOfLargestAmount_Test {
@@ -181,7 +181,7 @@ class PaymentRepository_DataJpaTest
 
     /**
      * Tests {@link PaymentRepository#selectCustomersWhoPaidMoreThan(BigDecimal, Pageable)}
-     * ({@code SAKILA-PAYMENT-I-02}).
+     * ({@code SAKILA_PAYMENT_I_02}).
      */
     @Nested
     class SelectCustomersWhoPaidMoreThan_Test {
@@ -237,7 +237,7 @@ class PaymentRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link PaymentRepository#selectRunningTotals(Integer, Pageable)} ({@code SAKILA-PAYMENT-A-01}).
+     * Tests {@link PaymentRepository#selectRunningTotals(Integer, Pageable)} ({@code SAKILA_PAYMENT_A_01}).
      */
     @Nested
     class SelectRunningTotals_Test {

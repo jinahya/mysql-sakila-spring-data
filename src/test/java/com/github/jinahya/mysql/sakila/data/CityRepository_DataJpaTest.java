@@ -108,7 +108,7 @@ class CityRepository_DataJpaTest
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * Tests {@link CityRepository#findAllByCityStartingWithOrderByCityAsc(String)} ({@code SAKILA-CITY-B-01}).
+     * Tests {@link CityRepository#findAllByCityStartingWithOrderByCityAsc(String)} ({@code SAKILA_CITY_B_01}).
      */
     @Nested
     class FindAllByCityStartingWithOrderByCityAsc_Test {
@@ -168,7 +168,7 @@ class CityRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link CityRepository#listByCountry(String, Pageable)} ({@code SAKILA-CITY-I-01}).
+     * Tests {@link CityRepository#listByCountry(String, Pageable)} ({@code SAKILA_CITY_I_01}).
      */
     @Nested
     class ListByCountry_Test {
@@ -237,7 +237,7 @@ class CityRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link CityRepository#selectCityCounts(Pageable)} ({@code SAKILA-CITY-I-02}).
+     * Tests {@link CityRepository#selectCityCounts(Pageable)} ({@code SAKILA_CITY_I_02}).
      */
     @Nested
     class SelectCityCounts_Test {
@@ -320,7 +320,7 @@ class CityRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link CityRepository#listOnlyCityOfCountry(Pageable)} ({@code SAKILA-CITY-A-01}).
+     * Tests {@link CityRepository#listOnlyCityOfCountry(Pageable)} ({@code SAKILA_CITY_A_01}).
      */
     @Nested
     class ListOnlyCityOfCountry_Test {
@@ -386,7 +386,7 @@ class CityRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link CityRepository#listAllCustomersInactive(Pageable)} ({@code SAKILA-CITY-A-02}).
+     * Tests {@link CityRepository#listAllCustomersInactive(Pageable)} ({@code SAKILA_CITY_A_02}).
      */
     @Nested
     class ListAllCustomersInactive_Test {

@@ -28,7 +28,7 @@ import java.util.List;
  * <p>
  * The methods after {@link #sumTotalSales()} answer the exercises of upstream's {@code EXERCISES.asciidoc} on the
  * {@code sales_by_store} view, one method per exercise, in the order of their ids, each named in its javadoc
- * ({@code SAKILA-SALES_BY_STORE-B-01}, ...). The view has no entity, so every one of them is native-only: it runs the
+ * ({@code SAKILA_SALES_BY_STORE_B_01}, ...). The view has no entity, so every one of them is native-only: it runs the
  * exercise's SQL as {@code EXERCISES.asciidoc} has it, its {@code ORDER BY} included, from a {@code .sql} resource
  * beside the implementation. A method whose statement selects whole rows of the view, with {@code v.*}, returns them
  * as {@link SalesByStore}s, next to the value it computes, if any, in one of the records nested here; one that sums
@@ -66,7 +66,7 @@ public interface SalesByStoreRepository
      * Lists every row of the view.
      * <p>
      * Not an exercise; the view's plain listing, which the tests select their fixture rows with and page through.
-     * {@link #listSales()} lists the same rows, as {@code SAKILA-SALES_BY_STORE-B-01} asks.
+     * {@link #listSales()} lists the same rows, as {@code SAKILA_SALES_BY_STORE_B_01} asks.
      *
      * @param pageable the page to return, and its sort; must not be {@code null}.
      * @return a page of the rows of the view, one per store.
@@ -85,7 +85,7 @@ public interface SalesByStoreRepository
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * Lists every store's sales ({@code SAKILA-SALES_BY_STORE-B-01}; native-only; no sort, the rows in the order the
+     * Lists every store's sales ({@code SAKILA_SALES_BY_STORE_B_01}; native-only; no sort, the rows in the order the
      * view defines, by country and then by city, which the {@code store} column, {@code city,country}, does not
      * reproduce), selecting the whole rows.
      *
@@ -94,7 +94,7 @@ public interface SalesByStoreRepository
     List<SalesByStore> listSales();
 
     /**
-     * Selects how far apart the stores' sales are ({@code SAKILA-SALES_BY_STORE-B-02}; native-only; no sort, a single
+     * Selects how far apart the stores' sales are ({@code SAKILA_SALES_BY_STORE_B_02}; native-only; no sort, a single
      * value).
      *
      * @return the largest {@code total_sales} less the smallest; {@code difference}; {@code null} when the view has no
@@ -104,7 +104,7 @@ public interface SalesByStoreRepository
     BigDecimal selectSalesDifference();
 
     /**
-     * Sums the stores' sales next to every payment with a rental ({@code SAKILA-SALES_BY_STORE-I-01}; native-only; no
+     * Sums the stores' sales next to every payment with a rental ({@code SAKILA_SALES_BY_STORE_I_01}; native-only; no
      * sort, a single row), to check that the two add up.
      * <p>
      * The view reaches a store through the payment's rental, so a payment without one cannot be in it; the two sums are
@@ -115,7 +115,7 @@ public interface SalesByStoreRepository
     ByStoreAndWithARental sumByStoreAndWithARental();
 
     /**
-     * Lists each store's sales, next to what its manager took ({@code SAKILA-SALES_BY_STORE-I-02}; native-only; sorted
+     * Lists each store's sales, next to what its manager took ({@code SAKILA_SALES_BY_STORE_I_02}; native-only; sorted
      * by {@code store}), selecting the whole rows next to the computed {@code taken_by_manager}.
      * <p>
      * The view has no key, so the rows are grouped by all three of its columns. The manager is joined to

@@ -31,7 +31,7 @@ import java.util.Objects;
  * {@code (root, query, builder) -> builder.equal(root.get(Store_.managerStaff), staff)}.
  * <p>
  * The methods below answer the exercises of upstream's {@code EXERCISES.asciidoc} on the {@code store} table, one
- * method per exercise, named in each method's javadoc by the exercise's id ({@code SAKILA-STORE-B-01}, ...) and its
+ * method per exercise, named in each method's javadoc by the exercise's id ({@code SAKILA_STORE_B_01}, ...) and its
  * role: the book's pick, or this module's own extra. A Basic exercise is plain: its method takes no {@link Pageable},
  * the order the exercise asks for is written in the query, and it returns a {@link List}. An Intermediate or Advanced
  * exercise takes a {@link Pageable}, the page and the sort, and returns a {@link Page}, so the order the exercise asks
@@ -60,7 +60,7 @@ public interface StoreRepository
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * Finds every store, with the ids of its manager and its address ({@code SAKILA-STORE-B-01}, the book's pick,
+     * Finds every store, with the ids of its manager and its address ({@code SAKILA_STORE_B_01}, the book's pick,
      * which orders by {@link Store_#STORE_ID}).
      * <p>
      * The query is derived from the method name, whose {@code OrderBy} is the exercise's order. Neither the
@@ -72,7 +72,7 @@ public interface StoreRepository
     List<Store> findAllByOrderByStoreIdAsc();
 
     /**
-     * Lists every store, with its manager and the city of its address ({@code SAKILA-STORE-I-01}, the book's pick,
+     * Lists every store, with its manager and the city of its address ({@code SAKILA_STORE_I_01}, the book's pick,
      * which orders by {@link Store_#STORE_ID}).
      * <p>
      * A {@link Specification} with no predicate, which fetches the {@link Store_#MANAGER_STAFF}, and the
@@ -98,7 +98,7 @@ public interface StoreRepository
 
     /**
      * Selects every store, with the numbers of its customers, its copies and its staff members
-     * ({@code SAKILA-STORE-I-02}, this module's own extra, which orders by {@code st.storeId}).
+     * ({@code SAKILA_STORE_I_02}, this module's own extra, which orders by {@code st.storeId}).
      * <p>
      * The three counts come from three tables, and joining all three at once would multiply the rows, so each is a
      * correlated scalar subquery in the select, on the store of the row, which is selected whole. Nothing is grouped,
@@ -124,7 +124,7 @@ public interface StoreRepository
 
     /**
      * Selects the stores that have a copy of a film, with how many distinct films they have a copy of, and how many
-     * of those no other store has a copy of ({@code SAKILA-STORE-A-01}, the book's pick, which orders by
+     * of those no other store has a copy of ({@code SAKILA_STORE_A_01}, the book's pick, which orders by
      * {@code st.storeId}).
      * <p>
      * The copies are reached through the store's {@link Store_#INVENTORIES}, by an inner join, and grouped by the store
@@ -158,7 +158,7 @@ public interface StoreRepository
 
     /**
      * Selects, for each month and each store, how many rentals of the store's copies began in the month, and what
-     * share of all the month's rentals that is ({@code SAKILA-STORE-A-02}, this module's own extra, which orders by
+     * share of all the month's rentals that is ({@code SAKILA_STORE_A_02}, this module's own extra, which orders by
      * {@code rentalYear}, {@code rentalMonth}, then {@code st.storeId}).
      * <p>
      * The rentals are joined with their {@code inventory}, and with its {@code store}, and grouped by the year and the

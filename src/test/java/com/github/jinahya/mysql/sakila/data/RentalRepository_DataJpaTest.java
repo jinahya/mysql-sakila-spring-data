@@ -68,7 +68,7 @@ class RentalRepository_DataJpaTest
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * Tests {@link RentalRepository#countNotReturned()} ({@code SAKILA-RENTAL-B-01}).
+     * Tests {@link RentalRepository#countNotReturned()} ({@code SAKILA_RENTAL_B_01}).
      */
     @Nested
     class CountNotReturned_Test {
@@ -84,7 +84,7 @@ class RentalRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link RentalRepository#selectMonthlyCounts()} ({@code SAKILA-RENTAL-B-02}).
+     * Tests {@link RentalRepository#selectMonthlyCounts()} ({@code SAKILA_RENTAL_B_02}).
      */
     @Nested
     class SelectMonthlyCounts_Test {
@@ -101,7 +101,7 @@ class RentalRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link RentalRepository#selectNotReturnedCountsByStore(Pageable)} ({@code SAKILA-RENTAL-I-01}).
+     * Tests {@link RentalRepository#selectNotReturnedCountsByStore(Pageable)} ({@code SAKILA_RENTAL_I_01}).
      */
     @Nested
     class SelectNotReturnedCountsByStore_Test {
@@ -142,7 +142,7 @@ class RentalRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link RentalRepository#selectNotReturnedCountsByDay(Pageable)} ({@code SAKILA-RENTAL-I-02}).
+     * Tests {@link RentalRepository#selectNotReturnedCountsByDay(Pageable)} ({@code SAKILA_RENTAL_I_02}).
      */
     @Nested
     class SelectNotReturnedCountsByDay_Test {
@@ -183,7 +183,7 @@ class RentalRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link RentalRepository#listOverlapping(Pageable)} ({@code SAKILA-RENTAL-A-03}).
+     * Tests {@link RentalRepository#listOverlapping(Pageable)} ({@code SAKILA_RENTAL_A_03}).
      */
     @Nested
     class ListOverlapping_Test {

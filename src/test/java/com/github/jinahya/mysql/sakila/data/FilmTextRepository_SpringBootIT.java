@@ -123,7 +123,7 @@ class FilmTextRepository_SpringBootIT
 
     /**
      * Tests {@link FilmTextRepository#findAllByDescriptionContainingAndDescriptionContainingOrderByFilmId(String,
-     * String)} ({@code SAKILA-FILM_TEXT-B-01}).
+     * String)} ({@code SAKILA_FILM_TEXT_B_01}).
      */
     @Nested
     class FindAllByDescriptionContainingAndDescriptionContainingOrderByFilmId_Test {
@@ -176,7 +176,7 @@ class FilmTextRepository_SpringBootIT
     }
 
     /**
-     * Tests {@link FilmTextRepository#selectRowCounts()} ({@code SAKILA-FILM_TEXT-I-01}).
+     * Tests {@link FilmTextRepository#selectRowCounts()} ({@code SAKILA_FILM_TEXT_I_01}).
      */
     @Nested
     class SelectRowCounts_Test {
@@ -204,7 +204,7 @@ class FilmTextRepository_SpringBootIT
     }
 
     /**
-     * Tests {@link FilmTextRepository#listMatching(String, Pageable)} ({@code SAKILA-FILM_TEXT-I-02}).
+     * Tests {@link FilmTextRepository#listMatching(String, Pageable)} ({@code SAKILA_FILM_TEXT_I_02}).
      */
     @Nested
     class ListMatching_Test {
@@ -266,7 +266,7 @@ class FilmTextRepository_SpringBootIT
     }
 
     /**
-     * Tests {@link FilmTextRepository#listWithTitleDifferentFromFilm(Pageable)} ({@code SAKILA-FILM_TEXT-I-03}, not a
+     * Tests {@link FilmTextRepository#listWithTitleDifferentFromFilm(Pageable)} ({@code SAKILA_FILM_TEXT_I_03}, not a
      * pick).
      */
     @Nested
@@ -310,7 +310,7 @@ class FilmTextRepository_SpringBootIT
     }
 
     /**
-     * Tests {@link FilmTextRepository#countMatchingInBooleanMode(String)} ({@code SAKILA-FILM_TEXT-I-04}).
+     * Tests {@link FilmTextRepository#countMatchingInBooleanMode(String)} ({@code SAKILA_FILM_TEXT_I_04}).
      */
     @Nested
     class CountMatchingInBooleanMode_Test {
@@ -354,7 +354,7 @@ class FilmTextRepository_SpringBootIT
     }
 
     /**
-     * Tests {@link FilmTextRepository#selectEitherAndBothCounts(String, String)} ({@code SAKILA-FILM_TEXT-I-05}).
+     * Tests {@link FilmTextRepository#selectEitherAndBothCounts(String, String)} ({@code SAKILA_FILM_TEXT_I_05}).
      */
     @Nested
     class SelectEitherAndBothCounts_Test {
@@ -399,7 +399,7 @@ class FilmTextRepository_SpringBootIT
     }
 
     /**
-     * Tests {@link FilmTextRepository#selectMostCommonKinds()} ({@code SAKILA-FILM_TEXT-A-01}).
+     * Tests {@link FilmTextRepository#selectMostCommonKinds()} ({@code SAKILA_FILM_TEXT_A_01}).
      */
     @Nested
     class SelectMostCommonKinds_Test {
@@ -434,7 +434,7 @@ class FilmTextRepository_SpringBootIT
     }
 
     /**
-     * Tests {@link FilmTextRepository#selectTitleChain(int, int)} ({@code SAKILA-FILM_TEXT-A-02}).
+     * Tests {@link FilmTextRepository#selectTitleChain(int, int)} ({@code SAKILA_FILM_TEXT_A_02}).
      */
     @Nested
     class SelectTitleChain_Test {

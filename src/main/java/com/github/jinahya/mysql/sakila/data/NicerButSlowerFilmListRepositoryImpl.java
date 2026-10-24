@@ -94,53 +94,53 @@ public class NicerButSlowerFilmListRepositoryImpl
                                          + " FROM " + NicerButSlowerFilmList.TABLE_NAME;
 
     /**
-     * The statement of {@link #listActorsOfFilmOne()}, {@code SAKILA-NICER_BUT_SLOWER_FILM_LIST-B-01}.
+     * The statement of {@link #listActorsOfFilmOne()}, {@code SAKILA_NICER_BUT_SLOWER_FILM_LIST_B_01}.
      */
     private static final String SQL_LIST_ACTORS_OF_FILM_ONE =
             sql(NicerButSlowerFilmListRepositoryImpl.class, "NICER_BUT_SLOWER_FILM_LIST_LIST_ACTORS_OF_FILM_ONE.sql");
 
     /**
-     * The statement of {@link #countFilmsOfPenelopeGuiness()}, {@code SAKILA-NICER_BUT_SLOWER_FILM_LIST-B-02}.
+     * The statement of {@link #countFilmsOfPenelopeGuiness()}, {@code SAKILA_NICER_BUT_SLOWER_FILM_LIST_B_02}.
      */
     private static final String SQL_COUNT_FILMS_OF_PENELOPE_GUINESS =
             sql(NicerButSlowerFilmListRepositoryImpl.class,
                 "NICER_BUT_SLOWER_FILM_LIST_COUNT_FILMS_OF_PENELOPE_GUINESS.sql");
 
     /**
-     * The statement of {@link #listFilmsWithNoActor()}, {@code SAKILA-NICER_BUT_SLOWER_FILM_LIST-B-03}.
+     * The statement of {@link #listFilmsWithNoActor()}, {@code SAKILA_NICER_BUT_SLOWER_FILM_LIST_B_03}.
      */
     private static final String SQL_LIST_FILMS_WITH_NO_ACTOR =
             sql(NicerButSlowerFilmListRepositoryImpl.class, "NICER_BUT_SLOWER_FILM_LIST_LIST_FILMS_WITH_NO_ACTOR.sql");
 
     /**
-     * The statement of {@link #listFiveLongestCategoriesOnAverage()}, {@code SAKILA-NICER_BUT_SLOWER_FILM_LIST-I-01}.
+     * The statement of {@link #listFiveLongestCategoriesOnAverage()}, {@code SAKILA_NICER_BUT_SLOWER_FILM_LIST_I_01}.
      */
     private static final String SQL_LIST_FIVE_LONGEST_CATEGORIES_ON_AVERAGE =
             sql(NicerButSlowerFilmListRepositoryImpl.class,
                 "NICER_BUT_SLOWER_FILM_LIST_LIST_FIVE_LONGEST_CATEGORIES_ON_AVERAGE.sql");
 
     /**
-     * The statement of {@link #countFilmsByLengthBand()}, {@code SAKILA-NICER_BUT_SLOWER_FILM_LIST-I-02}.
+     * The statement of {@link #countFilmsByLengthBand()}, {@code SAKILA_NICER_BUT_SLOWER_FILM_LIST_I_02}.
      */
     private static final String SQL_COUNT_FILMS_BY_LENGTH_BAND =
             sql(NicerButSlowerFilmListRepositoryImpl.class,
                 "NICER_BUT_SLOWER_FILM_LIST_COUNT_FILMS_BY_LENGTH_BAND.sql");
 
     /**
-     * The statement of {@link #countDifferingFromFilmList()}, {@code SAKILA-NICER_BUT_SLOWER_FILM_LIST-A-01}.
+     * The statement of {@link #countDifferingFromFilmList()}, {@code SAKILA_NICER_BUT_SLOWER_FILM_LIST_A_01}.
      */
     private static final String SQL_COUNT_DIFFERING_FROM_FILM_LIST =
             sql(NicerButSlowerFilmListRepositoryImpl.class,
                 "NICER_BUT_SLOWER_FILM_LIST_COUNT_DIFFERING_FROM_FILM_LIST.sql");
 
     /**
-     * The statement of {@link #listLongestByCategory()}, {@code SAKILA-NICER_BUT_SLOWER_FILM_LIST-A-02}.
+     * The statement of {@link #listLongestByCategory()}, {@code SAKILA_NICER_BUT_SLOWER_FILM_LIST_A_02}.
      */
     private static final String SQL_LIST_LONGEST_BY_CATEGORY =
             sql(NicerButSlowerFilmListRepositoryImpl.class, "NICER_BUT_SLOWER_FILM_LIST_LIST_LONGEST_BY_CATEGORY.sql");
 
     /**
-     * The statement of {@link #countMismatchedActors()}, {@code SAKILA-NICER_BUT_SLOWER_FILM_LIST-A-03}.
+     * The statement of {@link #countMismatchedActors()}, {@code SAKILA_NICER_BUT_SLOWER_FILM_LIST_A_03}.
      */
     private static final String SQL_COUNT_MISMATCHED_ACTORS =
             sql(NicerButSlowerFilmListRepositoryImpl.class, "NICER_BUT_SLOWER_FILM_LIST_COUNT_MISMATCHED_ACTORS.sql");

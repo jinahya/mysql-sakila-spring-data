@@ -39,7 +39,7 @@ import java.util.stream.Stream;
  * {@code ActorInfo.countAll}), but no method here runs them yet.
  * <p>
  * The methods below answer the exercises of upstream's {@code EXERCISES.asciidoc} on the {@code actor_info} view, one
- * method per exercise, named in each method's javadoc by the exercise's id ({@code SAKILA-ACTOR_INFO-B-01}, ...), with
+ * method per exercise, named in each method's javadoc by the exercise's id ({@code SAKILA_ACTOR_INFO_B_01}, ...), with
  * its role: the book's pick, this module's own extra, native-only, or not a pick (an exercise this module answered
  * before the picks were made). The exercises are context, not contract. A Basic exercise returns a {@link List} (the
  * book's pick) or a {@link Stream} (this module's own extra), with the order the exercise asks for in the query, and
@@ -70,7 +70,7 @@ public interface ActorInfoRepository
 
     /**
      * Selects the row of the actor of the specified id, with its {@code film_info} cut to the specified length, as a
-     * stream ({@code SAKILA-ACTOR_INFO-B-01}, this module's own extra, which shows the actor {@code 1} with the first
+     * stream ({@code SAKILA_ACTOR_INFO_B_01}, this module's own extra, which shows the actor {@code 1} with the first
      * {@code 80} characters, and orders by {@code v.actorId}).
      * <p>
      * The {@code film_info} is long, so the select cuts it with {@code SUBSTRING}, which a {@link Specification}, which
@@ -97,7 +97,7 @@ public interface ActorInfoRepository
 
     /**
      * Counts the actors who appear in at least one film of the specified category, as the {@code film_info} says
-     * ({@code SAKILA-ACTOR_INFO-B-02}, not a pick, which counts the actors of a {@code Horror} film; one number, so no
+     * ({@code SAKILA_ACTOR_INFO_B_02}, not a pick, which counts the actors of a {@code Horror} film; one number, so no
      * sort).
      * <p>
      * Each category in the {@code film_info} string is written as its name followed by a colon, so a
@@ -116,7 +116,7 @@ public interface ActorInfoRepository
     }
 
     /**
-     * Finds the actors whose {@code film_info} names the specified film ({@code SAKILA-ACTOR_INFO-B-03}, the book's
+     * Finds the actors whose {@code film_info} names the specified film ({@code SAKILA_ACTOR_INFO_B_03}, the book's
      * pick, which finds the actors of {@code ACADEMY DINOSAUR}, and orders by {@link ActorInfo_#ACTOR_ID}).
      * <p>
      * The query, and its order, are derived from the method name. {@code Containing} is a {@code LIKE} with a
@@ -131,7 +131,7 @@ public interface ActorInfoRepository
 
     /**
      * Selects how many rows the view has, next to how many actors the {@code actor} table has
-     * ({@code SAKILA-ACTOR_INFO-I-01}, this module's own extra, which checks that the two are equal; one row, so no
+     * ({@code SAKILA_ACTOR_INFO_I_01}, this module's own extra, which checks that the two are equal; one row, so no
      * sort).
      * <p>
      * The view groups the actors, not the films, so an actor with no film still has a row, and the two counts should
@@ -155,7 +155,7 @@ public interface ActorInfoRepository
     Page<Tuple> selectRowCounts(Pageable pageable);
 
     /**
-     * Lists the actors whose {@code film_info} covers every category ({@code SAKILA-ACTOR_INFO-I-02}, the book's pick,
+     * Lists the actors whose {@code film_info} covers every category ({@code SAKILA_ACTOR_INFO_I_02}, the book's pick,
      * which orders by {@link ActorInfo_#ACTOR_ID}).
      * <p>
      * Each category in the {@code film_info} is followed by one colon, so the length of the string less the length of
@@ -180,7 +180,7 @@ public interface ActorInfoRepository
 
     /**
      * Selects how many actors cover how many categories, as their {@code film_info} says
-     * ({@code SAKILA-ACTOR_INFO-I-03}, native-only, which orders by {@code categories} descending).
+     * ({@code SAKILA_ACTOR_INFO_I_03}, native-only, which orders by {@code categories} descending).
      * <p>
      * The categories of a row are counted as in {@link #listCoveringEveryCategory(Pageable)}, and the rows are grouped
      * by that number: the exercise's SQL groups on the alias of a computed value, which upstream answers in SQL only,
@@ -202,7 +202,7 @@ public interface ActorInfoRepository
 
     /**
      * Lists the actors whose {@code film_info} disagrees with the tables on the number of categories
-     * ({@code SAKILA-ACTOR_INFO-A-01}, the book's pick, which orders by {@link ActorInfo_#ACTOR_ID}).
+     * ({@code SAKILA_ACTOR_INFO_A_01}, the book's pick, which orders by {@link ActorInfo_#ACTOR_ID}).
      * <p>
      * The categories the {@code film_info} names are counted as in {@link #listCoveringEveryCategory(Pageable)}; the
      * categories of the actor's films are counted by a correlated subquery, from the actor's {@code film_actor} links

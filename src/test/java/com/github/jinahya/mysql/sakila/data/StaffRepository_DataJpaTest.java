@@ -67,7 +67,7 @@ class StaffRepository_DataJpaTest
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * Tests {@link StaffRepository#findAllByOrderByStaffIdAsc()} ({@code SAKILA-STAFF-B-01}).
+     * Tests {@link StaffRepository#findAllByOrderByStaffIdAsc()} ({@code SAKILA_STAFF_B_01}).
      */
     @Nested
     class FindAllByOrderByStaffIdAsc_Test {
@@ -84,7 +84,7 @@ class StaffRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link StaffRepository#findAllByPasswordIsNullOrderByStaffIdAsc()} ({@code SAKILA-STAFF-B-02}).
+     * Tests {@link StaffRepository#findAllByPasswordIsNullOrderByStaffIdAsc()} ({@code SAKILA_STAFF_B_02}).
      */
     @Nested
     class FindAllByPasswordIsNullOrderByStaffIdAsc_Test {
@@ -120,7 +120,7 @@ class StaffRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link StaffRepository#selectRentalCounts(Pageable)} ({@code SAKILA-STAFF-I-01}).
+     * Tests {@link StaffRepository#selectRentalCounts(Pageable)} ({@code SAKILA_STAFF_I_01}).
      */
     @Nested
     class SelectRentalCounts_Test {
@@ -153,7 +153,7 @@ class StaffRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link StaffRepository#listManagingOwnStore(Pageable)} ({@code SAKILA-STAFF-I-02}).
+     * Tests {@link StaffRepository#listManagingOwnStore(Pageable)} ({@code SAKILA_STAFF_I_02}).
      */
     @Nested
     class ListManagingOwnStore_Test {
@@ -184,7 +184,7 @@ class StaffRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link StaffRepository#selectBestDays(Pageable)} ({@code SAKILA-STAFF-A-01}).
+     * Tests {@link StaffRepository#selectBestDays(Pageable)} ({@code SAKILA_STAFF_A_01}).
      */
     @Nested
     class SelectBestDays_Test {

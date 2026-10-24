@@ -25,7 +25,7 @@ import java.util.List;
  * <p>
  * The methods after {@link #countAll()} answer the exercises of upstream's {@code EXERCISES.asciidoc} on the
  * {@code film_list} view, one method per exercise, in the order of their ids, each named in its javadoc
- * ({@code SAKILA-FILM_LIST-B-01}, ...). The view has no entity, so every one of them is native-only: it runs the
+ * ({@code SAKILA_FILM_LIST_B_01}, ...). The view has no entity, so every one of them is native-only: it runs the
  * exercise's SQL as {@code EXERCISES.asciidoc} has it, its literals, its {@code ORDER BY} and its {@code LIMIT}
  * included, from a {@code .sql} resource beside the implementation. A method whose statement selects whole rows of
  * the view, with {@code l.*}, returns them as {@link FilmList}s; one that counts or groups by a value returns a single
@@ -96,7 +96,7 @@ public interface FilmListRepository
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * Counts the {@code Action} films ({@code SAKILA-FILM_LIST-B-01}; native-only; no sort, a single value).
+     * Counts the {@code Action} films ({@code SAKILA_FILM_LIST_B_01}; native-only; no sort, a single value).
      * <p>
      * The view has a row for each category of a film, so this is the number of rows whose {@code category} is
      * {@code Action}; the comparison is the database's, case-insensitive by the collation of the column.
@@ -106,7 +106,7 @@ public interface FilmListRepository
     long countActionFilms();
 
     /**
-     * Lists the actors of the film {@code 1} ({@code SAKILA-FILM_LIST-B-02}; native-only; no sort, the rows of one
+     * Lists the actors of the film {@code 1} ({@code SAKILA_FILM_LIST_B_02}; native-only; no sort, the rows of one
      * film), selecting the whole rows.
      * <p>
      * A list rather than an optional: {@code FID} does not identify a row of the view, which has one row for each
@@ -118,7 +118,7 @@ public interface FilmListRepository
     List<FilmList> listActorsOfFilmOne();
 
     /**
-     * Lists the {@code Children} films rated {@code G} ({@code SAKILA-FILM_LIST-B-03}; native-only; sorted by
+     * Lists the {@code Children} films rated {@code G} ({@code SAKILA_FILM_LIST_B_03}; native-only; sorted by
      * {@code title}, then by {@code FID}), selecting the whole rows.
      *
      * @return the rows of the {@code Children} films rated {@code G}, by title.
@@ -126,7 +126,7 @@ public interface FilmListRepository
     List<FilmList> listChildrenFilmsRatedG();
 
     /**
-     * Lists the films with no actor ({@code SAKILA-FILM_LIST-B-04}; native-only; sorted by {@code FID}), selecting
+     * Lists the films with no actor ({@code SAKILA_FILM_LIST_B_04}; native-only; sorted by {@code FID}), selecting
      * the whole rows.
      * <p>
      * The view joins the actors with a {@code LEFT JOIN}, so a film with no actor is in it, with {@code NULL}
@@ -137,7 +137,7 @@ public interface FilmListRepository
     List<FilmList> listFilmsWithNoActor();
 
     /**
-     * Counts the rows of the view next to the films which have a category ({@code SAKILA-FILM_LIST-I-01};
+     * Counts the rows of the view next to the films which have a category ({@code SAKILA_FILM_LIST_I_01};
      * native-only; no sort, a single row), to check that the view has a row for every film which has a category.
      * <p>
      * The view joins {@code film} with {@code film_category} and {@code category}, so it has a row for a film only when
@@ -148,7 +148,7 @@ public interface FilmListRepository
     FilmListAndFilmsWithACategory countFilmListAndFilmsWithACategory();
 
     /**
-     * Counts the films of each rating at each price ({@code SAKILA-FILM_LIST-I-02}; native-only; sorted by
+     * Counts the films of each rating at each price ({@code SAKILA_FILM_LIST_I_02}; native-only; sorted by
      * {@code rating}, in the order of MySQL's {@code ENUM}: {@code G}, {@code PG}, {@code PG-13}, {@code R},
      * {@code NC-17}).
      *
@@ -158,7 +158,7 @@ public interface FilmListRepository
 
     /**
      * Lists the films whose {@code actors} string names a different number of actors than {@code film_actor} has
-     * ({@code SAKILA-FILM_LIST-I-03}; native-only; sorted by {@code FID}), selecting the whole rows.
+     * ({@code SAKILA_FILM_LIST_I_03}; native-only; sorted by {@code FID}), selecting the whole rows.
      * <p>
      * The names are counted by their commas, and compared with a correlated count of the film's {@code film_actor}
      * links; a film with no actor is left out. The answer on the sample data is no row.
@@ -169,7 +169,7 @@ public interface FilmListRepository
     List<FilmList> listFilmsMiscountingActors();
 
     /**
-     * Counts, for each category, the films longer than the category's average ({@code SAKILA-FILM_LIST-A-01};
+     * Counts, for each category, the films longer than the category's average ({@code SAKILA_FILM_LIST_A_01};
      * native-only; sorted by {@code longer_than_average}, descending, then by {@code category}).
      * <p>
      * The average is a correlated subquery over the view itself, for the category of the outer row.

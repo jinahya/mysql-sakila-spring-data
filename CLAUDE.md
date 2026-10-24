@@ -55,7 +55,7 @@ after a change upstream, run `./mvnw -DskipTests install` there before building 
   three views' `JdbcClient` methods keep their records, since `JdbcClient` has no `Tuple`.
 - **Exercises.** Upstream's `../mysql-sakila-persistence/EXERCISES.asciidoc` (sibling root; `EXERCISES.yaml` is its registry) is the context, not
   a contract: for each repository, one or two exercises of each level (Basic, Intermediate, Advanced) become one
-  method each, on the repository of the exercise's section, the exercise id (`SAKILA-ACTOR-I-01`) named in the
+  method each, on the repository of the exercise's section, the exercise id (`SAKILA_ACTOR_I_01`) named in the
   method's javadoc together with the sort the exercise asks for, and one `@Nested` test class per method in both test
   classes. `ActorRepository` and its two tests are the reference. The `SCHEMA` section is not answered.
 - **Upstream getters.** Single-valued association getters are public; every collection getter (`getFilmActors()`,

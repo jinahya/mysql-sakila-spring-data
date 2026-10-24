@@ -99,7 +99,7 @@ class StaffListRepository_SpringBootIT
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * Tests {@link StaffListRepository#findAllByOrderByIdAsc()} ({@code SAKILA-STAFF_LIST-B-01}).
+     * Tests {@link StaffListRepository#findAllByOrderByIdAsc()} ({@code SAKILA_STAFF_LIST_B_01}).
      */
     @Nested
     class FindAllByOrderByIdAsc_Test {
@@ -157,7 +157,7 @@ class StaffListRepository_SpringBootIT
     }
 
     /**
-     * Tests {@link StaffListRepository#selectRowCounts()} ({@code SAKILA-STAFF_LIST-I-01}).
+     * Tests {@link StaffListRepository#selectRowCounts()} ({@code SAKILA_STAFF_LIST_I_01}).
      */
     @Nested
     class SelectRowCounts_Test {
@@ -187,7 +187,7 @@ class StaffListRepository_SpringBootIT
     }
 
     /**
-     * Tests {@link StaffListRepository#selectCities(Pageable)} ({@code SAKILA-STAFF_LIST-I-02}).
+     * Tests {@link StaffListRepository#selectCities(Pageable)} ({@code SAKILA_STAFF_LIST_I_02}).
      */
     @Nested
     class SelectCities_Test {

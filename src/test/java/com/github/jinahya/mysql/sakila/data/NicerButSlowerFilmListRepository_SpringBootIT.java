@@ -205,7 +205,7 @@ class NicerButSlowerFilmListRepository_SpringBootIT {
 
     /**
      * Tests {@link NicerButSlowerFilmListRepository#listActorsOfFilmOne()}
-     * ({@code SAKILA-NICER_BUT_SLOWER_FILM_LIST-B-01}).
+     * ({@code SAKILA_NICER_BUT_SLOWER_FILM_LIST_B_01}).
      */
     @Nested
     class ListActorsOfFilmOne_Test {
@@ -238,7 +238,7 @@ class NicerButSlowerFilmListRepository_SpringBootIT {
 
     /**
      * Tests {@link NicerButSlowerFilmListRepository#countFilmsOfPenelopeGuiness()}
-     * ({@code SAKILA-NICER_BUT_SLOWER_FILM_LIST-B-02}).
+     * ({@code SAKILA_NICER_BUT_SLOWER_FILM_LIST_B_02}).
      */
     @Nested
     class CountFilmsOfPenelopeGuiness_Test {
@@ -261,7 +261,7 @@ class NicerButSlowerFilmListRepository_SpringBootIT {
 
     /**
      * Tests {@link NicerButSlowerFilmListRepository#listFilmsWithNoActor()}
-     * ({@code SAKILA-NICER_BUT_SLOWER_FILM_LIST-B-03}).
+     * ({@code SAKILA_NICER_BUT_SLOWER_FILM_LIST_B_03}).
      */
     @Nested
     class ListFilmsWithNoActor_Test {
@@ -297,7 +297,7 @@ class NicerButSlowerFilmListRepository_SpringBootIT {
 
     /**
      * Tests {@link NicerButSlowerFilmListRepository#listFiveLongestCategoriesOnAverage()}
-     * ({@code SAKILA-NICER_BUT_SLOWER_FILM_LIST-I-01}).
+     * ({@code SAKILA_NICER_BUT_SLOWER_FILM_LIST_I_01}).
      */
     @Nested
     class ListFiveLongestCategoriesOnAverage_Test {
@@ -336,7 +336,7 @@ class NicerButSlowerFilmListRepository_SpringBootIT {
 
     /**
      * Tests {@link NicerButSlowerFilmListRepository#countFilmsByLengthBand()}
-     * ({@code SAKILA-NICER_BUT_SLOWER_FILM_LIST-I-02}).
+     * ({@code SAKILA_NICER_BUT_SLOWER_FILM_LIST_I_02}).
      */
     @Nested
     class CountFilmsByLengthBand_Test {
@@ -368,7 +368,7 @@ class NicerButSlowerFilmListRepository_SpringBootIT {
 
     /**
      * Tests {@link NicerButSlowerFilmListRepository#countDifferingFromFilmList()}
-     * ({@code SAKILA-NICER_BUT_SLOWER_FILM_LIST-A-01}).
+     * ({@code SAKILA_NICER_BUT_SLOWER_FILM_LIST_A_01}).
      */
     @Nested
     class CountDifferingFromFilmList_Test {
@@ -388,7 +388,7 @@ class NicerButSlowerFilmListRepository_SpringBootIT {
 
     /**
      * Tests {@link NicerButSlowerFilmListRepository#listLongestByCategory()}
-     * ({@code SAKILA-NICER_BUT_SLOWER_FILM_LIST-A-02}).
+     * ({@code SAKILA_NICER_BUT_SLOWER_FILM_LIST_A_02}).
      */
     @Nested
     class ListLongestByCategory_Test {
@@ -438,7 +438,7 @@ class NicerButSlowerFilmListRepository_SpringBootIT {
 
     /**
      * Tests {@link NicerButSlowerFilmListRepository#countMismatchedActors()}
-     * ({@code SAKILA-NICER_BUT_SLOWER_FILM_LIST-A-03}).
+     * ({@code SAKILA_NICER_BUT_SLOWER_FILM_LIST_A_03}).
      */
     @Nested
     class CountMismatchedActors_Test {

@@ -224,7 +224,7 @@ class SalesByStoreRepository_SpringBootIT {
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * Tests {@link SalesByStoreRepository#listSales()} ({@code SAKILA-SALES_BY_STORE-B-01}).
+     * Tests {@link SalesByStoreRepository#listSales()} ({@code SAKILA_SALES_BY_STORE_B_01}).
      */
     @Nested
     class ListSales_Test {
@@ -250,7 +250,7 @@ class SalesByStoreRepository_SpringBootIT {
     }
 
     /**
-     * Tests {@link SalesByStoreRepository#selectSalesDifference()} ({@code SAKILA-SALES_BY_STORE-B-02}).
+     * Tests {@link SalesByStoreRepository#selectSalesDifference()} ({@code SAKILA_SALES_BY_STORE_B_02}).
      */
     @Nested
     class SelectSalesDifference_Test {
@@ -273,7 +273,7 @@ class SalesByStoreRepository_SpringBootIT {
     }
 
     /**
-     * Tests {@link SalesByStoreRepository#sumByStoreAndWithARental()} ({@code SAKILA-SALES_BY_STORE-I-01}).
+     * Tests {@link SalesByStoreRepository#sumByStoreAndWithARental()} ({@code SAKILA_SALES_BY_STORE_I_01}).
      */
     @Nested
     class SumByStoreAndWithARental_Test {
@@ -294,7 +294,7 @@ class SalesByStoreRepository_SpringBootIT {
     }
 
     /**
-     * Tests {@link SalesByStoreRepository#listSalesAndTakenByManager()} ({@code SAKILA-SALES_BY_STORE-I-02}).
+     * Tests {@link SalesByStoreRepository#listSalesAndTakenByManager()} ({@code SAKILA_SALES_BY_STORE_I_02}).
      */
     @Nested
     class ListSalesAndTakenByManager_Test {

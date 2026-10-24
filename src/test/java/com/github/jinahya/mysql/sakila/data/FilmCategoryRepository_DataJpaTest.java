@@ -117,7 +117,7 @@ class FilmCategoryRepository_DataJpaTest
 
     /**
      * Tests {@link FilmCategoryRepository#findAllByFilmIdBetweenOrderByFilmId(Integer, Integer)}
-     * ({@code SAKILA-FILM_CATEGORY-B-02}).
+     * ({@code SAKILA_FILM_CATEGORY_B_02}).
      */
     @Nested
     class FindAllByFilmIdBetweenOrderByFilmId_Test {
@@ -178,7 +178,7 @@ class FilmCategoryRepository_DataJpaTest
 
     /**
      * Tests {@link FilmCategoryRepository#selectFilmsWithMoreCategoriesThan(long, Pageable)}
-     * ({@code SAKILA-FILM_CATEGORY-I-01}).
+     * ({@code SAKILA_FILM_CATEGORY_I_01}).
      */
     @Nested
     class SelectFilmsWithMoreCategoriesThan_Test {
@@ -245,7 +245,7 @@ class FilmCategoryRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link FilmCategoryRepository#selectFilmsWithoutCategory(Pageable)} ({@code SAKILA-FILM_CATEGORY-I-02}).
+     * Tests {@link FilmCategoryRepository#selectFilmsWithoutCategory(Pageable)} ({@code SAKILA_FILM_CATEGORY_I_02}).
      */
     @Nested
     class SelectFilmsWithoutCategory_Test {
@@ -295,7 +295,7 @@ class FilmCategoryRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link FilmCategoryRepository#selectLongestFilms(Pageable)} ({@code SAKILA-FILM_CATEGORY-A-01}).
+     * Tests {@link FilmCategoryRepository#selectLongestFilms(Pageable)} ({@code SAKILA_FILM_CATEGORY_A_01}).
      */
     @Nested
     class SelectLongestFilms_Test {
@@ -364,7 +364,7 @@ class FilmCategoryRepository_DataJpaTest
 
     /**
      * Tests {@link FilmCategoryRepository#selectCategoryPairsWithSameFilmCount(Pageable)}
-     * ({@code SAKILA-FILM_CATEGORY-A-02}).
+     * ({@code SAKILA_FILM_CATEGORY_A_02}).
      */
     @Nested
     class SelectCategoryPairsWithSameFilmCount_Test {

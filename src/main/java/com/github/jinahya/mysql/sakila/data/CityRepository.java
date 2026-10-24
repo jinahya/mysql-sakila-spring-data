@@ -32,7 +32,7 @@ import java.util.Objects;
  * {@code (root, query, builder) -> builder.equal(root.get(City_.city), city)}.
  * <p>
  * The methods below answer the exercises of upstream's {@code EXERCISES.asciidoc} on the {@code city} table, one
- * method per exercise, named in each method's javadoc by the exercise's id ({@code SAKILA-CITY-B-01}, ...), and by
+ * method per exercise, named in each method's javadoc by the exercise's id ({@code SAKILA_CITY_B_01}, ...), and by
  * its role: the book's pick, which every data module answers, or this module's own extra. A Basic method is plain: it
  * returns a {@link List}, in the order the exercise asks for, written in the query. An Intermediate or Advanced method
  * takes a {@link Pageable}, the page and the sort, and returns a {@link Page}, so the order the exercise asks for, and
@@ -61,7 +61,7 @@ public interface CityRepository
 
     /**
      * Finds the cities whose value of {@link City_#CITY} attribute starts with the specified prefix, ordered by that
-     * name ({@code SAKILA-CITY-B-01}, the book's pick, which asks for the cities starting with {@code Q}, ordered by
+     * name ({@code SAKILA_CITY_B_01}, the book's pick, which asks for the cities starting with {@code Q}, ordered by
      * {@link City_#CITY}).
      * <p>
      * The query is derived from the method name, its order too; Spring Data escapes the prefix and adds the trailing
@@ -74,7 +74,7 @@ public interface CityRepository
     List<City> findAllByCityStartingWithOrderByCityAsc(String prefix);
 
     /**
-     * Lists the cities of the country of the specified name ({@code SAKILA-CITY-I-01}, the book's pick, which asks
+     * Lists the cities of the country of the specified name ({@code SAKILA_CITY_I_01}, the book's pick, which asks
      * for the cities of {@code Canada}, ordered by {@link City_#CITY}).
      * <p>
      * A {@link Specification} of one equality, on the name of the city's {@link City_#COUNTRY}, a path through the
@@ -93,7 +93,7 @@ public interface CityRepository
     }
 
     /**
-     * Selects the countries that have a city, with how many ({@code SAKILA-CITY-I-02}, this module's own extra, which
+     * Selects the countries that have a city, with how many ({@code SAKILA_CITY_I_02}, this module's own extra, which
      * takes the first five by {@code cities} descending, then by {@code co.country}).
      * <p>
      * The cities are joined to their {@link City_#COUNTRY}, grouped by the country itself, which selects the country
@@ -116,7 +116,7 @@ public interface CityRepository
     Page<Tuple> selectCityCounts(Pageable pageable);
 
     /**
-     * Lists the cities which are the only city of their country ({@code SAKILA-CITY-A-01}, the book's pick, which
+     * Lists the cities which are the only city of their country ({@code SAKILA_CITY_A_01}, the book's pick, which
      * takes the first ten by the name of the {@link City_#COUNTRY}, then by {@link City_#CITY_ID}).
      * <p>
      * A {@link Specification} of a correlated {@code NOT EXISTS}: no other city, by id, is in the same country. The
@@ -141,7 +141,7 @@ public interface CityRepository
     }
 
     /**
-     * Lists the cities which have a customer, and whose customers are all inactive ({@code SAKILA-CITY-A-02}, this
+     * Lists the cities which have a customer, and whose customers are all inactive ({@code SAKILA_CITY_A_02}, this
      * module's own extra, which orders by {@link City_#CITY}, then by {@link City_#CITY_ID}).
      * <p>
      * A {@link Specification} of two correlated subqueries on {@link Customer}, through the customer's

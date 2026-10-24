@@ -28,7 +28,7 @@ import java.util.Objects;
  * {@code (root, query, builder) -> builder.equal(root.get(Country_.country), country)}.
  * <p>
  * The methods below answer the exercises of upstream's {@code EXERCISES.asciidoc} on the {@code country} table, one
- * method per exercise, named in each method's javadoc by the exercise's id ({@code SAKILA-COUNTRY-B-02}, ...), and
+ * method per exercise, named in each method's javadoc by the exercise's id ({@code SAKILA_COUNTRY_B_02}, ...), and
  * by its role: the book's pick, which every data module answers, this module's own extra, or a native-only one. A
  * Basic method is plain: it returns a {@link List}, in the order the exercise asks for, written in the query. An
  * Intermediate or Advanced method takes a {@link Pageable}, the page and the sort, and returns a {@link Page}, so the
@@ -59,7 +59,7 @@ public interface CountryRepository
 
     /**
      * Finds the countries whose value of {@link Country_#COUNTRY} attribute starts with the specified prefix, ordered
-     * by that name ({@code SAKILA-COUNTRY-B-02}, the book's pick, which asks for the countries starting with
+     * by that name ({@code SAKILA_COUNTRY_B_02}, the book's pick, which asks for the countries starting with
      * {@code S}, ordered by {@link Country_#COUNTRY}).
      * <p>
      * The query is derived from the method name, its order too; Spring Data escapes the prefix and adds the trailing
@@ -72,7 +72,7 @@ public interface CountryRepository
     List<Country> findAllByCountryStartingWithOrderByCountryAsc(String prefix);
 
     /**
-     * Lists the countries with no city ({@code SAKILA-COUNTRY-I-01}, this module's own extra, which shows the whole
+     * Lists the countries with no city ({@code SAKILA_COUNTRY_I_01}, this module's own extra, which shows the whole
      * rows, in no particular order; give it one, such as by {@link Country_#COUNTRY_ID}; the installed sample data
      * has none).
      * <p>
@@ -89,7 +89,7 @@ public interface CountryRepository
     }
 
     /**
-     * Selects the countries that have a customer, with how many ({@code SAKILA-COUNTRY-I-02}, the book's pick, which
+     * Selects the countries that have a customer, with how many ({@code SAKILA_COUNTRY_I_02}, the book's pick, which
      * takes the first five by {@code customers} descending, then by {@code co.country}).
      * <p>
      * The customers are joined along their address chain, to the address, its city and the city's country, grouped by
@@ -117,7 +117,7 @@ public interface CountryRepository
     Page<Tuple> selectCustomerCounts(Pageable pageable);
 
     /**
-     * Selects the fewest countries which hold half of the customers ({@code SAKILA-COUNTRY-A-01}, native-only,
+     * Selects the fewest countries which hold half of the customers ({@code SAKILA_COUNTRY_A_01}, native-only,
      * ordered by {@code customers} descending, then by {@code country}, in the query).
      * <p>
      * The customers are counted by country, along the address chain, and two window sums run over the counts: the
@@ -151,7 +151,7 @@ public interface CountryRepository
     List<Tuple> selectHoldingHalfOfCustomers();
 
     /**
-     * Selects the countries ranked in the top ten by customers, ties sharing a rank ({@code SAKILA-COUNTRY-A-02},
+     * Selects the countries ranked in the top ten by customers, ties sharing a rank ({@code SAKILA_COUNTRY_A_02},
      * native-only, ordered by {@code ranking}, then by {@code country}, in the query).
      * <p>
      * The customers are counted by country, along the address chain, and ranked by {@code RANK()}, which gives tied

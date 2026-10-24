@@ -30,7 +30,7 @@ import java.util.Objects;
  * <p>
  * The methods below answer the exercises of upstream's {@code EXERCISES.asciidoc} on the
  * {@code sales_by_film_category} view, one method per exercise, named in each method's javadoc by the exercise's id
- * ({@code SAKILA-SALES_BY_FILM_CATEGORY-B-01}, ...) and its role: the book's pick, this module's own extra, or not a
+ * ({@code SAKILA_SALES_BY_FILM_CATEGORY_B_01}, ...) and its role: the book's pick, this module's own extra, or not a
  * pick, for an exercise this module answered before the picks were made. A Basic pick is plain: its method takes no
  * {@link Pageable}, the order the exercise asks for is written in the query, and it returns a {@link List}. An
  * Intermediate or Advanced exercise that lists rows takes a {@link Pageable}, the page and the sort, and returns a
@@ -59,7 +59,7 @@ public interface SalesByFilmCategoryRepository
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * Lists every row of the view ({@code SAKILA-SALES_BY_FILM_CATEGORY-B-01}, not a pick, which takes the first
+     * Lists every row of the view ({@code SAKILA_SALES_BY_FILM_CATEGORY_B_01}, not a pick, which takes the first
      * three by {@link SalesByFilmCategory_#TOTAL_SALES} descending, the categories which sold the most).
      * <p>
      * The exercise's {@code LIMIT 3} makes a page of it, so it is no Basic pick (a top three is a page, not a list);
@@ -82,7 +82,7 @@ public interface SalesByFilmCategoryRepository
 
     /**
      * Finds the categories whose sales are between the specified bounds, both included
-     * ({@code SAKILA-SALES_BY_FILM_CATEGORY-B-02}, the book's pick, which asks for {@code 4000} and {@code 4500} and
+     * ({@code SAKILA_SALES_BY_FILM_CATEGORY_B_02}, the book's pick, which asks for {@code 4000} and {@code 4500} and
      * orders by {@link SalesByFilmCategory_#CATEGORY}).
      * <p>
      * The query is derived from the method name: a {@code BETWEEN} on {@link SalesByFilmCategory_#TOTAL_SALES}, and
@@ -97,7 +97,7 @@ public interface SalesByFilmCategoryRepository
 
     /**
      * Selects the sum of the view's {@code total_sales} over all categories, next to the sum of the {@code amount} of
-     * all payments ({@code SAKILA-SALES_BY_FILM_CATEGORY-I-01}, this module's own extra, which checks that the two are
+     * all payments ({@code SAKILA_SALES_BY_FILM_CATEGORY_I_01}, this module's own extra, which checks that the two are
      * equal; one row, so no sort).
      * <p>
      * The two are equal only if every payment reaches exactly one category, through its rental, copy and film. The
@@ -115,7 +115,7 @@ public interface SalesByFilmCategoryRepository
     Tuple selectSalesTotals();
 
     /**
-     * Selects every category, with its sales and their share of all sales ({@code SAKILA-SALES_BY_FILM_CATEGORY-I-02},
+     * Selects every category, with its sales and their share of all sales ({@code SAKILA_SALES_BY_FILM_CATEGORY_I_02},
      * the book's pick, which takes the first five by {@code s.totalSales} descending, then by {@code s.category}).
      * <p>
      * The share divides the category's sales by the sales of every category, a scalar subquery in the select, which
@@ -139,7 +139,7 @@ public interface SalesByFilmCategoryRepository
 
     /**
      * Selects every category, with its sales, the running total of the sales down to it, and the share of all sales
-     * that total is ({@code SAKILA-SALES_BY_FILM_CATEGORY-A-01}, the book's pick, which orders by
+     * that total is ({@code SAKILA_SALES_BY_FILM_CATEGORY_A_01}, the book's pick, which orders by
      * {@code s.totalSales} descending, then by {@code s.category}).
      * <p>
      * The running total runs in that order whatever the page's sort is: JPQL has no window function, so the view is
@@ -171,7 +171,7 @@ public interface SalesByFilmCategoryRepository
 
     /**
      * Selects every category but the last, with its sales, the category next down, and the gap between their sales
-     * ({@code SAKILA-SALES_BY_FILM_CATEGORY-A-02}, this module's own extra, which takes the first three by {@code gap}
+     * ({@code SAKILA_SALES_BY_FILM_CATEGORY_A_02}, this module's own extra, which takes the first three by {@code gap}
      * descending, then by {@code s.category}).
      * <p>
      * JPQL has no {@code LEAD}, so the view is joined with itself: {@code n} is next down from {@code s} when it is

@@ -129,7 +129,7 @@ class InventoryRepository_SpringBootIT
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * Tests {@link InventoryRepository#selectCopyCountsByStore()} ({@code SAKILA-INVENTORY-B-01}).
+     * Tests {@link InventoryRepository#selectCopyCountsByStore()} ({@code SAKILA_INVENTORY_B_01}).
      */
     @Nested
     class SelectCopyCountsByStore_Test {
@@ -182,7 +182,7 @@ class InventoryRepository_SpringBootIT
     }
 
     /**
-     * Tests {@link InventoryRepository#findAllByFilmIdOrderByInventoryIdAsc(Integer)} ({@code SAKILA-INVENTORY-B-02}).
+     * Tests {@link InventoryRepository#findAllByFilmIdOrderByInventoryIdAsc(Integer)} ({@code SAKILA_INVENTORY_B_02}).
      */
     @Nested
     class FindAllByFilmIdOrderByInventoryIdAsc_Test {
@@ -246,7 +246,7 @@ class InventoryRepository_SpringBootIT
     }
 
     /**
-     * Tests {@link InventoryRepository#selectCopyCountsByFilm(Pageable)} ({@code SAKILA-INVENTORY-I-01}).
+     * Tests {@link InventoryRepository#selectCopyCountsByFilm(Pageable)} ({@code SAKILA_INVENTORY_I_01}).
      */
     @Nested
     class SelectCopyCountsByFilm_Test {
@@ -333,7 +333,7 @@ class InventoryRepository_SpringBootIT
     }
 
     /**
-     * Tests {@link InventoryRepository#listNeverRented(Pageable)} ({@code SAKILA-INVENTORY-I-02}).
+     * Tests {@link InventoryRepository#listNeverRented(Pageable)} ({@code SAKILA_INVENTORY_I_02}).
      */
     @Nested
     class ListNeverRented_Test {
@@ -378,7 +378,7 @@ class InventoryRepository_SpringBootIT
     }
 
     /**
-     * Tests {@link InventoryRepository#selectLongestIdleTimes()} ({@code SAKILA-INVENTORY-A-01}).
+     * Tests {@link InventoryRepository#selectLongestIdleTimes()} ({@code SAKILA_INVENTORY_A_01}).
      */
     @Nested
     class SelectLongestIdleTimes_Test {
@@ -422,7 +422,7 @@ class InventoryRepository_SpringBootIT
 
     /**
      * Tests {@link InventoryRepository#selectCopyCountsOfFilmsEveryCopyRented(Pageable)}
-     * ({@code SAKILA-INVENTORY-A-02}).
+     * ({@code SAKILA_INVENTORY_A_02}).
      */
     @Nested
     class SelectCopyCountsOfFilmsEveryCopyRented_Test {
