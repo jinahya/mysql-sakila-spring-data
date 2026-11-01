@@ -19,7 +19,7 @@ The upstream entity jar, and its `test-companion` jar of randomizers and persist
 only locally. Install them first:
 
 ```sh
-(cd ../mysql-sakila-persistence && ./mvnw -DskipTests install)
+(cd ../../mysql-sakila-persistence && ./mvnw -DskipTests install)
 ```
 
 ## Build
@@ -36,7 +36,7 @@ container that upstream provides, which serves `sakila` on `localhost:3306` as `
 loaded, then name the tests:
 
 ```sh
-../mysql-sakila-persistence/_docker_compose_up.sh                                 # Ctrl-C takes it down
+../../mysql-sakila-persistence/_docker_compose_up.sh                                 # Ctrl-C takes it down
 mvn -Dtest='*_SpringBootIT' -Dsurefire.failIfNoSpecifiedTests=false test
 ```
 

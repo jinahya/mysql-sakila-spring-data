@@ -22,7 +22,7 @@ sibling `oracle-sample-schemas-spring-data` with its one-module-per-schema layou
 
 ## Upstream
 
-The sibling checkout `../mysql-sakila-persistence` publishes, at `0.0.1-SNAPSHOT`, the entity jar (entities and the
+The upstream checkout `../../mysql-sakila-persistence` publishes, at `0.0.1-SNAPSHOT`, the entity jar (entities and the
 generated static metamodel `Actor_`, `Film_`, ... only; its `persistence.xml` is test-only, so this project supplies
 its own datasource and JPA configuration) and a second jar of the same artifact classified `test-companion`, holding
 the `*_Randomizer` and `*_Persister` classes compiled with its tests. Both are **SNAPSHOTs that exist only locally**:
@@ -53,7 +53,7 @@ after a change upstream, run `./mvnw -DskipTests install` there before building 
   (`tuple.get("actors", Long.class)`; a native number as `Number`, so the same read holds on MySQL and H2), and the
   `Pageable` sorts by it (`Sort.by(DESC, "actors")`). The method's `@return` names the aliases and their types. The
   three views' `JdbcClient` methods keep their records, since `JdbcClient` has no `Tuple`.
-- **Exercises.** Upstream's `../mysql-sakila-persistence/EXERCISES.asciidoc` (sibling root; `EXERCISES.yaml` is its registry) is the context, not
+- **Exercises.** Upstream's `../../mysql-sakila-persistence/EXERCISES.asciidoc` (sibling root; `EXERCISES.yaml` is its registry) is the context, not
   a contract: for each repository, one or two exercises of each level (Basic, Intermediate, Advanced) become one
   method each, on the repository of the exercise's section, the exercise id (`SAKILA_ACTOR_I_01`) named in the
   method's javadoc together with the sort the exercise asks for, and one `@Nested` test class per method in both test
@@ -65,7 +65,7 @@ after a change upstream, run `./mvnw -DskipTests install` there before building 
   metamodel, after the test class is loaded; a `static final Sort` uses the name constant,
   `Sort.by(ASC, Actor_.ACTOR_ID)`. `JpaSort.of(ASC, Actor_.actorId)` is fine inside a test method.
 - Entities have `protected` constructors, `equals` by id only once assigned, and a database-generated `IDENTITY` id.
-- Read `../mysql-sakila-persistence/CLAUDE.md` before touching anything about the mappings.
+- Read `../../mysql-sakila-persistence/CLAUDE.md` before touching anything about the mappings.
 
 ## Build
 
@@ -85,7 +85,7 @@ Surefire's default includes do not match `*IT`, and no failsafe plugin is config
 the `*_SpringBootIT` classes; run them explicitly with `-Dtest`.
 
 **The integration tests need the Sakila container** that upstream owns: run
-`../mysql-sakila-persistence/_docker_compose_up.sh` (Ctrl-C takes it down again, with its data). It runs `mysql:9.7` as
+`../../mysql-sakila-persistence/_docker_compose_up.sh` (Ctrl-C takes it down again, with its data). It runs `mysql:9.7` as
 the container `mysql-sakila` on `localhost:3306`, database `sakila`, user `root`, password `password`
 (`SAKILA_PASSWORD` overrides it), loaded from the init scripts. `src/test/resources/application.yaml` connects there
 with `ddl-auto: none` and `MySQLDialect` named outright. Never let a test generate DDL against it. A `@SpringBootTest`
