@@ -17,7 +17,7 @@ spring:
     url: jdbc:mysql://localhost:3306/sakila?characterEncoding=UTF-8
     # root, as upstream's sakila-it unit connects; MYSQL_ROOT_PASSWORD of its docker-compose.yml.
     username: root
-    password: ${SAKILA_PASSWORD:password}
+    password: ${SAKILA_PASSWORD:Passw0rd!}
     # Hikari can infer this from the URL; named anyway so a missing driver on the test classpath fails as "driver not
     # found" rather than as a pool timeout.
     driver-class-name: com.mysql.cj.jdbc.Driver

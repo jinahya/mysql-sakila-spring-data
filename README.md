@@ -32,7 +32,7 @@ mvn -Dtest=ActorRepository_DataJpaTest test
 ### Integration tests
 
 The `*_SpringBootIT` classes run against a real Sakila database and are not run by `install`/`test`. Start the
-container that upstream provides, which serves `sakila` on `localhost:3306` as `root` / `password` with the sample data
+container that upstream provides, which serves `sakila` on `localhost:3306` as `root` / `Passw0rd!` with the sample data
 loaded, then name the tests:
 
 ```sh

@@ -86,7 +86,7 @@ the `*_SpringBootIT` classes; run them explicitly with `-Dtest`.
 
 **The integration tests need the Sakila container** that upstream owns: run
 `../../mysql-sakila-persistence/_docker_compose_up.sh` (Ctrl-C takes it down again, with its data). It runs `mysql:9.7` as
-the container `mysql-sakila` on `localhost:3306`, database `sakila`, user `root`, password `password`
+the container `mysql-sakila` on `localhost:3306`, database `sakila`, user `root`, password `Passw0rd!`
 (`SAKILA_PASSWORD` overrides it), loaded from the init scripts. `src/test/resources/application.yaml` connects there
 with `ddl-auto: none` and `MySQLDialect` named outright. Never let a test generate DDL against it. A `@SpringBootTest`
 that runs no query still passes with no database up, since the dialect is named; only a query proves the connection.
