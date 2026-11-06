@@ -38,7 +38,7 @@ import static org.assertj.core.api.Assumptions.assumeThat;
  * <p>
  * See that class for the context and the transactions. The tests here only read: the fixture is a few categories of
  * the sample data, selected once in {@link #__()}, and each test checks a query of the exercises against them, or
- * against the expected output upstream's {@code category_exercises_*.sql} shows. The base's own tests, such as its
+ * against the expected output upstream's {@code category/*.sql} shows. The base's own tests, such as its
  * {@code findById} round trips, run here too.
  * <p>
  * Needs the database of {@code application.yaml} up, with Sakila loaded; see that file.

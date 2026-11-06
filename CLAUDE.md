@@ -53,7 +53,7 @@ after a change upstream, run `./mvnw -DskipTests install` there before building 
   (`tuple.get("actors", Long.class)`; a native number as `Number`, so the same read holds on MySQL and H2), and the
   `Pageable` sorts by it (`Sort.by(DESC, "actors")`). The method's `@return` names the aliases and their types. The
   three views' `JdbcClient` methods keep their records, since `JdbcClient` has no `Tuple`.
-- **Exercises.** Upstream's `../../mysql-sakila-persistence/EXERCISES.asciidoc` (sibling root; `EXERCISES.yaml` is its registry) is the context, not
+- **Exercises.** Upstream's `../../mysql-sakila-persistence/src/test/sql-exercises/EXERCISES.asciidoc` (sibling root; `EXERCISES.yaml` is its registry) is the context, not
   a contract: for each repository, one or two exercises of each level (Basic, Intermediate, Advanced) become one
   method each, on the repository of the exercise's section, the exercise id (`SAKILA_ACTOR_I_01`) named in the
   method's javadoc together with the sort the exercise asks for, and one `@Nested` test class per method in both test

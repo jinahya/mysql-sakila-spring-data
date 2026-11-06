@@ -32,7 +32,7 @@ import static org.assertj.core.api.Assumptions.assumeThat;
  * <p>
  * See that class for the context and the transactions. The tests here only read: the fixture is a few addresses of the
  * sample data, selected once in {@link #__()}, and each test checks a query of the exercises against them, or against
- * the expected output upstream's {@code address_exercises_*.sql} shows. The base's own tests, such as its
+ * the expected output upstream's {@code address/*.sql} shows. The base's own tests, such as its
  * {@code findById} round trips, run here too.
  * <p>
  * Needs the database of {@code application.yaml} up, with Sakila loaded; see that file.
