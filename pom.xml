@@ -80,16 +80,9 @@
       compiles here against its test-companion jar is what that jar was compiled against.
       -->
     <!-- https://central.sonatype.com/artifact/io.github.jinahya/jinahya-persistence-test-utils/versions -->
-    <version.jinahya-persistence>0.6.7</version.jinahya-persistence>
+    <version.jinahya-persistence>0.6.9</version.jinahya-persistence>
     <!-- https://central.sonatype.com/artifact/uk.co.jemos.podam/podam/versions -->
     <version.uk.co.jemos.podam>8.0.2.RELEASE</version.uk.co.jemos.podam>
-    <!-- https://central.sonatype.com/artifact/org.projectlombok/lombok/versions -->
-    <version.org.projectlombok>1.18.48</version.org.projectlombok>
-    <!-- https://dev.mysql.com/downloads/connector/j/ -->
-    <!-- https://central.sonatype.com/artifact/com.mysql/mysql-connector-j/versions -->
-    <version.com.mysql>26.10.0</version.com.mysql>
-    <!-- https://central.sonatype.com/artifact/com.h2database/h2/versions -->
-    <version.com.h2database>2.5.252</version.com.h2database>
 
     <!--
       Not in Boot's BOM. mybatis-spring-boot 4.1.0 is built against Boot 4.1.0, MyBatis 3.5.19 and
@@ -108,18 +101,6 @@
     <!-- https://central.sonatype.com/artifact/org.locationtech.jts/jts-core/versions -->
     <version.org.locationtech.jts>1.20.0</version.org.locationtech.jts>
 
-    <!--
-      Versions Boot manages too, pinned to the ones every other project is on (PROJECTS_VERSIONS.asciidoc of
-      jakarta-persistence-applied-book-projects): JUnit and Mockito by importing their BOMs before Boot's, Logback and AssertJ by direct entries.
-      -->
-    <!-- https://central.sonatype.com/artifact/org.junit/junit-bom/versions -->
-    <version.org.junit>6.1.3</version.org.junit>
-    <!-- https://central.sonatype.com/artifact/org.mockito/mockito-bom/versions -->
-    <version.org.mockito>5.24.0</version.org.mockito>
-    <!-- https://central.sonatype.com/artifact/ch.qos.logback/logback-classic/versions -->
-    <version.ch.qos.logback>1.6.5</version.ch.qos.logback>
-    <!-- https://central.sonatype.com/artifact/org.assertj/assertj-core/versions -->
-    <version.org.assertj>4.0.0-M1</version.org.assertj>
     <!-- https://central.sonatype.com/artifact/io.github.jinahya/jinahya-object-randomizer/versions -->
     <version.jinahya-object-randomizer>0.0.7</version.jinahya-object-randomizer>
   </properties>
@@ -128,24 +109,10 @@
     <dependencies>
       <!--
         Imported, not inherited: this pom is parent-less. Every Spring, Boot and Hibernate version comes from here,
-        so dependencies on them carry no <version>. A direct entry below beats an imported one, which is how the
-        pins that follow it work.
+        and so does every other artifact Boot manages (JUnit, Mockito, AssertJ, Logback, Lombok, the JDBC drivers):
+        dependencies on them carry no <version>, and nothing here pins them over Boot. A direct entry below is only
+        for an artifact Boot does not manage.
         -->
-      <!-- Before Boot's, so that these win over the versions Boot's import brings. -->
-      <dependency>
-        <groupId>org.junit</groupId>
-        <artifactId>junit-bom</artifactId>
-        <version>${version.org.junit}</version>
-        <type>pom</type>
-        <scope>import</scope>
-      </dependency>
-      <dependency>
-        <groupId>org.mockito</groupId>
-        <artifactId>mockito-bom</artifactId>
-        <version>${version.org.mockito}</version>
-        <type>pom</type>
-        <scope>import</scope>
-      </dependency>
       <dependency>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-dependencies</artifactId>
@@ -154,21 +121,6 @@
         <scope>import</scope>
       </dependency>
 
-      <dependency>
-        <groupId>ch.qos.logback</groupId>
-        <artifactId>logback-classic</artifactId>
-        <version>${version.ch.qos.logback}</version>
-      </dependency>
-      <dependency>
-        <groupId>ch.qos.logback</groupId>
-        <artifactId>logback-core</artifactId>
-        <version>${version.ch.qos.logback}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.assertj</groupId>
-        <artifactId>assertj-core</artifactId>
-        <version>${version.org.assertj}</version>
-      </dependency>
       <dependency>
         <groupId>io.github.jinahya</groupId>
         <artifactId>jinahya-object-randomizer</artifactId>
@@ -207,31 +159,6 @@
         <groupId>uk.co.jemos.podam</groupId>
         <artifactId>podam</artifactId>
         <version>${version.uk.co.jemos.podam}</version>
-      </dependency>
-
-      <!--
-        Pinned over the BOM's 1.18.46, which fails on JDK 27 (ExceptionInInitializerError:
-        com.sun.tools.javac.tree.EndPosTable), and to upstream's. Drop the pin once the BOM manages 1.18.48 or later.
-        -->
-      <dependency>
-        <groupId>org.projectlombok</groupId>
-        <artifactId>lombok</artifactId>
-        <version>${version.org.projectlombok}</version>
-      </dependency>
-      <!--
-        Pinned over the BOM's (9.7.0 and 2.4.240) to upstream's, so that the integration tests here hit the Sakila
-        container through the driver upstream's own do, and the unit tests run the same H2 (MODE=MySQL) upstream
-        generates its schema into.
-        -->
-      <dependency>
-        <groupId>com.mysql</groupId>
-        <artifactId>mysql-connector-j</artifactId>
-        <version>${version.com.mysql}</version>
-      </dependency>
-      <dependency>
-        <groupId>com.h2database</groupId>
-        <artifactId>h2</artifactId>
-        <version>${version.com.h2database}</version>
       </dependency>
 
       <dependency>

@@ -95,12 +95,13 @@ that runs no query still passes with no database up, since the dialect is named;
 
 Each is commented in `pom.xml`:
 
-- **Spring Boot 4.x (`4.1.1`), not 3.x.** Boot 4 manages `jakarta.persistence-api` 3.2, which the upstream mappings are
+- **Spring Boot 4.x (`4.1.2`), not 3.x.** Boot 4 manages `jakarta.persistence-api` 3.2, which the upstream mappings are
   written against. Do not downgrade to dodge a problem.
 - **`spring-boot-dependencies` is imported, not inherited** (the pom is parent-less). Every Spring / Boot / Hibernate
-  version comes from the BOM; declare those with no `<version>`. Direct `dependencyManagement` entries beat the BOM,
-  which is how the pins work: Lombok `1.18.48` (the BOM's breaks on newer JDKs), and `mysql-connector-j` and `h2` at
-  upstream's versions, so the tests hit the same driver and the same H2 upstream generates its schema into.
+  version comes from the BOM; declare those with no `<version>`. A direct `dependencyManagement` entry is only for what
+  Boot does not manage. Lombok, the JDBC driver, H2, JUnit, Mockito, AssertJ and Logback are at Boot's versions: nothing
+  is imported before Boot's BOM, and no entry pins over it, since a -data project is aligned by its platform and the
+  platform is what moves (PROJECTS_VERSIONS.asciidoc of jakarta-persistence-applied-book).
 - **Boot 4 starters come in pairs.** Tests declare `spring-boot-starter-data-jpa-test`, `-jackson-test` and
   `-validation-test`, not `spring-boot-starter-test`, which each of them brings. `@DataJpaTest` is
   `org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest`. Validation of repository parameters is enforced
