@@ -4,6 +4,7 @@ import com.github.jinahya.mysql.sakila.persistence.Customer;
 import com.github.jinahya.mysql.sakila.persistence.Payment;
 import com.github.jinahya.mysql.sakila.persistence.Payment_;
 import com.github.jinahya.mysql.sakila.persistence.Staff;
+import com.github.jinahya.mysql.sakila.persistence.Store;
 import jakarta.persistence.Tuple;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -236,4 +237,36 @@ public interface PaymentRepository
             GROUP BY island
             ORDER BY firstDay""")
     List<Tuple> selectRunsOfConsecutiveDays();
+
+    /**
+     * Selects each store, with the number of payments taken for the copies it rented out and their
+     * sum ({@code SAKILA_SCHEMA_I_01}, the book's pick, which orders by {@code st.storeId}).
+     * <p>
+     * A payment names no store; the store is that of the copy the payment's rental rented out. So
+     * the payments are joined through their {@link Payment_#RENTAL} to the rental's inventory and on
+     * to the copy's store, and grouped there; the store is selected whole, and the payments grouped
+     * by the store itself. A payment which refers to no rental is left out by the inner join. The
+     * count query counts the distinct stores reached along the same path.
+     *
+     * @param pageable the page to return, and its sort, by {@code payments} or {@code total}, or by
+     *                 an attribute of the store through {@code st} ({@code st.storeId}, ...); must
+     *                 not be {@code null}.
+     * @return a page of the stores, with their numbers of payments and their sums, each a tuple of
+     *         {@code store} ({@link Store}), {@code payments} ({@link Long}) and {@code total}
+     *         ({@link BigDecimal}).
+     */
+    @Query(value = """
+            SELECT st AS store, COUNT(p) AS payments, SUM(p.amount) AS total
+            FROM Payment p
+            JOIN p.rental r
+            JOIN r.inventory i
+            JOIN i.store st
+            GROUP BY st""",
+           countQuery = """
+                   SELECT COUNT(DISTINCT st)
+                   FROM Payment p
+                   JOIN p.rental r
+                   JOIN r.inventory i
+                   JOIN i.store st""")
+    Page<Tuple> SAKILA_SCHEMA_I_01(Pageable pageable);
 }
