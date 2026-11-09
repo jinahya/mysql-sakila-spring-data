@@ -33,13 +33,14 @@ import static org.assertj.core.api.Assertions.tuple;
 import static org.assertj.core.api.Assumptions.assumeThat;
 
 /**
- * Tests {@link LanguageRepository} against the Sakila database, through {@link _Repository_SpringBootIT}.
+ * Tests {@link LanguageRepository} against the Sakila database, through
+ * {@link _Repository_SpringBootIT}.
  * <p>
- * See that class for the context and the transactions. The tests here only read: the fixture is the first few
- * languages of the sample data, selected once in {@link #__()}, and each test checks a query of the exercises against
- * them, against counts of the films taken another way, or against the output upstream's
- * {@code language/*.sql} records for the installed data. The base's own tests, such as its {@code findById}
- * round trips, run here too.
+ * See that class for the context and the transactions. The tests here only read: the fixture is the
+ * first few languages of the sample data, selected once in {@link #__()}, and each test checks a
+ * query of the exercises against them, against counts of the films taken another way, or against
+ * the output upstream's {@code language/*.sql} records for the installed data. The base's own
+ * tests, such as its {@code findById} round trips, run here too.
  * <p>
  * Needs the database of {@code application.yaml} up, with Sakila loaded; see that file.
  *
@@ -52,8 +53,8 @@ class LanguageRepository_SpringBootIT
     private static List<Language> entities;
 
     /**
-     * A sort by id; by the attribute's name, since the metamodel's {@code Language_.languageId} is filled in only once
-     * the context is up, after this class is loaded.
+     * A sort by id; by the attribute's name, since the metamodel's {@code Language_.languageId} is
+     * filled in only once the context is up, after this class is loaded.
      */
     private static final Sort BY_LANGUAGE_ID = Sort.by(Sort.Direction.ASC, Language_.LANGUAGE_ID);
 
@@ -71,13 +72,14 @@ class LanguageRepository_SpringBootIT
     /**
      * Selects the first five languages, by id, as the fixture for the parameterized tests.
      * <p>
-     * Ordered by id so that the rows are the ones the init scripts put there. Runs once per class, which
-     * {@link TestInstance.Lifecycle#PER_CLASS} allows to be an instance method, so the autowired repository is already
-     * there; the result goes into a static field so that the static method sources of the nested classes can reach it.
-     * The languages are loaded outside any transaction, so they are detached.
+     * Ordered by id so that the rows are the ones the init scripts put there. Runs once per class,
+     * which {@link TestInstance.Lifecycle#PER_CLASS} allows to be an instance method, so the
+     * autowired repository is already there; the result goes into a static field so that the static
+     * method sources of the nested classes can reach it. The languages are loaded outside any
+     * transaction, so they are detached.
      * <p>
-     * An empty table aborts the tests of this class rather than failing them: it is the fixture that is missing, not
-     * the behaviour under test that is wrong.
+     * An empty table aborts the tests of this class rather than failing them: it is the fixture
+     * that is missing, not the behaviour under test that is wrong.
      */
     @BeforeAll
     void __() {
@@ -95,18 +97,20 @@ class LanguageRepository_SpringBootIT
      * Counts the films whose language, or whose original language, is the specified one, through
      * {@link FilmRepository} with a {@link Specification}.
      *
-     * @param language the language.
-     * @param attribute the attribute of the film to match, {@link Film_#language} or {@link Film_#originalLanguage}.
+     * @param language  the language.
+     * @param attribute the attribute of the film to match, {@link Film_#language} or
+     *                  {@link Film_#originalLanguage}.
      * @return the number of films.
      */
-    private long countFilmsBy(final Language language, final SingularAttribute<Film, Language> attribute) {
+    private long countFilmsBy(final Language language,
+                              final SingularAttribute<Film, Language> attribute) {
         final Specification<Film> specification = (r, q, b) -> b.equal(r.get(attribute), language);
         return filmRepository.count(specification);
     }
 
     /**
-     * Asserts that the specified page is consistent with itself: no more content than its size, and at least as many
-     * elements in all as in its content.
+     * Asserts that the specified page is consistent with itself: no more content than its size, and
+     * at least as many elements in all as in its content.
      *
      * @param page the page.
      * @param <T>  the type of the elements.
@@ -119,7 +123,8 @@ class LanguageRepository_SpringBootIT
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * Tests {@link LanguageRepository#findAllByOrderByLanguageIdAsc()} ({@code SAKILA_LANGUAGE_B_01}).
+     * Tests {@link LanguageRepository#findAllByOrderByLanguageIdAsc()}
+     * ({@code SAKILA_LANGUAGE_B_01}).
      */
     @Nested
     class FindAllByOrderByLanguageIdAsc_Test {
@@ -129,15 +134,16 @@ class LanguageRepository_SpringBootIT
         }
 
         /**
-         * Asserts that the list is the exercise's recorded output, the six languages by id, and every language there
-         * is.
+         * Asserts that the list is the exercise's recorded output, the six languages by id, and
+         * every language there is.
          */
         @Test
         void __() {
             final var list = repositoryInstance().findAllByOrderByLanguageIdAsc();
             assertThat(list)
                     .extracting(Language::getName)
-                    .containsExactly("English", "Italian", "Japanese", "Mandarin", "French", "German");
+                    .containsExactly("English", "Italian", "Japanese", "Mandarin", "French",
+                                     "German");
             assertThat(list).hasSize((int) repositoryInstance().count());
         }
 
@@ -151,9 +157,11 @@ class LanguageRepository_SpringBootIT
         }
 
         /**
-         * Asserts that a selected language is in the list, as a second instance of the same row, equal by id.
+         * Asserts that a selected language is in the list, as a second instance of the same row,
+         * equal by id.
          *
-         * @param language one of the languages selected in {@link LanguageRepository_SpringBootIT#__()}.
+         * @param language one of the languages selected in
+         *                 {@link LanguageRepository_SpringBootIT#__()}.
          */
         @MethodSource("languages")
         @ParameterizedTest
@@ -177,8 +185,8 @@ class LanguageRepository_SpringBootIT
         }
 
         /**
-         * Asserts, in one transaction, that the exercise's four names stream its recorded output, the three the table
-         * has, by name.
+         * Asserts, in one transaction, that the exercise's four names stream its recorded output,
+         * the three the table has, by name.
          */
         @Test
         @Transactional
@@ -192,8 +200,8 @@ class LanguageRepository_SpringBootIT
         }
 
         /**
-         * Asserts, in one transaction, that the names of the selected languages, given in reverse, stream those
-         * languages, as the instances managed in the transaction, by name.
+         * Asserts, in one transaction, that the names of the selected languages, given in reverse,
+         * stream those languages, as the instances managed in the transaction, by name.
          */
         @Test
         @Transactional
@@ -204,22 +212,26 @@ class LanguageRepository_SpringBootIT
                 assertThat(list)
                         .containsExactlyInAnyOrderElementsOf(entities)
                         .isSortedAccordingTo(Comparator.comparing(Language::getName));
-                final var managed = repositoryInstance().findById(entities.getFirst().getLanguageId()).orElseThrow();
+                final var managed =
+                        repositoryInstance().findById(entities.getFirst().getLanguageId())
+                                .orElseThrow();
                 assertThat(list).anySatisfy(l -> assertThat(l).isSameAs(managed));
             }
         }
 
         /**
-         * Calls the method with no transaction around the test, and asserts that Spring Data refuses it, with
-         * {@link InvalidDataAccessApiUsageException}, before any query runs.
+         * Calls the method with no transaction around the test, and asserts that Spring Data
+         * refuses it, with {@link InvalidDataAccessApiUsageException}, before any query runs.
          *
-         * @param language one of the languages selected in {@link LanguageRepository_SpringBootIT#__()}.
+         * @param language one of the languages selected in
+         *                 {@link LanguageRepository_SpringBootIT#__()}.
          */
         @MethodSource("languages")
         @ParameterizedTest
         void _InvalidDataAccessApiUsageException_NoSurroundingTransaction(final Language language) {
             assertThatThrownBy(() -> {
-                try (var found = repositoryInstance().findAllByNameInOrderByNameAsc(List.of(language.getName()))) {
+                try (var found = repositoryInstance().findAllByNameInOrderByNameAsc(
+                        List.of(language.getName()))) {
                     found.forEach(l -> {
                     });
                 }
@@ -240,14 +252,16 @@ class LanguageRepository_SpringBootIT
         }
 
         /**
-         * Asserts that the languages, by id as the exercise sorts, are the exercise's recorded output: English with
-         * all 1000 films, and the other five with none.
+         * Asserts that the languages, by id as the exercise sorts, are the exercise's recorded
+         * output: English with all 1000 films, and the other five with none.
          */
         @Test
         void __() {
-            final var page = repositoryInstance().selectFilmCounts(PageRequest.of(0, 10, BY_L_LANGUAGE_ID));
+            final var page =
+                    repositoryInstance().selectFilmCounts(PageRequest.of(0, 10, BY_L_LANGUAGE_ID));
             assertThat(page.getContent())
-                    .extracting(column("language", Language.class, Language::getName), column("films", Long.class))
+                    .extracting(column("language", Language.class, Language::getName),
+                                column("films", Long.class))
                     .containsExactly(tuple("English", 1000L),
                                      tuple("Italian", 0L),
                                      tuple("Japanese", 0L),
@@ -258,15 +272,18 @@ class LanguageRepository_SpringBootIT
         }
 
         /**
-         * Asserts that the page is ordered by id, that it holds a selected language itself, and that its count is
-         * the number of its films, counted by a {@link Specification} on {@link Film_#language}.
+         * Asserts that the page is ordered by id, that it holds a selected language itself, and
+         * that its count is the number of its films, counted by a {@link Specification} on
+         * {@link Film_#language}.
          *
-         * @param language one of the languages selected in {@link LanguageRepository_SpringBootIT#__()}.
+         * @param language one of the languages selected in
+         *                 {@link LanguageRepository_SpringBootIT#__()}.
          */
         @MethodSource("languages")
         @ParameterizedTest
         void __Ordered(final Language language) {
-            final var page = repositoryInstance().selectFilmCounts(Pageable.unpaged(BY_L_LANGUAGE_ID));
+            final var page =
+                    repositoryInstance().selectFilmCounts(Pageable.unpaged(BY_L_LANGUAGE_ID));
             assertThat(page.getContent())
                     .isSortedAccordingTo(Comparator.comparing(column("language", Language.class,
                                                                      Language::getLanguageId)))
@@ -277,16 +294,18 @@ class LanguageRepository_SpringBootIT
         }
 
         /**
-         * Asserts that pages of the given size, by id, walk the same languages as one unpaged page, with the same
-         * total.
+         * Asserts that pages of the given size, by id, walk the same languages as one unpaged page,
+         * with the same total.
          *
          * @param size the size of the page.
          */
         @ValueSource(ints = {1, 4})
         @ParameterizedTest
         void __Paged(final int size) {
-            final var all = repositoryInstance().selectFilmCounts(Pageable.unpaged(BY_L_LANGUAGE_ID));
-            var page = repositoryInstance().selectFilmCounts(PageRequest.of(0, size, BY_L_LANGUAGE_ID));
+            final var all =
+                    repositoryInstance().selectFilmCounts(Pageable.unpaged(BY_L_LANGUAGE_ID));
+            var page = repositoryInstance().selectFilmCounts(
+                    PageRequest.of(0, size, BY_L_LANGUAGE_ID));
             assertPage(page);
             assertThat(page.getTotalElements()).isEqualTo(all.getTotalElements());
             final var walked = new ArrayList<Language>();
@@ -311,8 +330,8 @@ class LanguageRepository_SpringBootIT
         }
 
         /**
-         * Asserts that the languages no film uses, by id as the exercise sorts, are the exercise's recorded output,
-         * the ids {@code 2} to {@code 6}.
+         * Asserts that the languages no film uses, by id as the exercise sorts, are the exercise's
+         * recorded output, the ids {@code 2} to {@code 6}.
          */
         @Test
         void __() {
@@ -328,17 +347,21 @@ class LanguageRepository_SpringBootIT
         }
 
         /**
-         * Asserts that the page is ordered by id, and that a selected language is listed exactly when no film has it
-         * as its language or its original language, counted by {@link Specification}s.
+         * Asserts that the page is ordered by id, and that a selected language is listed exactly
+         * when no film has it as its language or its original language, counted by
+         * {@link Specification}s.
          *
-         * @param language one of the languages selected in {@link LanguageRepository_SpringBootIT#__()}.
+         * @param language one of the languages selected in
+         *                 {@link LanguageRepository_SpringBootIT#__()}.
          */
         @MethodSource("languages")
         @ParameterizedTest
         void __Ordered(final Language language) {
             final var page = repositoryInstance().listUnused(Pageable.unpaged(BY_LANGUAGE_ID));
-            assertThat(page.getContent()).isSortedAccordingTo(Comparator.comparing(Language::getLanguageId));
-            final var uses = countFilmsBy(language, Film_.language) + countFilmsBy(language, Film_.originalLanguage);
+            assertThat(page.getContent()).isSortedAccordingTo(
+                    Comparator.comparing(Language::getLanguageId));
+            final var uses = countFilmsBy(language, Film_.language) +
+                             countFilmsBy(language, Film_.originalLanguage);
             if (uses == 0L) {
                 assertThat(page.getContent()).contains(language);
             } else {

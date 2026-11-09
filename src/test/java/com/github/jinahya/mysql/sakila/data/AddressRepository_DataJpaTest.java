@@ -20,12 +20,14 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 
 /**
- * Tests {@link AddressRepository} in a JPA slice, over an embedded H2, through {@link _Repository_DataJpaTest}.
+ * Tests {@link AddressRepository} in a JPA slice, over an embedded H2, through
+ * {@link _Repository_DataJpaTest}.
  * <p>
- * See that class for how the slice is configured. Each test persists the addresses it needs, each in a city of a
- * country of its own unless the test says otherwise, through {@link #fixtures()}, and sets only the attributes the test
- * is about, with random values; the slice rolls them back when it ends. No customer, staff member or store can be
- * saved into the empty H2 (see {@link _Repository_DataJpaTest_Fixtures}), so every address saved here is unused.
+ * See that class for how the slice is configured. Each test persists the addresses it needs, each
+ * in a city of a country of its own unless the test says otherwise, through {@link #fixtures()},
+ * and sets only the attributes the test is about, with random values; the slice rolls them back
+ * when it ends. No customer, staff member or store can be saved into the empty H2 (see
+ * {@link _Repository_DataJpaTest_Fixtures}), so every address saved here is unused.
  *
  * @see AddressRepository_SpringBootIT
  */
@@ -33,8 +35,8 @@ class AddressRepository_DataJpaTest
         extends _Repository_DataJpaTest<AddressRepository, Address, Integer> {
 
     /**
-     * A sort by id; by the attribute's name, since the metamodel's {@code Address_.addressId} is filled in only once
-     * the context is up, after this class is loaded.
+     * A sort by id; by the attribute's name, since the metamodel's {@code Address_.addressId} is
+     * filled in only once the context is up, after this class is loaded.
      */
     private static final Sort BY_ADDRESS_ID = Sort.by(Sort.Direction.ASC, Address_.ADDRESS_ID);
 
@@ -48,7 +50,8 @@ class AddressRepository_DataJpaTest
     // -----------------------------------------------------------------------------------------------------------------
 
     /**
-     * Returns a random name of a district: the first twenty characters of a random name, as many as the column holds.
+     * Returns a random name of a district: the first twenty characters of a random name, as many as
+     * the column holds.
      *
      * @return a random name of a district.
      */
@@ -57,7 +60,8 @@ class AddressRepository_DataJpaTest
     }
 
     /**
-     * Returns a random postal code: the first ten characters of a random name, as many as the column holds.
+     * Returns a random postal code: the first ten characters of a random name, as many as the
+     * column holds.
      *
      * @return a random postal code.
      */
@@ -66,7 +70,8 @@ class AddressRepository_DataJpaTest
     }
 
     /**
-     * Saves an address, in the specified city, with the specified district, through the repository under test.
+     * Saves an address, in the specified city, with the specified district, through the repository
+     * under test.
      *
      * @param city     the city of the address.
      * @param district the district of the address.
@@ -96,29 +101,31 @@ class AddressRepository_DataJpaTest
         }
 
         /**
-         * Saves an address, and asserts that finding it by its id returns that very instance, from the test's
-         * persistence context.
+         * Saves an address, and asserts that finding it by its id returns that very instance, from
+         * the test's persistence context.
          */
         @Test
         void _NotEmpty_Known() {
             final var saved = fixtures().address();
-            assertThat(repositoryInstance().findById(saved.getAddressId())).hasValueSatisfying(v -> {
-                assertThat(v).isSameAs(saved);
-            });
+            assertThat(repositoryInstance().findById(saved.getAddressId())).hasValueSatisfying(
+                    v -> {
+                        assertThat(v).isSameAs(saved);
+                    });
         }
     }
 
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * Tests {@link AddressRepository#findAllByAddress2IsNullOrderByAddressIdAsc()} ({@code SAKILA_ADDRESS_B_03}).
+     * Tests {@link AddressRepository#findAllByAddress2IsNullOrderByAddressIdAsc()}
+     * ({@code SAKILA_ADDRESS_B_03}).
      */
     @Nested
     class FindAllByAddress2IsNullOrderByAddressIdAsc_Test {
 
         /**
-         * Saves two addresses with no {@code address2}, and one with an empty one, and asserts that the former two are
-         * found, by id as the exercise sorts, and the latter is not.
+         * Saves two addresses with no {@code address2}, and one with an empty one, and asserts that
+         * the former two are found, by id as the exercise sorts, and the latter is not.
          */
         @Test
         void __() {
@@ -137,14 +144,15 @@ class AddressRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link AddressRepository#findAllByDistrictOrderByAddressIdAsc(String)} ({@code SAKILA_ADDRESS_B_04}).
+     * Tests {@link AddressRepository#findAllByDistrictOrderByAddressIdAsc(String)}
+     * ({@code SAKILA_ADDRESS_B_04}).
      */
     @Nested
     class FindAllByDistrictOrderByAddressIdAsc_Test {
 
         /**
-         * Saves two addresses of one district, and one of another, and asserts that the district streams the two, by id
-         * as the exercise sorts.
+         * Saves two addresses of one district, and one of another, and asserts that the district
+         * streams the two, by id as the exercise sorts.
          */
         @Test
         void __() {
@@ -161,13 +169,15 @@ class AddressRepository_DataJpaTest
         }
 
         /**
-         * Saves an address of an empty district, as the exercise looks for, and asserts that {@code ""} streams it.
+         * Saves an address of an empty district, as the exercise looks for, and asserts that
+         * {@code ""} streams it.
          */
         @Test
         void __Empty() {
             final var empty = saveAddress(fixtures().city(), "");
             try (var found = repositoryInstance().findAllByDistrictOrderByAddressIdAsc("")) {
-                assertThat(found.toList()).contains(empty).allSatisfy(a -> assertThat(a.getDistrict()).isEmpty());
+                assertThat(found.toList()).contains(empty)
+                        .allSatisfy(a -> assertThat(a.getDistrict()).isEmpty());
             }
         }
 
@@ -176,20 +186,22 @@ class AddressRepository_DataJpaTest
          */
         @Test
         void _Empty_Unknown() {
-            try (var found = repositoryInstance().findAllByDistrictOrderByAddressIdAsc(randomDistrict())) {
+            try (var found = repositoryInstance().findAllByDistrictOrderByAddressIdAsc(
+                    randomDistrict())) {
                 assertThat(found).isEmpty();
             }
         }
 
         /**
-         * Runs the lookup with the test's transaction suspended, and asserts that Spring Data refuses it, with
-         * {@link InvalidDataAccessApiUsageException}, before any query runs.
+         * Runs the lookup with the test's transaction suspended, and asserts that Spring Data
+         * refuses it, with {@link InvalidDataAccessApiUsageException}, before any query runs.
          */
         @Transactional(propagation = Propagation.NOT_SUPPORTED)
         @Test
         void _InvalidDataAccessApiUsageException_NoSurroundingTransaction() {
             assertThatThrownBy(() -> {
-                try (var found = repositoryInstance().findAllByDistrictOrderByAddressIdAsc(randomDistrict())) {
+                try (var found = repositoryInstance().findAllByDistrictOrderByAddressIdAsc(
+                        randomDistrict())) {
                     found.forEach(a -> {
                     });
                 }
@@ -197,34 +209,40 @@ class AddressRepository_DataJpaTest
         }
 
         /**
-         * Asserts that a {@code null} district is refused with {@link IllegalArgumentException}, before any query runs.
+         * Asserts that a {@code null} district is refused with {@link IllegalArgumentException},
+         * before any query runs.
          */
         @Test
         @SuppressWarnings({"DataFlowIssue", "NullAway"})
         void _IllegalArgumentException_Null() {
-            assertThatThrownBy(() -> repositoryInstance().findAllByDistrictOrderByAddressIdAsc(null))
+            assertThatThrownBy(
+                    () -> repositoryInstance().findAllByDistrictOrderByAddressIdAsc(null))
                     .isInstanceOf(IllegalArgumentException.class);
         }
     }
 
     /**
-     * Tests {@link AddressRepository#listWithCityAndCountry(Pageable)} ({@code SAKILA_ADDRESS_I_01}).
+     * Tests {@link AddressRepository#listWithCityAndCountry(Pageable)}
+     * ({@code SAKILA_ADDRESS_I_01}).
      */
     @Nested
     class ListWithCityAndCountry_Test {
 
         /**
-         * Saves three addresses, and asserts that the page lists them by id, with their cities and countries, and that
-         * the count query, which runs the same specification without its fetch joins, counts them.
+         * Saves three addresses, and asserts that the page lists them by id, with their cities and
+         * countries, and that the count query, which runs the same specification without its fetch
+         * joins, counts them.
          */
         @Test
         void __() {
             final var address1 = fixtures().address();
             final var address2 = fixtures().address();
             final var address3 = fixtures().address();
-            final var page = repositoryInstance().listWithCityAndCountry(PageRequest.of(0, 2, BY_ADDRESS_ID));
+            final var page = repositoryInstance().listWithCityAndCountry(
+                    PageRequest.of(0, 2, BY_ADDRESS_ID));
             assertThat(page.getContent())
-                    .extracting(a -> a, a -> a.getCity().getCity(), a -> a.getCity().getCountry().getCountry())
+                    .extracting(a -> a, a -> a.getCity().getCity(),
+                                a -> a.getCity().getCountry().getCountry())
                     .containsExactly(
                             tuple(address1, address1.getCity().getCity(),
                                   address1.getCity().getCountry().getCountry()),
@@ -232,12 +250,14 @@ class AddressRepository_DataJpaTest
                                   address2.getCity().getCountry().getCountry())
                     );
             assertThat(page.getTotalElements()).isGreaterThanOrEqualTo(3L);
-            final var all = repositoryInstance().listWithCityAndCountry(Pageable.unpaged(BY_ADDRESS_ID));
+            final var all =
+                    repositoryInstance().listWithCityAndCountry(Pageable.unpaged(BY_ADDRESS_ID));
             assertThat(all.getContent()).containsSubsequence(address1, address2, address3);
         }
 
         /**
-         * Asserts that a {@code null} pageable is refused with {@link IllegalArgumentException}, before any query runs.
+         * Asserts that a {@code null} pageable is refused with {@link IllegalArgumentException},
+         * before any query runs.
          */
         @Test
         @SuppressWarnings({"DataFlowIssue", "NullAway"})
@@ -248,7 +268,8 @@ class AddressRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link AddressRepository#selectDistrictsInMoreCountriesThan(long, Pageable)} ({@code SAKILA_ADDRESS_I_02}).
+     * Tests {@link AddressRepository#selectDistrictsInMoreCountriesThan(long, Pageable)}
+     * ({@code SAKILA_ADDRESS_I_02}).
      */
     @Nested
     class SelectDistrictsInMoreCountriesThan_Test {
@@ -257,9 +278,10 @@ class AddressRepository_DataJpaTest
                 Sort.by(Sort.Direction.DESC, "countries").and(Sort.by("district"));
 
         /**
-         * Saves a district in three countries, one in two, and one in a single country, twice, and asserts that a
-         * threshold of one selects the first two, the one in more countries first, two in all, and leaves the third
-         * out; and that a threshold of two selects the first alone.
+         * Saves a district in three countries, one in two, and one in a single country, twice, and
+         * asserts that a threshold of one selects the first two, the one in more countries first,
+         * two in all, and leaves the third out; and that a threshold of two selects the first
+         * alone.
          */
         @Test
         void __() {
@@ -281,7 +303,8 @@ class AddressRepository_DataJpaTest
                     .extracting(column("district", String.class), column("countries", Long.class))
                     .containsExactly(tuple(three, 3L));
             assertThat(aboveOne.getTotalElements()).isEqualTo(2L);
-            final var next = repositoryInstance().selectDistrictsInMoreCountriesThan(1L, aboveOne.nextPageable());
+            final var next = repositoryInstance().selectDistrictsInMoreCountriesThan(1L,
+                                                                                     aboveOne.nextPageable());
             assertThat(next.getContent())
                     .extracting(column("district", String.class), column("countries", Long.class))
                     .containsExactly(tuple(two, 2L));
@@ -293,15 +316,17 @@ class AddressRepository_DataJpaTest
         }
 
         /**
-         * Saves addresses of an empty district in two countries, and asserts that the empty district is not selected,
-         * as the exercise leaves it out.
+         * Saves addresses of an empty district in two countries, and asserts that the empty
+         * district is not selected, as the exercise leaves it out.
          */
         @Test
         void __EmptyDistrict() {
             saveAddress(fixtures().city(), "");
             saveAddress(fixtures().city(), "");
-            final var page = repositoryInstance().selectDistrictsInMoreCountriesThan(1L, Pageable.unpaged());
-            assertThat(page.getContent()).extracting(column("district", String.class)).doesNotContain("");
+            final var page =
+                    repositoryInstance().selectDistrictsInMoreCountriesThan(1L, Pageable.unpaged());
+            assertThat(page.getContent()).extracting(column("district", String.class))
+                    .doesNotContain("");
         }
     }
 
@@ -312,10 +337,12 @@ class AddressRepository_DataJpaTest
     class ListUnused_Test {
 
         /**
-         * Saves two addresses, and asserts that both are listed, by id: nothing in the H2 refers to them.
+         * Saves two addresses, and asserts that both are listed, by id: nothing in the H2 refers to
+         * them.
          * <p>
-         * The three {@code NOT EXISTS} subqueries run, on {@code Customer}, {@code Staff} and {@code Store}; that they
-         * run on H2, and let an address no one has through, is what the test proves.
+         * The three {@code NOT EXISTS} subqueries run, on {@code Customer}, {@code Staff} and
+         * {@code Store}; that they run on H2, and let an address no one has through, is what the
+         * test proves.
          */
         @Test
         void __() {
@@ -326,7 +353,8 @@ class AddressRepository_DataJpaTest
         }
 
         /**
-         * Saves three addresses, and asserts that pages of two by id hold two and then one, at least three in all.
+         * Saves three addresses, and asserts that pages of two by id hold two and then one, at
+         * least three in all.
          */
         @Test
         void __Paged() {
@@ -340,16 +368,19 @@ class AddressRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link AddressRepository#selectPairsSharingPostalCode(Pageable)} ({@code SAKILA_ADDRESS_A_02}).
+     * Tests {@link AddressRepository#selectPairsSharingPostalCode(Pageable)}
+     * ({@code SAKILA_ADDRESS_A_02}).
      */
     @Nested
     class SelectPairsSharingPostalCode_Test {
 
-        private static final Sort BY_ADDRESS_ID_THEN_OTHER = Sort.by("a1.addressId", "a2.addressId");
+        private static final Sort BY_ADDRESS_ID_THEN_OTHER =
+                Sort.by("a1.addressId", "a2.addressId");
 
         /**
-         * Saves three addresses of one postal code, and one of another, and asserts that the three make three pairs of
-         * the addresses themselves, each once, the lower id first, by the two ids, and that the fourth is in none.
+         * Saves three addresses of one postal code, and one of another, and asserts that the three
+         * make three pairs of the addresses themselves, each once, the lower id first, by the two
+         * ids, and that the fourth is in none.
          */
         @Test
         void __() {
@@ -364,8 +395,10 @@ class AddressRepository_DataJpaTest
             final var page = repositoryInstance().selectPairsSharingPostalCode(
                     Pageable.unpaged(BY_ADDRESS_ID_THEN_OTHER));
             assertThat(page.getContent())
-                    .filteredOn(p -> postalCode.equals(p.get("address", Address.class).getPostalCode()))
-                    .extracting(column("address", Address.class), column("otherAddress", Address.class))
+                    .filteredOn(
+                            p -> postalCode.equals(p.get("address", Address.class).getPostalCode()))
+                    .extracting(column("address", Address.class),
+                                column("otherAddress", Address.class))
                     .containsExactly(
                             tuple(addresses[0], addresses[1]),
                             tuple(addresses[0], addresses[2]),
@@ -377,8 +410,8 @@ class AddressRepository_DataJpaTest
         }
 
         /**
-         * Saves two addresses with an empty postal code, and asserts that they make no pair, as the exercise leaves
-         * the empty code out.
+         * Saves two addresses with an empty postal code, and asserts that they make no pair, as the
+         * exercise leaves the empty code out.
          */
         @Test
         void __EmptyPostalCode() {
@@ -393,8 +426,8 @@ class AddressRepository_DataJpaTest
         }
 
         /**
-         * Saves three addresses of one postal code, and asserts that pages of two split the three pairs two and one,
-         * three in all, which the count query says.
+         * Saves three addresses of one postal code, and asserts that pages of two split the three
+         * pairs two and one, three in all, which the count query says.
          */
         @Test
         void __Paged() {
@@ -417,8 +450,9 @@ class AddressRepository_DataJpaTest
     class SelectTopThreeDistrictsOfIndiaChinaAndUnitedStates_Test {
 
         /**
-         * Saves, in a country named {@code India}, two addresses of one district and one of each of three others, and
-         * asserts that the native query keeps three: the one of two addresses first, then two of the others by name.
+         * Saves, in a country named {@code India}, two addresses of one district and one of each of
+         * three others, and asserts that the native query keeps three: the one of two addresses
+         * first, then two of the others by name.
          * <p>
          * The SQL is not MySQL's own: H2 has {@code ROW_NUMBER() OVER (PARTITION BY ...)} too.
          */
@@ -433,7 +467,8 @@ class AddressRepository_DataJpaTest
             saveAddress(city, prefix + "a");
             saveAddress(city, prefix + "c");
             saveAddress(city, prefix + "d");
-            final var list = repositoryInstance().selectTopThreeDistrictsOfIndiaChinaAndUnitedStates();
+            final var list =
+                    repositoryInstance().selectTopThreeDistrictsOfIndiaChinaAndUnitedStates();
             assertThat(list)
                     .filteredOn(c -> c.get("district", String.class).startsWith(prefix))
                     .extracting(column("country", String.class), column("district", String.class),

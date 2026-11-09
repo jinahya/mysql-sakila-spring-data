@@ -20,12 +20,14 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 
 /**
- * Tests {@link CategoryRepository} in a JPA slice, over an embedded H2, through {@link _Repository_DataJpaTest}.
+ * Tests {@link CategoryRepository} in a JPA slice, over an embedded H2, through
+ * {@link _Repository_DataJpaTest}.
  * <p>
- * See that class for how the slice is configured. Each test persists the categories it needs, with the names it needs,
- * and the films of each through {@link #fixtures()}; the slice rolls them back when it ends. The names are random, and
- * unique to the test. No rental can be saved into the empty H2 (see {@link _Repository_DataJpaTest_Fixtures}), so the
- * query of the films rented the most runs against no rental.
+ * See that class for how the slice is configured. Each test persists the categories it needs, with
+ * the names it needs, and the films of each through {@link #fixtures()}; the slice rolls them back
+ * when it ends. The names are random, and unique to the test. No rental can be saved into the empty
+ * H2 (see {@link _Repository_DataJpaTest_Fixtures}), so the query of the films rented the most runs
+ * against no rental.
  *
  * @see CategoryRepository_SpringBootIT
  */
@@ -42,8 +44,8 @@ class CategoryRepository_DataJpaTest
     // -----------------------------------------------------------------------------------------------------------------
 
     /**
-     * Returns a random name of a category: the first twenty characters of a random name, within the twenty-five the
-     * column holds, so that a test can append a few to order them.
+     * Returns a random name of a category: the first twenty characters of a random name, within the
+     * twenty-five the column holds, so that a test can append a few to order them.
      *
      * @return a random name of a category.
      */
@@ -64,7 +66,8 @@ class CategoryRepository_DataJpaTest
     }
 
     /**
-     * Saves the specified number of films, each of the specified length, as films of the specified category.
+     * Saves the specified number of films, each of the specified length, as films of the specified
+     * category.
      *
      * @param category the category.
      * @param films    the number of films.
@@ -96,15 +99,16 @@ class CategoryRepository_DataJpaTest
         }
 
         /**
-         * Saves a category, and asserts that finding it by its id returns that very instance, from the test's
-         * persistence context.
+         * Saves a category, and asserts that finding it by its id returns that very instance, from
+         * the test's persistence context.
          */
         @Test
         void _NotEmpty_Known() {
             final var saved = saveCategory(randomCategoryName());
-            assertThat(repositoryInstance().findById(saved.getCategoryId())).hasValueSatisfying(v -> {
-                assertThat(v).isSameAs(saved);
-            });
+            assertThat(repositoryInstance().findById(saved.getCategoryId())).hasValueSatisfying(
+                    v -> {
+                        assertThat(v).isSameAs(saved);
+                    });
         }
     }
 
@@ -117,8 +121,8 @@ class CategoryRepository_DataJpaTest
     class FindAllByOrderByNameAsc_Test {
 
         /**
-         * Saves three categories, not in the order of their names, and asserts that every category is found, by name
-         * as the exercise sorts, those three in the order of their names.
+         * Saves three categories, not in the order of their names, and asserts that every category
+         * is found, by name as the exercise sorts, those three in the order of their names.
          */
         @Test
         void __() {
@@ -141,8 +145,8 @@ class CategoryRepository_DataJpaTest
     class FindAllByNameBetweenOrderByNameAsc_Test {
 
         /**
-         * Saves four categories of one prefix, and asserts that a range of the second to the third name streams those
-         * two, both ends included, by name as the exercise sorts.
+         * Saves four categories of one prefix, and asserts that a range of the second to the third
+         * name streams those two, both ends included, by name as the exercise sorts.
          */
         @Test
         void __() {
@@ -151,7 +155,9 @@ class CategoryRepository_DataJpaTest
             final var c = saveCategory(prefix + 'c');
             final var b = saveCategory(prefix + 'b');
             final var d = saveCategory(prefix + 'd');
-            try (var found = repositoryInstance().findAllByNameBetweenOrderByNameAsc(prefix + 'b', prefix + 'c')) {
+            try (var found = repositoryInstance().findAllByNameBetweenOrderByNameAsc(prefix + 'b',
+                                                                                     prefix +
+                                                                                     'c')) {
                 assertThat(found.toList())
                         .containsExactly(b, c)
                         .doesNotContain(a, d);
@@ -164,20 +170,23 @@ class CategoryRepository_DataJpaTest
         @Test
         void _Empty_Unknown() {
             final var prefix = randomCategoryName();
-            try (var found = repositoryInstance().findAllByNameBetweenOrderByNameAsc(prefix + 'a', prefix + 'b')) {
+            try (var found = repositoryInstance().findAllByNameBetweenOrderByNameAsc(prefix + 'a',
+                                                                                     prefix +
+                                                                                     'b')) {
                 assertThat(found).isEmpty();
             }
         }
 
         /**
-         * Runs the lookup with the test's transaction suspended, and asserts that Spring Data refuses it, with
-         * {@link InvalidDataAccessApiUsageException}, before any query runs.
+         * Runs the lookup with the test's transaction suspended, and asserts that Spring Data
+         * refuses it, with {@link InvalidDataAccessApiUsageException}, before any query runs.
          */
         @Transactional(propagation = Propagation.NOT_SUPPORTED)
         @Test
         void _InvalidDataAccessApiUsageException_NoSurroundingTransaction() {
             assertThatThrownBy(() -> {
-                try (var found = repositoryInstance().findAllByNameBetweenOrderByNameAsc("D", "H")) {
+                try (var found = repositoryInstance().findAllByNameBetweenOrderByNameAsc("D",
+                                                                                         "H")) {
                     found.forEach(c -> {
                     });
                 }
@@ -185,15 +194,17 @@ class CategoryRepository_DataJpaTest
         }
 
         /**
-         * Asserts that a {@code null} end of the range is refused with {@link IllegalArgumentException}, before any
-         * query runs.
+         * Asserts that a {@code null} end of the range is refused with
+         * {@link IllegalArgumentException}, before any query runs.
          */
         @Test
         @SuppressWarnings({"DataFlowIssue", "NullAway"})
         void _IllegalArgumentException_Null() {
-            assertThatThrownBy(() -> repositoryInstance().findAllByNameBetweenOrderByNameAsc(null, "H"))
+            assertThatThrownBy(
+                    () -> repositoryInstance().findAllByNameBetweenOrderByNameAsc(null, "H"))
                     .isInstanceOf(IllegalArgumentException.class);
-            assertThatThrownBy(() -> repositoryInstance().findAllByNameBetweenOrderByNameAsc("D", null))
+            assertThatThrownBy(
+                    () -> repositoryInstance().findAllByNameBetweenOrderByNameAsc("D", null))
                     .isInstanceOf(IllegalArgumentException.class);
         }
     }
@@ -208,9 +219,9 @@ class CategoryRepository_DataJpaTest
                 Sort.by(Sort.Direction.DESC, "films").and(Sort.by("c.name"));
 
         /**
-         * Saves categories of three, two and no films, and asserts that a page of one, the most films first, holds the
-         * first, that the categories with a film are two in all, and that the next page holds the second; the one with
-         * no film is never selected.
+         * Saves categories of three, two and no films, and asserts that a page of one, the most
+         * films first, holds the first, that the categories with a film are two in all, and that
+         * the next page holds the second; the one with no film is never selected.
          */
         @Test
         void __() {
@@ -220,7 +231,8 @@ class CategoryRepository_DataJpaTest
             final var none = saveCategory(prefix + 'c');
             saveFilms(three, 3, 100);
             saveFilms(two, 2, 100);
-            final var page0 = repositoryInstance().selectFilmCounts(PageRequest.of(0, 1, BY_FILMS_DESC_THEN_NAME));
+            final var page0 = repositoryInstance().selectFilmCounts(
+                    PageRequest.of(0, 1, BY_FILMS_DESC_THEN_NAME));
             assertThat(page0.getContent())
                     .extracting(column("category", Category.class), column("films", Long.class))
                     .containsExactly(tuple(three, 3L));
@@ -236,17 +248,19 @@ class CategoryRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link CategoryRepository#selectAverageLengths(Pageable)} ({@code SAKILA_CATEGORY_I_02}).
+     * Tests {@link CategoryRepository#selectAverageLengths(Pageable)}
+     * ({@code SAKILA_CATEGORY_I_02}).
      */
     @Nested
     class SelectAverageLengths_Test {
 
-        private static final Sort BY_AVERAGE_LENGTH_DESC = Sort.by(Sort.Direction.DESC, "averageLength");
+        private static final Sort BY_AVERAGE_LENGTH_DESC =
+                Sort.by(Sort.Direction.DESC, "averageLength");
 
         /**
-         * Saves a category of films of {@code 100} and {@code 121} minutes and one of a film of {@code 90}, and
-         * asserts that a page of one, the longest average first as the exercise takes it, holds the first, with
-         * {@code 110.5}, of two in all.
+         * Saves a category of films of {@code 100} and {@code 121} minutes and one of a film of
+         * {@code 90}, and asserts that a page of one, the longest average first as the exercise
+         * takes it, holds the first, with {@code 110.5}, of two in all.
          */
         @Test
         void __() {
@@ -255,20 +269,24 @@ class CategoryRepository_DataJpaTest
             saveFilms(longer, 1, 100);
             saveFilms(longer, 1, 121);
             saveFilms(shorter, 1, 90);
-            final var page = repositoryInstance().selectAverageLengths(PageRequest.of(0, 1, BY_AVERAGE_LENGTH_DESC));
+            final var page = repositoryInstance().selectAverageLengths(
+                    PageRequest.of(0, 1, BY_AVERAGE_LENGTH_DESC));
             assertThat(page.getContent())
-                    .extracting(column("category", Category.class), column("averageLength", Double.class))
+                    .extracting(column("category", Category.class),
+                                column("averageLength", Double.class))
                     .containsExactly(tuple(longer, 110.5d));
             assertThat(page.getTotalElements()).isEqualTo(2L);
             final var next = repositoryInstance().selectAverageLengths(page.nextPageable());
             assertThat(next.getContent())
-                    .extracting(column("category", Category.class), column("averageLength", Double.class))
+                    .extracting(column("category", Category.class),
+                                column("averageLength", Double.class))
                     .containsExactly(tuple(shorter, 90.0d));
         }
     }
 
     /**
-     * Tests {@link CategoryRepository#selectRunningFilmCounts(Pageable)} ({@code SAKILA_CATEGORY_A_01}).
+     * Tests {@link CategoryRepository#selectRunningFilmCounts(Pageable)}
+     * ({@code SAKILA_CATEGORY_A_01}).
      */
     @Nested
     class SelectRunningFilmCounts_Test {
@@ -277,9 +295,10 @@ class CategoryRepository_DataJpaTest
                 Sort.by(Sort.Direction.DESC, "films").and(Sort.by("c.name"));
 
         /**
-         * Saves categories of two, one and one films, and one of none, and asserts that, the most films first and then
-         * by name as the exercise sorts, the running total runs two, three, four, of four films, the percentages with
-         * it, and that the category of no film is not selected.
+         * Saves categories of two, one and one films, and one of none, and asserts that, the most
+         * films first and then by name as the exercise sorts, the running total runs two, three,
+         * four, of four films, the percentages with it, and that the category of no film is not
+         * selected.
          */
         @Test
         void __() {
@@ -291,10 +310,12 @@ class CategoryRepository_DataJpaTest
             saveFilms(two, 2, 100);
             saveFilms(oneB, 1, 100);
             saveFilms(oneA, 1, 100);
-            final var page = repositoryInstance().selectRunningFilmCounts(Pageable.unpaged(BY_FILMS_DESC_THEN_NAME));
+            final var page = repositoryInstance().selectRunningFilmCounts(
+                    Pageable.unpaged(BY_FILMS_DESC_THEN_NAME));
             assertThat(page.getContent())
                     .extracting(column("category", Category.class), column("films", Long.class),
-                                column("runningFilms", Long.class), column("runningPercent", Double.class))
+                                column("runningFilms", Long.class),
+                                column("runningPercent", Double.class))
                     .containsExactly(
                             tuple(two, 2L, 2L, 50.0d),
                             tuple(oneA, 1L, 3L, 75.0d),
@@ -305,8 +326,8 @@ class CategoryRepository_DataJpaTest
         }
 
         /**
-         * Saves three categories of a film each, and asserts that pages of two split them two and one, three in all,
-         * which the count query says.
+         * Saves three categories of a film each, and asserts that pages of two split them two and
+         * one, three in all, which the count query says.
          */
         @Test
         void __Paged() {
@@ -323,22 +344,24 @@ class CategoryRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link CategoryRepository#selectMostRentedFilms(Pageable)} ({@code SAKILA_CATEGORY_A_02}).
+     * Tests {@link CategoryRepository#selectMostRentedFilms(Pageable)}
+     * ({@code SAKILA_CATEGORY_A_02}).
      */
     @Nested
     class SelectMostRentedFilms_Test {
 
         /**
-         * Saves a category of a film, which no one can have rented in the H2, and asserts that the page is empty, with
-         * no elements in all.
+         * Saves a category of a film, which no one can have rented in the H2, and asserts that the
+         * page is empty, with no elements in all.
          * <p>
-         * The query runs, with its two {@code HAVING ... ALL} subqueries, and finds no rental; that it runs on H2 is
-         * what the test proves.
+         * The query runs, with its two {@code HAVING ... ALL} subqueries, and finds no rental; that
+         * it runs on H2 is what the test proves.
          */
         @Test
         void _Empty_NoRental() {
             saveFilms(saveCategory(randomCategoryName()), 1, 100);
-            final var page = repositoryInstance().selectMostRentedFilms(PageRequest.of(0, 5, Sort.by("c.name")));
+            final var page = repositoryInstance().selectMostRentedFilms(
+                    PageRequest.of(0, 5, Sort.by("c.name")));
             assertThat(page).isEmpty();
             assertThat(page.getTotalElements()).isZero();
         }

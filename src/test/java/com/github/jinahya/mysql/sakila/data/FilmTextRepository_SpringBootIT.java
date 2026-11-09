@@ -29,13 +29,15 @@ import static org.assertj.core.api.Assertions.tuple;
 import static org.assertj.core.api.Assumptions.assumeThat;
 
 /**
- * Tests {@link FilmTextRepository} against the Sakila database, through {@link _Repository_SpringBootIT}.
+ * Tests {@link FilmTextRepository} against the Sakila database, through
+ * {@link _Repository_SpringBootIT}.
  * <p>
- * See that class for the context and the transactions. The tests here only read: the fixture is a few rows of the
- * sample data, selected once in {@link #__()}, and each test checks a query of the exercises against them, or against
- * the counts of the other repositories, or against the exercises' output. The exercises that search with the
- * full-text index, or cut the description with {@code SUBSTRING_INDEX}, or walk the titles with a recursive
- * {@code WITH}, are native queries of MySQL's own, so this is their only test. The base's own tests, such as its
+ * See that class for the context and the transactions. The tests here only read: the fixture is a
+ * few rows of the sample data, selected once in {@link #__()}, and each test checks a query of the
+ * exercises against them, or against the counts of the other repositories, or against the
+ * exercises' output. The exercises that search with the full-text index, or cut the description
+ * with {@code SUBSTRING_INDEX}, or walk the titles with a recursive {@code WITH}, are native
+ * queries of MySQL's own, so this is their only test. The base's own tests, such as its
  * {@code findById} round trips, run here too.
  * <p>
  * Needs the database of {@code application.yaml} up, with Sakila loaded; see that file.
@@ -49,8 +51,8 @@ class FilmTextRepository_SpringBootIT
     private static List<FilmText> entities;
 
     /**
-     * A sort by id; by the attribute's name, since the metamodel's {@code FilmText_.filmId} is filled in only once
-     * the context is up, after this class is loaded.
+     * A sort by id; by the attribute's name, since the metamodel's {@code FilmText_.filmId} is
+     * filled in only once the context is up, after this class is loaded.
      */
     private static final Sort BY_FILM_ID = Sort.by(Sort.Direction.ASC, FilmText_.FILM_ID);
 
@@ -68,13 +70,14 @@ class FilmTextRepository_SpringBootIT
     /**
      * Selects the first five rows, by id, as the fixture for the parameterized tests.
      * <p>
-     * Ordered by id so that the rows are the ones the init scripts put there. Runs once per class, which
-     * {@link TestInstance.Lifecycle#PER_CLASS} allows to be an instance method, so the autowired repository is already
-     * there; the result goes into a static field so that the static method sources of the nested classes can reach it.
-     * The rows are loaded outside any transaction, so they are detached.
+     * Ordered by id so that the rows are the ones the init scripts put there. Runs once per class,
+     * which {@link TestInstance.Lifecycle#PER_CLASS} allows to be an instance method, so the
+     * autowired repository is already there; the result goes into a static field so that the static
+     * method sources of the nested classes can reach it. The rows are loaded outside any
+     * transaction, so they are detached.
      * <p>
-     * An empty table aborts the tests of this class rather than failing them: it is the fixture that is missing, not
-     * the behaviour under test that is wrong.
+     * An empty table aborts the tests of this class rather than failing them: it is the fixture
+     * that is missing, not the behaviour under test that is wrong.
      */
     @BeforeAll
     void __() {
@@ -89,11 +92,11 @@ class FilmTextRepository_SpringBootIT
     }
 
     /**
-     * Counts the rows whose title or description contains the specified word, by a {@code LIKE}, through a
-     * {@link Specification}.
+     * Counts the rows whose title or description contains the specified word, by a {@code LIKE},
+     * through a {@link Specification}.
      * <p>
-     * A {@code LIKE} matches the word inside another, which the full-text index does not, so this count is an upper
-     * bound of the index's.
+     * A {@code LIKE} matches the word inside another, which the full-text index does not, so this
+     * count is an upper bound of the index's.
      *
      * @param word the word.
      * @return the number of rows which contain {@code word}.
@@ -108,8 +111,8 @@ class FilmTextRepository_SpringBootIT
     }
 
     /**
-     * Asserts that the specified page is consistent with itself: no more content than its size, and at least as many
-     * elements in all as in its content.
+     * Asserts that the specified page is consistent with itself: no more content than its size, and
+     * at least as many elements in all as in its content.
      *
      * @param page the page.
      * @param <T>  the type of the elements.
@@ -122,7 +125,9 @@ class FilmTextRepository_SpringBootIT
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * Tests {@link FilmTextRepository#findAllByDescriptionContainingAndDescriptionContainingOrderByFilmId(String,
+     * Tests
+     * {@link
+     * FilmTextRepository#findAllByDescriptionContainingAndDescriptionContainingOrderByFilmId(String,
      * String)} ({@code SAKILA_FILM_TEXT_B_01}).
      */
     @Nested
@@ -134,7 +139,8 @@ class FilmTextRepository_SpringBootIT
         @Test
         void __Expected() {
             final var list = repositoryInstance()
-                    .findAllByDescriptionContainingAndDescriptionContainingOrderByFilmId("Crocodile", "Shark");
+                    .findAllByDescriptionContainingAndDescriptionContainingOrderByFilmId(
+                            "Crocodile", "Shark");
             assertThat(list)
                     .extracting(FilmText::getFilmId, FilmText::getTitle)
                     .containsExactly(
@@ -152,8 +158,8 @@ class FilmTextRepository_SpringBootIT
         }
 
         /**
-         * Asserts that the two words, in either order and in any case, find the same rows, by film id, each of whose
-         * descriptions contains both, ignoring case, as the database compares.
+         * Asserts that the two words, in either order and in any case, find the same rows, by film
+         * id, each of whose descriptions contains both, ignoring case, as the database compares.
          *
          * @param word1 one word.
          * @param word2 the other word.
@@ -162,15 +168,18 @@ class FilmTextRepository_SpringBootIT
         @ParameterizedTest
         void __(final String word1, final String word2) {
             final var list = repositoryInstance()
-                    .findAllByDescriptionContainingAndDescriptionContainingOrderByFilmId(word1, word2);
+                    .findAllByDescriptionContainingAndDescriptionContainingOrderByFilmId(word1,
+                                                                                         word2);
             assertThat(list)
                     .isNotEmpty()
                     .isSortedAccordingTo(Comparator.comparing(FilmText::getFilmId))
                     .allSatisfy(ft -> {
-                        assertThat(ft.getDescription()).containsIgnoringCase(word1).containsIgnoringCase(word2);
+                        assertThat(ft.getDescription()).containsIgnoringCase(word1)
+                                .containsIgnoringCase(word2);
                     });
             assertThat(repositoryInstance()
-                               .findAllByDescriptionContainingAndDescriptionContainingOrderByFilmId(word2, word1))
+                               .findAllByDescriptionContainingAndDescriptionContainingOrderByFilmId(
+                                       word2, word1))
                     .containsExactlyElementsOf(list);
         }
     }
@@ -192,8 +201,9 @@ class FilmTextRepository_SpringBootIT
         }
 
         /**
-         * Asserts that the count of {@code film_text} is the repository's own count, and the count of {@code film}
-         * is that of {@link FilmRepository}; on the sample data the two are the same, which the triggers keep so.
+         * Asserts that the count of {@code film_text} is the repository's own count, and the count
+         * of {@code film} is that of {@link FilmRepository}; on the sample data the two are the
+         * same, which the triggers keep so.
          */
         @Test
         void __() {
@@ -204,7 +214,8 @@ class FilmTextRepository_SpringBootIT
     }
 
     /**
-     * Tests {@link FilmTextRepository#listMatching(String, Pageable)} ({@code SAKILA_FILM_TEXT_I_02}).
+     * Tests {@link FilmTextRepository#listMatching(String, Pageable)}
+     * ({@code SAKILA_FILM_TEXT_I_02}).
      */
     @Nested
     class ListMatching_Test {
@@ -215,31 +226,34 @@ class FilmTextRepository_SpringBootIT
         private static final Sort BY_FILM_ID_COLUMN = Sort.by(FilmText.COLUMN_NAME_FILM_ID);
 
         /**
-         * Asserts that {@code drama} matches the exercise's count, {@code 106}, as the page's total, whatever its
-         * size.
+         * Asserts that {@code drama} matches the exercise's count, {@code 106}, as the page's
+         * total, whatever its size.
          *
          * @param size the size of the page.
          */
         @ValueSource(ints = {1, 10})
         @ParameterizedTest
         void __Expected(final int size) {
-            final var page = repositoryInstance().listMatching("drama", PageRequest.of(0, size, BY_FILM_ID_COLUMN));
+            final var page = repositoryInstance().listMatching("drama", PageRequest.of(0, size,
+                                                                                       BY_FILM_ID_COLUMN));
             assertPage(page);
             assertThat(page.getContent()).hasSize(size);
             assertThat(page.getTotalElements()).isEqualTo(106L);
         }
 
         /**
-         * Asserts that the given word, which the sample descriptions use, matches at least one row by the full-text
-         * index, and no more rows than a {@code LIKE} on the same two columns finds, which also matches the word
-         * inside another; that each row listed mentions the word; and that the page is by {@code film_id}.
+         * Asserts that the given word, which the sample descriptions use, matches at least one row
+         * by the full-text index, and no more rows than a {@code LIKE} on the same two columns
+         * finds, which also matches the word inside another; that each row listed mentions the
+         * word; and that the page is by {@code film_id}.
          *
          * @param word the word to search for; the exercise asks for {@code drama}.
          */
         @ValueSource(strings = {"drama", "documentary", "epic"})
         @ParameterizedTest
         void __(final String word) {
-            final var page = repositoryInstance().listMatching(word, PageRequest.of(0, 10, BY_FILM_ID_COLUMN));
+            final var page = repositoryInstance().listMatching(word, PageRequest.of(0, 10,
+                                                                                    BY_FILM_ID_COLUMN));
             assertPage(page);
             assertThat(page.getTotalElements())
                     .isPositive()
@@ -248,15 +262,17 @@ class FilmTextRepository_SpringBootIT
                     .isNotEmpty()
                     .isSortedAccordingTo(Comparator.comparing(FilmText::getFilmId))
                     .allSatisfy(ft -> {
-                        assertThat(ft.getTitle() + " " + ft.getDescription()).containsIgnoringCase(word);
+                        assertThat(ft.getTitle() + " " + ft.getDescription()).containsIgnoringCase(
+                                word);
                     });
         }
 
         /**
          * Asserts that a {@code null} word is refused, before any query runs.
          * <p>
-         * The package is {@code @NullMarked}, so Spring Data checks the arguments of every repository method, a
-         * {@code default} one included, and throws {@link IllegalArgumentException} before the method runs.
+         * The package is {@code @NullMarked}, so Spring Data checks the arguments of every
+         * repository method, a {@code default} one included, and throws
+         * {@link IllegalArgumentException} before the method runs.
          */
         @Test
         void _IllegalArgumentException_NullWord() {
@@ -266,8 +282,8 @@ class FilmTextRepository_SpringBootIT
     }
 
     /**
-     * Tests {@link FilmTextRepository#listWithTitleDifferentFromFilm(Pageable)} ({@code SAKILA_FILM_TEXT_I_03}, not a
-     * pick).
+     * Tests {@link FilmTextRepository#listWithTitleDifferentFromFilm(Pageable)}
+     * ({@code SAKILA_FILM_TEXT_I_03}, not a pick).
      */
     @Nested
     class ListWithTitleDifferentFromFilm_Test {
@@ -277,16 +293,18 @@ class FilmTextRepository_SpringBootIT
         }
 
         /**
-         * Asserts, in one transaction, that every row listed has a title other than its film's; on the sample data
-         * the triggers keep the two the same, so the page is empty and the assertion on its content is vacuous.
+         * Asserts, in one transaction, that every row listed has a title other than its film's; on
+         * the sample data the triggers keep the two the same, so the page is empty and the
+         * assertion on its content is vacuous.
          * <p>
-         * The transaction keeps the persistence context open, so that each row's film, which is loaded lazily, can
-         * be read.
+         * The transaction keeps the persistence context open, so that each row's film, which is
+         * loaded lazily, can be read.
          */
         @Test
         @Transactional
         void __() {
-            final var page = repositoryInstance().listWithTitleDifferentFromFilm(PageRequest.of(0, 5, BY_FILM_ID));
+            final var page = repositoryInstance().listWithTitleDifferentFromFilm(
+                    PageRequest.of(0, 5, BY_FILM_ID));
             assertThat(page.getContent())
                     .allSatisfy(ft -> {
                         assertThat(ft.getTitle()).isNotEqualToIgnoringCase(ft.getFilm().getTitle());
@@ -294,23 +312,26 @@ class FilmTextRepository_SpringBootIT
         }
 
         /**
-         * Asserts that a selected row's title is its film's, read through {@link FilmRepository}, so that the row is
-         * not listed.
+         * Asserts that a selected row's title is its film's, read through {@link FilmRepository},
+         * so that the row is not listed.
          *
-         * @param filmText one of the rows selected in {@link FilmTextRepository_SpringBootIT#__()}.
+         * @param filmText one of the rows selected in
+         *                 {@link FilmTextRepository_SpringBootIT#__()}.
          */
         @MethodSource("filmTexts")
         @ParameterizedTest
         void __NotContainsFixture(final FilmText filmText) {
             final var film = filmRepository.findById(filmText.getFilmId()).orElseThrow();
             assertThat(filmText.getTitle()).isEqualToIgnoringCase(film.getTitle());
-            final var all = repositoryInstance().listWithTitleDifferentFromFilm(Pageable.unpaged(BY_FILM_ID));
+            final var all = repositoryInstance().listWithTitleDifferentFromFilm(
+                    Pageable.unpaged(BY_FILM_ID));
             assertThat(all.getContent()).doesNotContain(filmText);
         }
     }
 
     /**
-     * Tests {@link FilmTextRepository#countMatchingInBooleanMode(String)} ({@code SAKILA_FILM_TEXT_I_04}).
+     * Tests {@link FilmTextRepository#countMatchingInBooleanMode(String)}
+     * ({@code SAKILA_FILM_TEXT_I_04}).
      */
     @Nested
     class CountMatchingInBooleanMode_Test {
@@ -320,12 +341,14 @@ class FilmTextRepository_SpringBootIT
          */
         @Test
         void __Expected() {
-            assertThat(repositoryInstance().countMatchingInBooleanMode("+boat -shark")).isEqualTo(143L);
+            assertThat(repositoryInstance().countMatchingInBooleanMode("+boat -shark")).isEqualTo(
+                    143L);
         }
 
         /**
-         * Asserts that a word required alone counts no fewer rows than with another word excluded, and that the
-         * two exclusive searches, with and without the other word, add up to the first.
+         * Asserts that a word required alone counts no fewer rows than with another word excluded,
+         * and that the two exclusive searches, with and without the other word, add up to the
+         * first.
          *
          * @param word  the word required.
          * @param other the word excluded, or required.
@@ -334,8 +357,10 @@ class FilmTextRepository_SpringBootIT
         @ParameterizedTest
         void __(final String word, final String other) {
             final var alone = repositoryInstance().countMatchingInBooleanMode("+" + word);
-            final var without = repositoryInstance().countMatchingInBooleanMode("+" + word + " -" + other);
-            final var with = repositoryInstance().countMatchingInBooleanMode("+" + word + " +" + other);
+            final var without =
+                    repositoryInstance().countMatchingInBooleanMode("+" + word + " -" + other);
+            final var with =
+                    repositoryInstance().countMatchingInBooleanMode("+" + word + " +" + other);
             assertThat(alone).isPositive().isGreaterThanOrEqualTo(without);
             assertThat(without + with).isEqualTo(alone);
         }
@@ -343,8 +368,9 @@ class FilmTextRepository_SpringBootIT
         /**
          * Asserts that a {@code null} search is refused, before any query runs.
          * <p>
-         * The package is {@code @NullMarked}, so Spring Data checks the arguments of every repository method, a
-         * {@code default} one included, and throws {@link IllegalArgumentException} before the method runs.
+         * The package is {@code @NullMarked}, so Spring Data checks the arguments of every
+         * repository method, a {@code default} one included, and throws
+         * {@link IllegalArgumentException} before the method runs.
          */
         @Test
         void _IllegalArgumentException_NullSearch() {
@@ -354,13 +380,15 @@ class FilmTextRepository_SpringBootIT
     }
 
     /**
-     * Tests {@link FilmTextRepository#selectEitherAndBothCounts(String, String)} ({@code SAKILA_FILM_TEXT_I_05}).
+     * Tests {@link FilmTextRepository#selectEitherAndBothCounts(String, String)}
+     * ({@code SAKILA_FILM_TEXT_I_05}).
      */
     @Nested
     class SelectEitherAndBothCounts_Test {
 
         /**
-         * Asserts that {@code crocodile} and {@code shark} count the exercise's output, {@code 203} and {@code 10}.
+         * Asserts that {@code crocodile} and {@code shark} count the exercise's output, {@code 203}
+         * and {@code 10}.
          */
         @Test
         void __Expected() {
@@ -370,8 +398,8 @@ class FilmTextRepository_SpringBootIT
         }
 
         /**
-         * Asserts that the rows with both words are no more than those with either, and are those the boolean mode
-         * counts with both required.
+         * Asserts that the rows with both words are no more than those with either, and are those
+         * the boolean mode counts with both required.
          *
          * @param word1 one word.
          * @param word2 the other word.
@@ -382,14 +410,16 @@ class FilmTextRepository_SpringBootIT
             final var counts = repositoryInstance().selectEitherAndBothCounts(word1, word2);
             assertThat(counts.get("bothWords", Number.class).longValue())
                     .isLessThanOrEqualTo(counts.get("eitherWord", Number.class).longValue())
-                    .isEqualTo(repositoryInstance().countMatchingInBooleanMode("+" + word1 + " +" + word2));
+                    .isEqualTo(repositoryInstance().countMatchingInBooleanMode(
+                            "+" + word1 + " +" + word2));
         }
 
         /**
          * Asserts that a {@code null} word is refused, before any query runs.
          * <p>
-         * The package is {@code @NullMarked}, so Spring Data checks the arguments of every repository method, a
-         * {@code default} one included, and throws {@link IllegalArgumentException} before the method runs.
+         * The package is {@code @NullMarked}, so Spring Data checks the arguments of every
+         * repository method, a {@code default} one included, and throws
+         * {@link IllegalArgumentException} before the method runs.
          */
         @Test
         void _IllegalArgumentException_NullWord() {
@@ -411,7 +441,8 @@ class FilmTextRepository_SpringBootIT
         void __Expected() {
             final var list = repositoryInstance().selectMostCommonKinds();
             assertThat(list)
-                    .extracting(column("name", String.class), column("kind", String.class), longColumn("films"))
+                    .extracting(column("name", String.class), column("kind", String.class),
+                                longColumn("films"))
                     .containsExactly(
                             tuple("Action", "Reflection", 10L),
                             tuple("Animation", "Epistle", 9L),
@@ -450,7 +481,8 @@ class FilmTextRepository_SpringBootIT
         void __Expected() {
             final var list = repositoryInstance().selectTitleChain(1, 10);
             assertThat(list)
-                    .extracting(intColumn("step"), intColumn("film_id"), column("title", String.class))
+                    .extracting(intColumn("step"), intColumn("film_id"),
+                                column("title", String.class))
                     .containsExactly(
                             tuple(1, 1, "ACADEMY DINOSAUR"),
                             tuple(2, 231, "DINOSAUR SECRETARY"),
@@ -466,10 +498,12 @@ class FilmTextRepository_SpringBootIT
         }
 
         /**
-         * Asserts that a chain of the given number of steps from a selected row starts with that row, never goes
-         * past the steps, and that each title starts with the last word of a title of the step before.
+         * Asserts that a chain of the given number of steps from a selected row starts with that
+         * row, never goes past the steps, and that each title starts with the last word of a title
+         * of the step before.
          *
-         * @param filmText one of the rows selected in {@link FilmTextRepository_SpringBootIT#__()}.
+         * @param filmText one of the rows selected in
+         *                 {@link FilmTextRepository_SpringBootIT#__()}.
          */
         @MethodSource("filmTexts")
         @ParameterizedTest
@@ -478,10 +512,12 @@ class FilmTextRepository_SpringBootIT
             final var list = repositoryInstance().selectTitleChain(filmText.getFilmId(), steps);
             assertThat(list).isNotEmpty();
             assertThat(list.getFirst().get("step", Number.class).intValue()).isOne();
-            assertThat(list.getFirst().get("film_id", Number.class).intValue()).isEqualTo(filmText.getFilmId());
+            assertThat(list.getFirst().get("film_id", Number.class).intValue()).isEqualTo(
+                    filmText.getFilmId());
             assertThat(list)
                     .isSortedAccordingTo(Comparator.comparing(intColumn("step")))
-                    .allSatisfy(s -> assertThat(s.get("step", Number.class).intValue()).isBetween(1, steps));
+                    .allSatisfy(s -> assertThat(s.get("step", Number.class).intValue()).isBetween(1,
+                                                                                                  steps));
             for (final var step : list) {
                 if (step.get("step", Number.class).intValue() == 1) {
                     continue;
@@ -490,7 +526,8 @@ class FilmTextRepository_SpringBootIT
                 assertThat(list).anySatisfy(previous -> {
                     assertThat(previous.get("step", Number.class).intValue())
                             .isEqualTo(step.get("step", Number.class).intValue() - 1);
-                    assertThat(previous.get("title", String.class)).endsWithIgnoringCase(" " + first);
+                    assertThat(previous.get("title", String.class)).endsWithIgnoringCase(
+                            " " + first);
                 });
             }
         }

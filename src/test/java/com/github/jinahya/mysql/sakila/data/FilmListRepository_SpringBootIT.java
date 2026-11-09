@@ -32,21 +32,23 @@ import static org.assertj.core.api.Assertions.tuple;
 /**
  * Tests {@link FilmListRepository} against the Sakila database.
  * <p>
- * The repository is not a Spring Data one, so this does not extend {@link _Repository_SpringBootIT}: it is a plain
- * {@code @SpringBootTest}, over the context of {@link ___Spring_TestContext}, which {@code @Import}s the
- * implementation. There is no {@code @DataJpaTest} for it either: the slice's H2 is generated from the entities, the
- * view does not exist there, and every exercise method is native-only, running MySQL's own SQL. Each repository call
- * runs in a transaction of its own, and nothing here writes.
+ * The repository is not a Spring Data one, so this does not extend
+ * {@link _Repository_SpringBootIT}: it is a plain {@code @SpringBootTest}, over the context of
+ * {@link ___Spring_TestContext}, which {@code @Import}s the implementation. There is no
+ * {@code @DataJpaTest} for it either: the slice's H2 is generated from the entities, the view does
+ * not exist there, and every exercise method is native-only, running MySQL's own SQL. Each
+ * repository call runs in a transaction of its own, and nothing here writes.
  * <p>
- * The exercise methods run the exercises' SQL as it is, so each is asserted against the output upstream records for it,
- * in {@code src/test/sql/film_list_exercises_0N_<level>.sql}, in the order the exercise asks for, and, where it is
- * cheap, cross-checked through the repositories of the tables the view is built from: {@link FilmRepository} for the
- * films and their categories, and {@link FilmActorRepository} for the actors.
+ * The exercise methods run the exercises' SQL as it is, so each is asserted against the output
+ * upstream records for it, in {@code src/test/sql/film_list_exercises_0N_<level>.sql}, in the order
+ * the exercise asks for, and, where it is cheap, cross-checked through the repositories of the
+ * tables the view is built from: {@link FilmRepository} for the films and their categories, and
+ * {@link FilmActorRepository} for the actors.
  * <p>
- * Two reads of the same row are compared ignoring the order of the names in {@code actors}: the view builds that
- * string with a {@code GROUP_CONCAT} that has no {@code ORDER BY}, so MySQL may list the names in a different order
- * from one statement to the next, as it does between a {@code LIMIT}ed and an unlimited select; see
- * {@link #namesOf(String)}.
+ * Two reads of the same row are compared ignoring the order of the names in {@code actors}: the
+ * view builds that string with a {@code GROUP_CONCAT} that has no {@code ORDER BY}, so MySQL may
+ * list the names in a different order from one statement to the next, as it does between a
+ * {@code LIMIT}ed and an unlimited select; see {@link #namesOf(String)}.
  * <p>
  * Needs the database of {@code application.yaml} up, with Sakila loaded; see that file.
  *
@@ -65,8 +67,8 @@ class FilmListRepository_SpringBootIT {
     // -----------------------------------------------------------------------------------------------------------------
 
     /**
-     * Asserts that the specified page is consistent with itself: no more content than its size, and at least as many
-     * elements in all as in its content.
+     * Asserts that the specified page is consistent with itself: no more content than its size, and
+     * at least as many elements in all as in its content.
      *
      * @param page the page.
      * @param <T>  the type of the elements.
@@ -77,7 +79,8 @@ class FilmListRepository_SpringBootIT {
     }
 
     /**
-     * Splits the specified {@code actors} of a row into the names it lists, to compare them regardless of their order.
+     * Splits the specified {@code actors} of a row into the names it lists, to compare them
+     * regardless of their order.
      *
      * @param actors the comma-separated names; may be {@code null}, for a film with no actor.
      * @return the names; empty if {@code actors} is {@code null}.
@@ -87,15 +90,16 @@ class FilmListRepository_SpringBootIT {
     }
 
     /**
-     * Asserts that the specified rows are the same rows of the view, in the same order: equal in every column but
-     * {@code actors}, and listing the same names there, in whatever order.
+     * Asserts that the specified rows are the same rows of the view, in the same order: equal in
+     * every column but {@code actors}, and listing the same names there, in whatever order.
      *
      * @param actual   the rows read.
      * @param expected the rows expected.
      */
     private static void assertSameRows(final List<FilmList> actual, final List<FilmList> expected) {
         assertThat(actual)
-                .usingRecursiveFieldByFieldElementComparatorIgnoringFields(FilmList.ATTRIBUTE_NAME_ACTORS)
+                .usingRecursiveFieldByFieldElementComparatorIgnoringFields(
+                        FilmList.ATTRIBUTE_NAME_ACTORS)
                 .containsExactlyElementsOf(expected);
         for (int i = 0; i < actual.size(); i++) {
             assertThat(namesOf(actual.get(i).getActors()))
@@ -104,13 +108,15 @@ class FilmListRepository_SpringBootIT {
     }
 
     /**
-     * Counts the {@code film_actor} links of the specified film, through {@link FilmActorRepository}.
+     * Counts the {@code film_actor} links of the specified film, through
+     * {@link FilmActorRepository}.
      *
      * @param film the film.
      * @return the number of actors of {@code film}.
      */
     private long countActorsOf(final Film film) {
-        final Specification<FilmActor> specification = (r, q, b) -> b.equal(r.get(FilmActor_.film), film);
+        final Specification<FilmActor> specification =
+                (r, q, b) -> b.equal(r.get(FilmActor_.film), film);
         return filmActorRepository.count(specification);
     }
 
@@ -123,7 +129,8 @@ class FilmListRepository_SpringBootIT {
     class ListAll_Test {
 
         /**
-         * Asserts that the first page of the given size, by {@code FID}, is consistent with itself, and ordered so.
+         * Asserts that the first page of the given size, by {@code FID}, is consistent with itself,
+         * and ordered so.
          *
          * @param size the size of the page.
          */
@@ -138,8 +145,8 @@ class FilmListRepository_SpringBootIT {
         }
 
         /**
-         * Asserts that a page sorted by title, descending, is ordered so, and then by {@code FID}, which the
-         * implementation appends.
+         * Asserts that a page sorted by title, descending, is ordered so, and then by {@code FID},
+         * which the implementation appends.
          * <p>
          * The titles are compared ignoring case, as the database's collation compares them.
          */
@@ -150,14 +157,15 @@ class FilmListRepository_SpringBootIT {
             assertPage(page);
             assertThat(page.getContent())
                     .isNotEmpty()
-                    .isSortedAccordingTo(Comparator.comparing(FilmList::getTitle, String.CASE_INSENSITIVE_ORDER)
-                                                 .reversed()
-                                                 .thenComparing(FilmList::getFid));
+                    .isSortedAccordingTo(
+                            Comparator.comparing(FilmList::getTitle, String.CASE_INSENSITIVE_ORDER)
+                                    .reversed()
+                                    .thenComparing(FilmList::getFid));
         }
 
         /**
-         * Asserts that the pages of the given size, walked one after another, add up to the single unpaged page, row
-         * by row, and that every page carries the same total.
+         * Asserts that the pages of the given size, walked one after another, add up to the single
+         * unpaged page, row by row, and that every page carries the same total.
          *
          * @param size the size of the pages.
          */
@@ -183,8 +191,8 @@ class FilmListRepository_SpringBootIT {
         /**
          * Asserts that a sort by a property the view has no column for is rejected.
          * <p>
-         * The implementation throws {@link IllegalArgumentException}, which {@code @Repository} has Spring translate
-         * into {@link InvalidDataAccessApiUsageException} on the way out.
+         * The implementation throws {@link IllegalArgumentException}, which {@code @Repository} has
+         * Spring translate into {@link InvalidDataAccessApiUsageException} on the way out.
          */
         @Test
         void _InvalidDataAccessApiUsageException_UnknownSortProperty() {
@@ -222,16 +230,17 @@ class FilmListRepository_SpringBootIT {
     class CountActionFilms_Test {
 
         /**
-         * Asserts that the count is the exercise's {@code 64}, and is the number of {@code film_category} links to the
-         * {@code Action} category, counted through {@link FilmRepository} with a join; the view has one row for each
-         * such link.
+         * Asserts that the count is the exercise's {@code 64}, and is the number of
+         * {@code film_category} links to the {@code Action} category, counted through
+         * {@link FilmRepository} with a join; the view has one row for each such link.
          */
         @Test
         void __() {
             final var count = repository.countActionFilms();
             log.debug("Action films: {}", count);
             final Specification<Film> specification = (r, q, b) -> b.equal(
-                    r.join(Film_.filmCategories).get(FilmCategory_.category).get(Category_.name), "Action");
+                    r.join(Film_.filmCategories).get(FilmCategory_.category).get(Category_.name),
+                    "Action");
             assertThat(count)
                     .isEqualTo(64L)
                     .isEqualTo(filmRepository.count(specification));
@@ -245,9 +254,9 @@ class FilmListRepository_SpringBootIT {
     class ListActorsOfFilmOne_Test {
 
         /**
-         * Asserts that the film {@code 1} has the one row the exercise shows, {@code ACADEMY DINOSAUR} with its ten
-         * actors, in whatever order, and as many as the film has {@code film_actor} links, counted through
-         * {@link FilmActorRepository}.
+         * Asserts that the film {@code 1} has the one row the exercise shows,
+         * {@code ACADEMY DINOSAUR} with its ten actors, in whatever order, and as many as the film
+         * has {@code film_actor} links, counted through {@link FilmActorRepository}.
          */
         @Test
         void __() {
@@ -257,8 +266,10 @@ class FilmListRepository_SpringBootIT {
                 assertThat(r.getFid()).isEqualTo(1);
                 assertThat(r.getTitle()).isEqualTo("ACADEMY DINOSAUR");
                 assertThat(namesOf(r.getActors())).containsExactlyInAnyOrder(
-                        "PENELOPE GUINESS", "CHRISTIAN GABLE", "LUCILLE TRACY", "SANDRA PECK", "JOHNNY CAGE",
-                        "MENA TEMPLE", "WARREN NOLTE", "OPRAH KILMER", "ROCK DUKAKIS", "MARY KEITEL");
+                        "PENELOPE GUINESS", "CHRISTIAN GABLE", "LUCILLE TRACY", "SANDRA PECK",
+                        "JOHNNY CAGE",
+                        "MENA TEMPLE", "WARREN NOLTE", "OPRAH KILMER", "ROCK DUKAKIS",
+                        "MARY KEITEL");
                 final var film = filmRepository.findById(r.getFid()).orElseThrow();
                 assertThat(namesOf(r.getActors())).hasSize((int) countActorsOf(film));
             });
@@ -272,8 +283,8 @@ class FilmListRepository_SpringBootIT {
     class ListChildrenFilmsRatedG_Test {
 
         /**
-         * Asserts that the films are the exercise's ten, with their lengths, and that every row is of the
-         * {@code Children} category and rated {@code G}.
+         * Asserts that the films are the exercise's ten, with their lengths, and that every row is
+         * of the {@code Children} category and rated {@code G}.
          */
         @Test
         void __() {
@@ -298,14 +309,15 @@ class FilmListRepository_SpringBootIT {
         }
 
         /**
-         * Asserts that the films are sorted by title, and then by {@code FID}, as the exercise asks; the titles are
-         * compared ignoring case, as the database's collation compares them.
+         * Asserts that the films are sorted by title, and then by {@code FID}, as the exercise
+         * asks; the titles are compared ignoring case, as the database's collation compares them.
          */
         @Test
         void __Sorted() {
             assertThat(repository.listChildrenFilmsRatedG())
-                    .isSortedAccordingTo(Comparator.comparing(FilmList::getTitle, String.CASE_INSENSITIVE_ORDER)
-                                                 .thenComparing(FilmList::getFid));
+                    .isSortedAccordingTo(
+                            Comparator.comparing(FilmList::getTitle, String.CASE_INSENSITIVE_ORDER)
+                                    .thenComparing(FilmList::getFid));
         }
     }
 
@@ -316,8 +328,9 @@ class FilmListRepository_SpringBootIT {
     class ListFilmsWithNoActor_Test {
 
         /**
-         * Asserts that the films are the exercise's three, with their categories, by {@code FID}, and that none of them
-         * has a {@code film_actor} link, counted through {@link FilmActorRepository}.
+         * Asserts that the films are the exercise's three, with their categories, by {@code FID},
+         * and that none of them has a {@code film_actor} link, counted through
+         * {@link FilmActorRepository}.
          */
         @Test
         void __() {
@@ -338,21 +351,24 @@ class FilmListRepository_SpringBootIT {
     }
 
     /**
-     * Tests {@link FilmListRepository#countFilmListAndFilmsWithACategory()} ({@code SAKILA_FILM_LIST_I_01}).
+     * Tests {@link FilmListRepository#countFilmListAndFilmsWithACategory()}
+     * ({@code SAKILA_FILM_LIST_I_01}).
      */
     @Nested
     class CountFilmListAndFilmsWithACategory_Test {
 
         /**
-         * Asserts that both counts are the exercise's {@code 1000}: the first is {@link FilmListRepository#countAll()},
-         * and the second the number of films which have a category, counted through {@link FilmRepository}.
+         * Asserts that both counts are the exercise's {@code 1000}: the first is
+         * {@link FilmListRepository#countAll()}, and the second the number of films which have a
+         * category, counted through {@link FilmRepository}.
          */
         @Test
         void __() {
             final var counts = repository.countFilmListAndFilmsWithACategory();
             log.debug("counts: {}", counts);
             assertThat(counts.filmList()).isEqualTo(1000L).isEqualTo(repository.countAll());
-            final Specification<Film> specification = (r, q, b) -> b.isNotEmpty(r.get(Film_.filmCategories));
+            final Specification<Film> specification =
+                    (r, q, b) -> b.isNotEmpty(r.get(Film_.filmCategories));
             assertThat(counts.filmsWithACategory())
                     .isEqualTo(1000L)
                     .isEqualTo(filmRepository.count(specification));
@@ -360,22 +376,26 @@ class FilmListRepository_SpringBootIT {
     }
 
     /**
-     * Tests {@link FilmListRepository#countFilmsByRatingAndPrice()} ({@code SAKILA_FILM_LIST_I_02}).
+     * Tests {@link FilmListRepository#countFilmsByRatingAndPrice()}
+     * ({@code SAKILA_FILM_LIST_I_02}).
      */
     @Nested
     class CountFilmsByRatingAndPrice_Test {
 
         /**
-         * Asserts that the rows are the exercise's five, one per rating, in the order of MySQL's {@code ENUM}, which is
-         * the order of the {@link Film.Rating} constants too, and that their counts add up to every row of the view.
+         * Asserts that the rows are the exercise's five, one per rating, in the order of MySQL's
+         * {@code ENUM}, which is the order of the {@link Film.Rating} constants too, and that their
+         * counts add up to every row of the view.
          */
         @Test
         void __() {
             final var list = repository.countFilmsByRatingAndPrice();
             list.forEach(r -> log.debug("row: {}", r));
             assertThat(list)
-                    .extracting(FilmListRepository.RatingPrices::rating, FilmListRepository.RatingPrices::price099,
-                                FilmListRepository.RatingPrices::price299, FilmListRepository.RatingPrices::price499)
+                    .extracting(FilmListRepository.RatingPrices::rating,
+                                FilmListRepository.RatingPrices::price099,
+                                FilmListRepository.RatingPrices::price299,
+                                FilmListRepository.RatingPrices::price499)
                     .containsExactly(
                             tuple("G", 64L, 59L, 55L),
                             tuple("PG", 62L, 64L, 68L),
@@ -385,13 +405,15 @@ class FilmListRepository_SpringBootIT {
             assertThat(list)
                     .extracting(r -> Film.Rating.valueOfColumnValue(r.rating()))
                     .isSorted();
-            assertThat(list.stream().mapToLong(r -> r.price099() + r.price299() + r.price499()).sum())
+            assertThat(
+                    list.stream().mapToLong(r -> r.price099() + r.price299() + r.price499()).sum())
                     .isEqualTo(repository.countAll());
         }
     }
 
     /**
-     * Tests {@link FilmListRepository#listFilmsMiscountingActors()} ({@code SAKILA_FILM_LIST_I_03}).
+     * Tests {@link FilmListRepository#listFilmsMiscountingActors()}
+     * ({@code SAKILA_FILM_LIST_I_03}).
      */
     @Nested
     class ListFilmsMiscountingActors_Test {
@@ -406,7 +428,8 @@ class FilmListRepository_SpringBootIT {
     }
 
     /**
-     * Tests {@link FilmListRepository#countLongerThanAverageByCategory()} ({@code SAKILA_FILM_LIST_A_01}).
+     * Tests {@link FilmListRepository#countLongerThanAverageByCategory()}
+     * ({@code SAKILA_FILM_LIST_A_01}).
      */
     @Nested
     class CountLongerThanAverageByCategory_Test {
@@ -441,17 +464,20 @@ class FilmListRepository_SpringBootIT {
         }
 
         /**
-         * Asserts that the rows are sorted by the count, descending, and then by the category, as the exercise asks;
-         * the names are compared ignoring case, as the database's collation compares them.
+         * Asserts that the rows are sorted by the count, descending, and then by the category, as
+         * the exercise asks; the names are compared ignoring case, as the database's collation
+         * compares them.
          */
         @Test
         void __Sorted() {
             assertThat(repository.countLongerThanAverageByCategory())
                     .isSortedAccordingTo(
-                            Comparator.comparingLong(FilmListRepository.CategoryLongerThanAverage::longerThanAverage)
+                            Comparator.comparingLong(
+                                            FilmListRepository.CategoryLongerThanAverage::longerThanAverage)
                                     .reversed()
-                                    .thenComparing(FilmListRepository.CategoryLongerThanAverage::category,
-                                                   String.CASE_INSENSITIVE_ORDER));
+                                    .thenComparing(
+                                            FilmListRepository.CategoryLongerThanAverage::category,
+                                            String.CASE_INSENSITIVE_ORDER));
         }
     }
 

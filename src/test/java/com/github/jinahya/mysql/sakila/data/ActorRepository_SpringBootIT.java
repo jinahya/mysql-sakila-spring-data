@@ -18,7 +18,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.JpaSort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,12 +35,13 @@ import static org.assertj.core.api.Assertions.tuple;
 import static org.assertj.core.api.Assumptions.assumeThat;
 
 /**
- * Tests {@link ActorRepository} against the Sakila database, through {@link _Repository_SpringBootIT}.
+ * Tests {@link ActorRepository} against the Sakila database, through
+ * {@link _Repository_SpringBootIT}.
  * <p>
- * See that class for the context and the transactions. The tests here only read: the fixture is a few actors of the
- * sample data, selected once in {@link #__()}, and each test looks every one of them up again by one of its names, or
- * checks a query of the exercises against them. The base's own tests, such as its {@code findById} round trips, run
- * here too.
+ * See that class for the context and the transactions. The tests here only read: the fixture is a
+ * few actors of the sample data, selected once in {@link #__()}, and each test looks every one of
+ * them up again by one of its names, or checks a query of the exercises against them. The base's
+ * own tests, such as its {@code findById} round trips, run here too.
  * <p>
  * Needs the database of {@code application.yaml} up, with Sakila loaded; see that file.
  *
@@ -54,8 +54,8 @@ class ActorRepository_SpringBootIT
     private static List<Actor> entities;
 
     /**
-     * A sort by id; by the attribute's name, since the metamodel's {@code Actor_.actorId} is filled in only once the
-     * context is up, after this class is loaded.
+     * A sort by id; by the attribute's name, since the metamodel's {@code Actor_.actorId} is filled
+     * in only once the context is up, after this class is loaded.
      */
     private static final Sort BY_ACTOR_ID = Sort.by(Sort.Direction.ASC, Actor_.ACTOR_ID);
 
@@ -73,13 +73,14 @@ class ActorRepository_SpringBootIT
     /**
      * Selects the first five actors, by id, as the fixture for the parameterized tests.
      * <p>
-     * Ordered by id so that the rows are the ones the init scripts put there. Runs once per class, which
-     * {@link TestInstance.Lifecycle#PER_CLASS} allows to be an instance method, so the autowired repository is already
-     * there; the result goes into a static field so that the static method sources of the nested classes can reach it.
-     * The actors are loaded outside any transaction, so they are detached.
+     * Ordered by id so that the rows are the ones the init scripts put there. Runs once per class,
+     * which {@link TestInstance.Lifecycle#PER_CLASS} allows to be an instance method, so the
+     * autowired repository is already there; the result goes into a static field so that the static
+     * method sources of the nested classes can reach it. The actors are loaded outside any
+     * transaction, so they are detached.
      * <p>
-     * An empty table aborts the tests of this class rather than failing them: it is the fixture that is missing, not
-     * the behaviour under test that is wrong.
+     * An empty table aborts the tests of this class rather than failing them: it is the fixture
+     * that is missing, not the behaviour under test that is wrong.
      */
     @BeforeAll
     void __() {
@@ -102,21 +103,24 @@ class ActorRepository_SpringBootIT
     }
 
     /**
-     * Lists the {@code film_actor} links of the specified actor, through {@link FilmActorRepository}.
+     * Lists the {@code film_actor} links of the specified actor, through
+     * {@link FilmActorRepository}.
      * <p>
-     * The actor's own {@code filmActors} is not public upstream, so the links are read by a {@link Specification}.
+     * The actor's own {@code filmActors} is not public upstream, so the links are read by a
+     * {@link Specification}.
      *
      * @param actor the actor.
      * @return the links of {@code actor}.
      */
     private List<FilmActor> filmActorsOf(final Actor actor) {
-        final Specification<FilmActor> specification = (r, q, b) -> b.equal(r.get(FilmActor_.actor), actor);
+        final Specification<FilmActor> specification =
+                (r, q, b) -> b.equal(r.get(FilmActor_.actor), actor);
         return filmActorRepository.findAll(specification);
     }
 
     /**
-     * Asserts that the specified page is consistent with itself: no more content than its size, and at least as many
-     * elements in all as in its content.
+     * Asserts that the specified page is consistent with itself: no more content than its size, and
+     * at least as many elements in all as in its content.
      *
      * @param page the page.
      * @param <T>  the type of the elements.
@@ -139,11 +143,12 @@ class ActorRepository_SpringBootIT
         }
 
         /**
-         * Asserts that the first name of a selected actor finds it, among actors of that name only.
+         * Asserts that the first name of a selected actor finds it, among actors of that name
+         * only.
          * <p>
-         * With no transaction around the test, the find runs in a persistence context of its own, so the actor found
-         * is a second instance of the same row, equal to the selected one by id. The names are compared ignoring case,
-         * as the database compares them.
+         * With no transaction around the test, the find runs in a persistence context of its own,
+         * so the actor found is a second instance of the same row, equal to the selected one by id.
+         * The names are compared ignoring case, as the database compares them.
          *
          * @param actor one of the actors selected in {@link ActorRepository_SpringBootIT#__()}.
          */
@@ -151,7 +156,8 @@ class ActorRepository_SpringBootIT
         @ParameterizedTest
         void __(final Actor actor) {
             final var firstName = actor.getFirstName();
-            final var found = repositoryInstance().findAllByFirstName(firstName, Pageable.unpaged());
+            final var found =
+                    repositoryInstance().findAllByFirstName(firstName, Pageable.unpaged());
             assertThat(found)
                     .isNotEmpty()
                     .contains(actor)
@@ -162,11 +168,12 @@ class ActorRepository_SpringBootIT
         }
 
         /**
-         * Runs the lookup in one transaction, and asserts that the actor found is the instance managed in it.
+         * Runs the lookup in one transaction, and asserts that the actor found is the instance
+         * managed in it.
          * <p>
-         * The selected actor is detached, so the test first loads the row again, into the transaction's persistence
-         * context; the row the query then reads resolves to that managed instance. The transaction is rolled back when
-         * the test ends.
+         * The selected actor is detached, so the test first loads the row again, into the
+         * transaction's persistence context; the row the query then reads resolves to that managed
+         * instance. The transaction is rolled back when the test ends.
          *
          * @param actor one of the actors selected in {@link ActorRepository_SpringBootIT#__()}.
          */
@@ -175,15 +182,16 @@ class ActorRepository_SpringBootIT
         @Transactional
         void __Transactional(final Actor actor) {
             final var managed = repositoryInstance().findById(actor.getActorId()).orElseThrow();
-            final var found = repositoryInstance().findAllByFirstName(managed.getFirstName(), Pageable.unpaged());
+            final var found = repositoryInstance().findAllByFirstName(managed.getFirstName(),
+                                                                      Pageable.unpaged());
             assertThat(found).anySatisfy(a -> {
                 assertThat(a).isSameAs(managed);
             });
         }
 
         /**
-         * Asserts that the first page of one, sorted by id, holds the first of all actors of the selected actor's first
-         * name.
+         * Asserts that the first page of one, sorted by id, holds the first of all actors of the
+         * selected actor's first name.
          *
          * @param actor one of the actors selected in {@link ActorRepository_SpringBootIT#__()}.
          */
@@ -194,7 +202,8 @@ class ActorRepository_SpringBootIT
             final var all = repositoryInstance().findAllByFirstName(
                     firstName, PageRequest.of(0, Integer.MAX_VALUE, BY_ACTOR_ID));
             assertThat(all).isNotEmpty();
-            final var page = repositoryInstance().findAllByFirstName(firstName, PageRequest.of(0, 1, BY_ACTOR_ID));
+            final var page = repositoryInstance().findAllByFirstName(firstName, PageRequest.of(0, 1,
+                                                                                               BY_ACTOR_ID));
             assertThat(page).containsExactly(all.getFirst());
         }
     }
@@ -212,11 +221,12 @@ class ActorRepository_SpringBootIT
         }
 
         /**
-         * Calls the method with no transaction around the test, and asserts that Spring Data refuses it.
+         * Calls the method with no transaction around the test, and asserts that Spring Data
+         * refuses it.
          * <p>
-         * A stream has to be consumed inside a transaction the caller opened. The repository would open one of its own,
-         * but that one ends when the method returns, so the check runs before the query, and throws
-         * {@link InvalidDataAccessApiUsageException}.
+         * A stream has to be consumed inside a transaction the caller opened. The repository would
+         * open one of its own, but that one ends when the method returns, so the check runs before
+         * the query, and throws {@link InvalidDataAccessApiUsageException}.
          *
          * @param actor one of the actors selected in {@link ActorRepository_SpringBootIT#__()}.
          */
@@ -224,7 +234,8 @@ class ActorRepository_SpringBootIT
         @ParameterizedTest
         void _InvalidDataAccessApiUsageException_NoSurroundingTransaction(final Actor actor) {
             assertThatThrownBy(() -> {
-                try (var found = repositoryInstance().findAllByLastName(actor.getLastName(), Pageable.unpaged())) {
+                try (var found = repositoryInstance().findAllByLastName(actor.getLastName(),
+                                                                        Pageable.unpaged())) {
                     found.forEach(a -> {
                     });
                 }
@@ -232,8 +243,8 @@ class ActorRepository_SpringBootIT
         }
 
         /**
-         * Asserts, in one transaction, that the last name of a selected actor streams it, as the instance managed in
-         * the transaction, among actors of that name only.
+         * Asserts, in one transaction, that the last name of a selected actor streams it, as the
+         * instance managed in the transaction, among actors of that name only.
          *
          * @param actor one of the actors selected in {@link ActorRepository_SpringBootIT#__()}.
          */
@@ -256,8 +267,8 @@ class ActorRepository_SpringBootIT
         }
 
         /**
-         * Asserts, in one transaction, that a page of one, sorted by id, streams the first of all actors of the
-         * selected actor's last name.
+         * Asserts, in one transaction, that a page of one, sorted by id, streams the first of all
+         * actors of the selected actor's last name.
          *
          * @param actor one of the actors selected in {@link ActorRepository_SpringBootIT#__()}.
          */
@@ -271,7 +282,8 @@ class ActorRepository_SpringBootIT
                     lastName, PageRequest.of(0, Integer.MAX_VALUE, BY_ACTOR_ID))) {
                 first = all.findFirst().orElseThrow();
             }
-            try (var page = repositoryInstance().findAllByLastName(lastName, PageRequest.of(0, 1, BY_ACTOR_ID))) {
+            try (var page = repositoryInstance().findAllByLastName(lastName, PageRequest.of(0, 1,
+                                                                                            BY_ACTOR_ID))) {
                 assertThat(page).containsExactly(first);
             }
         }
@@ -280,7 +292,8 @@ class ActorRepository_SpringBootIT
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * Tests {@link ActorRepository#findAllByLastNameOrderByActorIdAsc(String)} ({@code SAKILA_ACTOR_B_01}).
+     * Tests {@link ActorRepository#findAllByLastNameOrderByActorIdAsc(String)}
+     * ({@code SAKILA_ACTOR_B_01}).
      */
     @Nested
     class FindAllByLastNameOrderByActorIdAsc_Test {
@@ -290,8 +303,9 @@ class ActorRepository_SpringBootIT
         }
 
         /**
-         * Asserts that the exercise's example, the last name {@code GUINESS}, finds the actors {@code 1}, {@code 90}
-         * and {@code 179}, in that order, as the exercise's expected output shows.
+         * Asserts that the exercise's example, the last name {@code GUINESS}, finds the actors
+         * {@code 1}, {@code 90} and {@code 179}, in that order, as the exercise's expected output
+         * shows.
          */
         @Test
         void __Exercise() {
@@ -302,10 +316,11 @@ class ActorRepository_SpringBootIT
         }
 
         /**
-         * Asserts that the last name of a selected actor finds actors of that name only, with the selected actor among
-         * them, by id as the exercise sorts.
+         * Asserts that the last name of a selected actor finds actors of that name only, with the
+         * selected actor among them, by id as the exercise sorts.
          *
-         * @param lastName the last name of one of the actors selected in {@link ActorRepository_SpringBootIT#__()}.
+         * @param lastName the last name of one of the actors selected in
+         *                 {@link ActorRepository_SpringBootIT#__()}.
          */
         @MethodSource("lastNames")
         @ParameterizedTest
@@ -321,7 +336,8 @@ class ActorRepository_SpringBootIT
     }
 
     /**
-     * Tests {@link ActorRepository#findAllByFirstNameStartingWithOrderByFirstNameAscActorIdAsc(String)}
+     * Tests
+     * {@link ActorRepository#findAllByFirstNameStartingWithOrderByFirstNameAscActorIdAsc(String)}
      * ({@code SAKILA_ACTOR_B_02}).
      */
     @Nested
@@ -332,13 +348,15 @@ class ActorRepository_SpringBootIT
         }
 
         /**
-         * Asserts, in one transaction, that the exercise's prefix, {@code JU}, streams the seven actors of the
-         * exercise's expected output, in its order.
+         * Asserts, in one transaction, that the exercise's prefix, {@code JU}, streams the seven
+         * actors of the exercise's expected output, in its order.
          */
         @Test
         @Transactional
         void __Exercise() {
-            try (var found = repositoryInstance().findAllByFirstNameStartingWithOrderByFirstNameAscActorIdAsc("JU")) {
+            try (var found =
+                         repositoryInstance().findAllByFirstNameStartingWithOrderByFirstNameAscActorIdAsc(
+                    "JU")) {
                 assertThat(found.toList())
                         .extracting(Actor::getActorId)
                         .containsExactly(57, 35, 27, 47, 186, 199, 123);
@@ -346,8 +364,9 @@ class ActorRepository_SpringBootIT
         }
 
         /**
-         * Asserts, in one transaction, that the first two letters of a selected actor's first name stream actors whose
-         * first name starts so, by first name and then by id as the exercise sorts.
+         * Asserts, in one transaction, that the first two letters of a selected actor's first name
+         * stream actors whose first name starts so, by first name and then by id as the exercise
+         * sorts.
          *
          * @param prefix the first two letters of the first name of one of the selected actors.
          */
@@ -355,18 +374,21 @@ class ActorRepository_SpringBootIT
         @ParameterizedTest
         @Transactional
         void __Transactional(final String prefix) {
-            try (var found = repositoryInstance().findAllByFirstNameStartingWithOrderByFirstNameAscActorIdAsc(prefix)) {
+            try (var found =
+                         repositoryInstance().findAllByFirstNameStartingWithOrderByFirstNameAscActorIdAsc(
+                    prefix)) {
                 assertThat(found.toList())
                         .isNotEmpty()
-                        .allSatisfy(a -> assertThat(a.getFirstName()).startsWithIgnoringCase(prefix))
+                        .allSatisfy(
+                                a -> assertThat(a.getFirstName()).startsWithIgnoringCase(prefix))
                         .isSortedAccordingTo(Comparator.comparing(Actor::getFirstName)
                                                      .thenComparing(Actor::getActorId));
             }
         }
 
         /**
-         * Calls the method with no transaction around the test, and asserts that Spring Data refuses it, with
-         * {@link InvalidDataAccessApiUsageException}, before any query runs.
+         * Calls the method with no transaction around the test, and asserts that Spring Data
+         * refuses it, with {@link InvalidDataAccessApiUsageException}, before any query runs.
          *
          * @param prefix the first two letters of the first name of one of the selected actors.
          */
@@ -374,7 +396,8 @@ class ActorRepository_SpringBootIT
         @ParameterizedTest
         void _InvalidDataAccessApiUsageException_NoSurroundingTransaction(final String prefix) {
             assertThatThrownBy(() -> {
-                try (var found = repositoryInstance().findAllByFirstNameStartingWithOrderByFirstNameAscActorIdAsc(
+                try (var found =
+                             repositoryInstance().findAllByFirstNameStartingWithOrderByFirstNameAscActorIdAsc(
                         prefix)) {
                     found.forEach(a -> {
                     });
@@ -384,7 +407,8 @@ class ActorRepository_SpringBootIT
     }
 
     /**
-     * Tests {@link ActorRepository#selectLastNamesSharedByMoreThan(long, Pageable)} ({@code SAKILA_ACTOR_I_01}).
+     * Tests {@link ActorRepository#selectLastNamesSharedByMoreThan(long, Pageable)}
+     * ({@code SAKILA_ACTOR_I_01}).
      */
     @Nested
     class SelectLastNamesSharedByMoreThan_Test {
@@ -393,8 +417,9 @@ class ActorRepository_SpringBootIT
                 Sort.by(Sort.Direction.DESC, "actors").and(Sort.by("lastName"));
 
         /**
-         * Asserts that the exercise's threshold, three, selects {@code KILMER}, {@code NOLTE} and {@code TEMPLE}, with
-         * their counts, in the exercise's order, three in all, as the exercise's expected output shows.
+         * Asserts that the exercise's threshold, three, selects {@code KILMER}, {@code NOLTE} and
+         * {@code TEMPLE}, with their counts, in the exercise's order, three in all, as the
+         * exercise's expected output shows.
          */
         @Test
         void __Exercise() {
@@ -407,8 +432,9 @@ class ActorRepository_SpringBootIT
         }
 
         /**
-         * Asserts that every name selected is shared by more than the threshold, that the page is ordered by the
-         * count and then by the name as the exercise sorts, and that each count is the number of actors of that name.
+         * Asserts that every name selected is shared by more than the threshold, that the page is
+         * ordered by the count and then by the name as the exercise sorts, and that each count is
+         * the number of actors of that name.
          *
          * @param actors the threshold.
          */
@@ -420,12 +446,14 @@ class ActorRepository_SpringBootIT
             assertPage(page);
             assertThat(page.getContent())
                     .allSatisfy(c -> assertThat(c.get("actors", Long.class)).isGreaterThan(actors))
-                    .isSortedAccordingTo(Comparator.comparing(column("actors", Long.class)).reversed()
-                                                 .thenComparing(column("lastName", String.class)))
+                    .isSortedAccordingTo(
+                            Comparator.comparing(column("actors", Long.class)).reversed()
+                                    .thenComparing(column("lastName", String.class)))
                     .allSatisfy(c -> {
                         final var named = repositoryInstance().findAllByLastNameOrderByActorIdAsc(
                                 c.get("lastName", String.class));
-                        assertThat((long) named.size()).as("actors named %s", c.get("lastName", String.class))
+                        assertThat((long) named.size()).as("actors named %s",
+                                                           c.get("lastName", String.class))
                                 .isEqualTo(c.get("actors", Long.class));
                     });
         }
@@ -438,22 +466,24 @@ class ActorRepository_SpringBootIT
     class SelectFilmCounts_Test {
 
         /**
-         * Asserts that the first page of five, which the query orders by films descending and then by id, holds the
-         * five actors of the exercise's expected output, with their counts.
+         * Asserts that the first page of five, which the query orders by films descending and then
+         * by id, holds the five actors of the exercise's expected output, with their counts.
          */
         @Test
         void __Exercise() {
             final var page = repositoryInstance().selectFilmCounts(PageRequest.of(0, 5));
             assertThat(page.getContent())
-                    .extracting(column("actor", Actor.class, Actor::getActorId), column("films", Long.class))
-                    .containsExactly(tuple(107, 42L), tuple(102, 41L), tuple(198, 40L), tuple(181, 39L),
+                    .extracting(column("actor", Actor.class, Actor::getActorId),
+                                column("films", Long.class))
+                    .containsExactly(tuple(107, 42L), tuple(102, 41L), tuple(198, 40L),
+                                     tuple(181, 39L),
                                      tuple(23, 37L));
         }
 
         /**
-         * Asserts that a page of the given size, with no sort of its own, comes in the exercise's order, the most
-         * filmed first and then by id, that each actor is the one of its id, and that each count is the number of the
-         * actor's {@code film_actor} links.
+         * Asserts that a page of the given size, with no sort of its own, comes in the exercise's
+         * order, the most filmed first and then by id, that each actor is the one of its id, and
+         * that each count is the number of the actor's {@code film_actor} links.
          *
          * @param size the size of the page.
          */
@@ -464,12 +494,15 @@ class ActorRepository_SpringBootIT
             assertPage(page);
             assertThat(page.getContent())
                     .isNotEmpty()
-                    .isSortedAccordingTo(Comparator.comparing(column("films", Long.class)).reversed()
-                                                 .thenComparing(column("actor", Actor.class, Actor::getActorId)))
+                    .isSortedAccordingTo(
+                            Comparator.comparing(column("films", Long.class)).reversed()
+                                    .thenComparing(column("actor", Actor.class, Actor::getActorId)))
                     .allSatisfy(c -> {
                         final var actor = c.get("actor", Actor.class);
-                        assertThat(repositoryInstance().findById(actor.getActorId())).hasValue(actor);
-                        assertThat(filmActorsOf(actor)).hasSize(c.get("films", Long.class).intValue());
+                        assertThat(repositoryInstance().findById(actor.getActorId())).hasValue(
+                                actor);
+                        assertThat(filmActorsOf(actor)).hasSize(
+                                c.get("films", Long.class).intValue());
                     });
         }
     }
@@ -481,18 +514,20 @@ class ActorRepository_SpringBootIT
     class ListInEveryRating_Test {
 
         /**
-         * Asserts that the first page of five, by id, holds the actors {@code 1} to {@code 5}, as the exercise's
-         * expected output shows.
+         * Asserts that the first page of five, by id, holds the actors {@code 1} to {@code 5}, as
+         * the exercise's expected output shows.
          */
         @Test
         void __Exercise() {
-            final var page = repositoryInstance().listInEveryRating(PageRequest.of(0, 5, BY_ACTOR_ID));
-            assertThat(page.getContent()).extracting(Actor::getActorId).containsExactly(1, 2, 3, 4, 5);
+            final var page =
+                    repositoryInstance().listInEveryRating(PageRequest.of(0, 5, BY_ACTOR_ID));
+            assertThat(page.getContent()).extracting(Actor::getActorId)
+                    .containsExactly(1, 2, 3, 4, 5);
         }
 
         /**
-         * Asserts, in one transaction, that a page of the given size by id holds actors whose films cover every
-         * rating the sample data uses, which is all five.
+         * Asserts, in one transaction, that a page of the given size by id holds actors whose films
+         * cover every rating the sample data uses, which is all five.
          *
          * @param size the size of the page.
          */
@@ -500,7 +535,8 @@ class ActorRepository_SpringBootIT
         @ParameterizedTest
         @Transactional
         void __(final int size) {
-            final var page = repositoryInstance().listInEveryRating(PageRequest.of(0, size, BY_ACTOR_ID));
+            final var page =
+                    repositoryInstance().listInEveryRating(PageRequest.of(0, size, BY_ACTOR_ID));
             assertPage(page);
             assertThat(page.getContent())
                     .isNotEmpty()
@@ -529,8 +565,8 @@ class ActorRepository_SpringBootIT
         }
 
         /**
-         * Asserts that the exercise's range, the actors {@code 1} to {@code 5}, by id and then by title, selects the
-         * five films of the exercise's expected output.
+         * Asserts that the exercise's range, the actors {@code 1} to {@code 5}, by id and then by
+         * title, selects the five films of the exercise's expected output.
          */
         @Test
         void __Exercise() {
@@ -550,8 +586,9 @@ class ActorRepository_SpringBootIT
         }
 
         /**
-         * Asserts, in one transaction, that the range of a selected actor alone selects the actor's films of the
-         * longest length the actor's {@code film_actor} links reach, by title, each with the actor itself.
+         * Asserts, in one transaction, that the range of a selected actor alone selects the actor's
+         * films of the longest length the actor's {@code film_actor} links reach, by title, each
+         * with the actor itself.
          *
          * @param actor one of the actors selected in {@link ActorRepository_SpringBootIT#__()}.
          */
@@ -560,14 +597,16 @@ class ActorRepository_SpringBootIT
         @Transactional
         void __(final Actor actor) {
             final var films = filmActorsOf(actor).stream().map(FilmActor::getFilm).toList();
-            final var longest = films.stream().map(Film::getLength).max(Comparator.naturalOrder()).orElseThrow();
+            final var longest = films.stream().map(Film::getLength).max(Comparator.naturalOrder())
+                    .orElseThrow();
             final var expected = films.stream()
                     .filter(f -> f.getLength().equals(longest))
                     .map(Film::getTitle)
                     .sorted()
                     .toList();
             final var page = repositoryInstance().selectLongestFilmsOfActorIdsBetween(
-                    actor.getActorId(), actor.getActorId(), Pageable.unpaged(BY_ACTOR_ID_THEN_TITLE));
+                    actor.getActorId(), actor.getActorId(),
+                    Pageable.unpaged(BY_ACTOR_ID_THEN_TITLE));
             assertThat(page.getContent())
                     .allSatisfy(r -> {
                         assertThat(r.get("actor", Actor.class)).isEqualTo(actor);
@@ -578,8 +617,8 @@ class ActorRepository_SpringBootIT
         }
 
         /**
-         * Asserts that pages of two over the exercise's range, by id and then by title, walk the same rows as the
-         * whole list, in the same order, as many in all.
+         * Asserts that pages of two over the exercise's range, by id and then by title, walk the
+         * same rows as the whole list, in the same order, as many in all.
          */
         @Test
         void __Paged() {
@@ -597,7 +636,8 @@ class ActorRepository_SpringBootIT
                 if (!page.hasNext()) {
                     break;
                 }
-                page = repositoryInstance().selectLongestFilmsOfActorIdsBetween(1, 5, page.nextPageable());
+                page = repositoryInstance().selectLongestFilmsOfActorIdsBetween(1, 5,
+                                                                                page.nextPageable());
             }
             assertThat(walked).containsExactlyElementsOf(
                     all.stream()

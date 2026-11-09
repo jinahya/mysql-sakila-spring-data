@@ -20,24 +20,26 @@ import java.util.function.LongSupplier;
 /**
  * The {@link FilmListRepository}, over a {@link org.springframework.jdbc.core.simple.JdbcClient}.
  * <p>
- * A {@code public}, {@code @Repository} bean of its own, not part of any Spring Data repository; see
- * {@link _NonEntityRepository} for how it gets registered, and {@link _NonEntityRepositoryImpl} for the client and the
- * exception translation.
+ * A {@code public}, {@code @Repository} bean of its own, not part of any Spring Data repository;
+ * see {@link _NonEntityRepository} for how it gets registered, and {@link _NonEntityRepositoryImpl}
+ * for the client and the exception translation.
  * <p>
- * A row maps into a {@link FilmList} through its public constructor, but by an explicit {@link RowMapper} rather than
- * by parameter name, as the base describes: the {@link FilmList#COLUMN_NAME_RATING rating} column holds the text of
- * MySQL's {@code ENUM} ({@code PG-13}, {@code NC-17}), which is not the name of the {@link Film.Rating} constant, and
+ * A row maps into a {@link FilmList} through its public constructor, but by an explicit
+ * {@link RowMapper} rather than by parameter name, as the base describes: the
+ * {@link FilmList#COLUMN_NAME_RATING rating} column holds the text of MySQL's {@code ENUM}
+ * ({@code PG-13}, {@code NC-17}), which is not the name of the {@link Film.Rating} constant, and
  * Spring's conversion of a {@code String} to an enum goes by the name; the mapper goes by
  * {@link Film.Rating#valueOfColumnValue(String)} instead.
  * <p>
- * {@link #countAll()} and the exercise methods read their statements from {@code .sql} resources beside this class,
- * named {@code FILM_LIST_<METHOD>.sql} after the method ({@code FILM_LIST_COUNT_ALL.sql}, ...), each exercise's
- * statement as {@code EXERCISES.asciidoc} has it; the exercises that select whole rows map them by {@link #ROW_MAPPER}
- * too. {@link #listAll(Pageable)} writes its own statement in place. A page is
- * selected with an {@code ORDER BY} built from the {@link Pageable}'s {@link Sort}, each property mapped to a column of
- * the view through {@link #COLUMNS}, and {@code FID} last, and with {@code LIMIT ... OFFSET ...} from the page, unless
- * the {@code Pageable} is unpaged; the total comes from a {@code COUNT(*)} of the same {@code WHERE}, run only when the
- * page needs it.
+ * {@link #countAll()} and the exercise methods read their statements from {@code .sql} resources
+ * beside this class, named {@code FILM_LIST_<METHOD>.sql} after the method
+ * ({@code FILM_LIST_COUNT_ALL.sql}, ...), each exercise's statement as {@code EXERCISES.asciidoc}
+ * has it; the exercises that select whole rows map them by {@link #ROW_MAPPER} too.
+ * {@link #listAll(Pageable)} writes its own statement in place. A page is selected with an
+ * {@code ORDER BY} built from the {@link Pageable}'s {@link Sort}, each property mapped to a column
+ * of the view through {@link #COLUMNS}, and {@code FID} last, and with {@code LIMIT ... OFFSET ...}
+ * from the page, unless the {@code Pageable} is unpaged; the total comes from a {@code COUNT(*)} of
+ * the same {@code WHERE}, run only when the page needs it.
  *
  * @see FilmListRepository
  */
@@ -47,7 +49,8 @@ public class FilmListRepositoryImpl
         implements FilmListRepository {
 
     /**
-     * Maps a row into a {@link FilmList}, column by column, converting the rating by its column value.
+     * Maps a row into a {@link FilmList}, column by column, converting the rating by its column
+     * value.
      */
     static final RowMapper<FilmList> ROW_MAPPER = (rs, rowNum) -> new FilmList(
             rs.getObject(FilmList.COLUMN_NAME_FID, Integer.class),
@@ -63,7 +66,8 @@ public class FilmListRepositoryImpl
     );
 
     /**
-     * The columns of the view, by the attribute of {@link FilmList} each maps to; what a {@link Sort} may name.
+     * The columns of the view, by the attribute of {@link FilmList} each maps to; what a
+     * {@link Sort} may name.
      */
     static final Map<String, String> COLUMNS = Map.of(
             FilmList.ATTRIBUTE_NAME_FID, FilmList.COLUMN_NAME_FID,
@@ -93,7 +97,8 @@ public class FilmListRepositoryImpl
     /**
      * The statement of {@link #countAll()}.
      */
-    private static final String SQL_COUNT_ALL = sql(FilmListRepositoryImpl.class, "FILM_LIST_COUNT_ALL.sql");
+    private static final String SQL_COUNT_ALL =
+            sql(FilmListRepositoryImpl.class, "FILM_LIST_COUNT_ALL.sql");
 
     /**
      * The statement of {@link #countActionFilms()}, {@code SAKILA_FILM_LIST_B_01}.
@@ -120,10 +125,12 @@ public class FilmListRepositoryImpl
             sql(FilmListRepositoryImpl.class, "FILM_LIST_LIST_FILMS_WITH_NO_ACTOR.sql");
 
     /**
-     * The statement of {@link #countFilmListAndFilmsWithACategory()}, {@code SAKILA_FILM_LIST_I_01}.
+     * The statement of {@link #countFilmListAndFilmsWithACategory()},
+     * {@code SAKILA_FILM_LIST_I_01}.
      */
     private static final String SQL_COUNT_FILM_LIST_AND_FILMS_WITH_A_CATEGORY =
-            sql(FilmListRepositoryImpl.class, "FILM_LIST_COUNT_FILM_LIST_AND_FILMS_WITH_A_CATEGORY.sql");
+            sql(FilmListRepositoryImpl.class,
+                "FILM_LIST_COUNT_FILM_LIST_AND_FILMS_WITH_A_CATEGORY.sql");
 
     /**
      * The statement of {@link #countFilmsByRatingAndPrice()}, {@code SAKILA_FILM_LIST_I_02}.
@@ -141,15 +148,18 @@ public class FilmListRepositoryImpl
      * The statement of {@link #countLongerThanAverageByCategory()}, {@code SAKILA_FILM_LIST_A_01}.
      */
     private static final String SQL_COUNT_LONGER_THAN_AVERAGE_BY_CATEGORY =
-            sql(FilmListRepositoryImpl.class, "FILM_LIST_COUNT_LONGER_THAN_AVERAGE_BY_CATEGORY.sql");
+            sql(FilmListRepositoryImpl.class,
+                "FILM_LIST_COUNT_LONGER_THAN_AVERAGE_BY_CATEGORY.sql");
 
     /**
-     * Builds the {@code ORDER BY} clause of the specified sort, with {@code FID} appended as the last key unless the
-     * sort names it already, so that the order is total and the pages are stable.
+     * Builds the {@code ORDER BY} clause of the specified sort, with {@code FID} appended as the
+     * last key unless the sort names it already, so that the order is total and the pages are
+     * stable.
      *
      * @param sort the sort, whose properties are attributes of {@link FilmList}.
      * @return the clause, with its leading space.
-     * @throws IllegalArgumentException if {@code sort} names a property the view has no column for.
+     * @throws IllegalArgumentException if {@code sort} names a property the view has no column
+     *                                  for.
      */
     private static String orderBy(final Sort sort) {
         final var keys = new ArrayList<String>();
@@ -180,23 +190,26 @@ public class FilmListRepositoryImpl
     /**
      * Selects the page of the rows that satisfy the specified condition.
      *
-     * @param where    the condition, as the body of a {@code WHERE} clause, with named parameters; {@code null} for
-     *                 every row.
+     * @param where    the condition, as the body of a {@code WHERE} clause, with named parameters;
+     *                 {@code null} for every row.
      * @param params   the values of the named parameters.
      * @param pageable the page to return, and its sort.
      * @param total    counts the rows that satisfy the condition, when the page needs the total.
      * @return the page.
      */
-    private Page<FilmList> select(final @Nullable String where, final Map<String, ?> params, final Pageable pageable,
+    private Page<FilmList> select(final @Nullable String where, final Map<String, ?> params,
+                                  final Pageable pageable,
                                   final LongSupplier total) {
-        var statement = SELECT + (where == null ? "" : " WHERE " + where) + orderBy(pageable.getSort());
+        var statement =
+                SELECT + (where == null ? "" : " WHERE " + where) + orderBy(pageable.getSort());
         if (pageable.isPaged()) {
             requirePage(pageable.getOffset(), pageable.getPageSize());
             statement += " LIMIT :limit OFFSET :offset";
         }
         var spec = jdbcClient().sql(statement).params(params);
         if (pageable.isPaged()) {
-            spec = spec.param("limit", pageable.getPageSize()).param("offset", pageable.getOffset());
+            spec = spec.param("limit", pageable.getPageSize())
+                    .param("offset", pageable.getOffset());
         }
         final var content = spec.query(ROW_MAPPER).list();
         return PageableExecutionUtils.getPage(content, pageable, total);

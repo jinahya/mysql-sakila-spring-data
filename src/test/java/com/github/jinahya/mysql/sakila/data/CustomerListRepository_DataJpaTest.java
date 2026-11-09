@@ -17,14 +17,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Tests {@link CustomerListRepository} in a JPA slice, over an embedded H2, through {@link _Repository_DataJpaTest}.
+ * Tests {@link CustomerListRepository} in a JPA slice, over an embedded H2, through
+ * {@link _Repository_DataJpaTest}.
  * <p>
- * See that class for how the slice is configured. The slice generates {@code customer_list} as a table, from the
- * entity, but every column of it except the id is read-only ({@code insertable = false}), so no row can be persisted
- * into it, and the fixtures do not try; nor can a customer, which needs a store. Each test here runs its query
- * against the empty table, and asserts an empty page, list or stream, or a zero: that proves the JPQL, the derived
- * query, or the native SQL, is valid for Hibernate and runs on H2, which is what a slice test of a view can prove.
- * What the queries return on the sample data is for {@link CustomerListRepository_SpringBootIT}.
+ * See that class for how the slice is configured. The slice generates {@code customer_list} as a
+ * table, from the entity, but every column of it except the id is read-only
+ * ({@code insertable = false}), so no row can be persisted into it, and the fixtures do not try;
+ * nor can a customer, which needs a store. Each test here runs its query against the empty table,
+ * and asserts an empty page, list or stream, or a zero: that proves the JPQL, the derived query, or
+ * the native SQL, is valid for Hibernate and runs on H2, which is what a slice test of a view can
+ * prove. What the queries return on the sample data is for
+ * {@link CustomerListRepository_SpringBootIT}.
  *
  * @see CustomerListRepository_SpringBootIT
  */
@@ -49,7 +52,8 @@ class CustomerListRepository_DataJpaTest
         /**
          * Asserts that finding by a random id returns an empty optional.
          * <p>
-         * The table is empty, so any id misses; the id is drawn from the whole {@code int} range all the same.
+         * The table is empty, so any id misses; the id is drawn from the whole {@code int} range
+         * all the same.
          */
         @Test
         void _Empty_Unknown() {
@@ -62,14 +66,15 @@ class CustomerListRepository_DataJpaTest
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * Tests {@link CustomerListRepository#findAllByCountryOrderByIdAsc(String)} ({@code SAKILA_CUSTOMER_LIST_B_01}).
+     * Tests {@link CustomerListRepository#findAllByCountryOrderByIdAsc(String)}
+     * ({@code SAKILA_CUSTOMER_LIST_B_01}).
      */
     @Nested
     class FindAllByCountryOrderByIdAsc_Test {
 
         /**
-         * Asserts that the country of the exercise, {@code Japan}, streams nothing from the empty table, inside the
-         * test's transaction, as does a name no country has.
+         * Asserts that the country of the exercise, {@code Japan}, streams nothing from the empty
+         * table, inside the test's transaction, as does a name no country has.
          */
         @Test
         void _Empty_Unknown() {
@@ -82,11 +87,13 @@ class CustomerListRepository_DataJpaTest
         }
 
         /**
-         * Runs the lookup with the test's transaction suspended, and asserts that Spring Data refuses it.
+         * Runs the lookup with the test's transaction suspended, and asserts that Spring Data
+         * refuses it.
          * <p>
-         * A stream has to be consumed inside a transaction the caller opened. The repository would open one of its own,
-         * but that one ends when the method returns, so the check runs before the query, and throws
-         * {@link InvalidDataAccessApiUsageException}, whatever the view holds.
+         * A stream has to be consumed inside a transaction the caller opened. The repository would
+         * open one of its own, but that one ends when the method returns, so the check runs before
+         * the query, and throws {@link InvalidDataAccessApiUsageException}, whatever the view
+         * holds.
          */
         @Transactional(propagation = Propagation.NOT_SUPPORTED)
         @Test
@@ -101,7 +108,8 @@ class CustomerListRepository_DataJpaTest
 
         /**
          * Asserts that a {@code null} country is rejected before any query runs: the package is
-         * {@code @NullMarked}, so Spring Data checks the arguments, and throws {@link IllegalArgumentException}.
+         * {@code @NullMarked}, so Spring Data checks the arguments, and throws
+         * {@link IllegalArgumentException}.
          */
         @Test
         void _IllegalArgumentException_NullCountry() {
@@ -124,12 +132,13 @@ class CustomerListRepository_DataJpaTest
         private static final Sort BY_SID = Sort.by(Sort.Direction.ASC, "sid");
 
         /**
-         * Asserts that the grouped select yields an empty page from the empty table, with no groups in all, which the
-         * count query says.
+         * Asserts that the grouped select yields an empty page from the empty table, with no groups
+         * in all, which the count query says.
          */
         @Test
         void _Empty_Empty() {
-            final var page = repositoryInstance().selectCustomerCountsBySid(PageRequest.of(0, 5, BY_SID));
+            final var page =
+                    repositoryInstance().selectCustomerCountsBySid(PageRequest.of(0, 5, BY_SID));
             assertThat(page).isEmpty();
             assertThat(page.getTotalElements()).isZero();
             assertThat(page.getTotalPages()).isZero();
@@ -137,14 +146,15 @@ class CustomerListRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link CustomerListRepository#selectNotesCounts()} ({@code SAKILA_CUSTOMER_LIST_B_03}).
+     * Tests {@link CustomerListRepository#selectNotesCounts()}
+     * ({@code SAKILA_CUSTOMER_LIST_B_03}).
      */
     @Nested
     class SelectNotesCounts_Test {
 
         /**
-         * Asserts that the grouped select, ordered by the notes in the query, runs on the empty table and selects an
-         * empty list.
+         * Asserts that the grouped select, ordered by the notes in the query, runs on the empty
+         * table and selects an empty list.
          */
         @Test
         void _Empty_Empty() {
@@ -154,7 +164,8 @@ class CustomerListRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link CustomerListRepository#selectRowCounts(Pageable)} ({@code SAKILA_CUSTOMER_LIST_I_01}).
+     * Tests {@link CustomerListRepository#selectRowCounts(Pageable)}
+     * ({@code SAKILA_CUSTOMER_LIST_I_01}).
      */
     @Nested
     class SelectRowCounts_Test {
@@ -162,15 +173,16 @@ class CustomerListRepository_DataJpaTest
         private static final Sort BY_CUSTOMERS = Sort.by("customers");
 
         /**
-         * Asserts that the select has its one row even over the empty view, and that both counts are zero: the view
-         * is empty, and no customer can be saved into the slice.
+         * Asserts that the select has its one row even over the empty view, and that both counts
+         * are zero: the view is empty, and no customer can be saved into the slice.
          * <p>
-         * The second count is a subquery in the select, on {@code Customer}; the test proves that Hibernate accepts it
-         * there and that H2 runs it.
+         * The second count is a subquery in the select, on {@code Customer}; the test proves that
+         * Hibernate accepts it there and that H2 runs it.
          */
         @Test
         void _Zero_Empty() {
-            final var page = repositoryInstance().selectRowCounts(PageRequest.of(0, 1, BY_CUSTOMERS));
+            final var page =
+                    repositoryInstance().selectRowCounts(PageRequest.of(0, 1, BY_CUSTOMERS));
             assertThat(page.getContent()).singleElement().satisfies(c -> {
                 assertThat(c.get("customerLists", Long.class)).isZero();
                 assertThat(c.get("customers", Long.class)).isZero();
@@ -178,19 +190,21 @@ class CustomerListRepository_DataJpaTest
         }
 
         /**
-         * Asserts that the page after the one row is empty, and that the count query, which Spring Data runs for it,
-         * counts the one row.
+         * Asserts that the page after the one row is empty, and that the count query, which Spring
+         * Data runs for it, counts the one row.
          */
         @Test
         void __Paged() {
-            final var page = repositoryInstance().selectRowCounts(PageRequest.of(1, 1, BY_CUSTOMERS));
+            final var page =
+                    repositoryInstance().selectRowCounts(PageRequest.of(1, 1, BY_CUSTOMERS));
             assertThat(page.getContent()).isEmpty();
             assertThat(page.getTotalElements()).isEqualTo(1L);
         }
 
         /**
          * Asserts that a {@code null} pageable is rejected before any query runs: the package is
-         * {@code @NullMarked}, so Spring Data checks the arguments, and throws {@link IllegalArgumentException}.
+         * {@code @NullMarked}, so Spring Data checks the arguments, and throws
+         * {@link IllegalArgumentException}.
          */
         @Test
         void _IllegalArgumentException_NullPageable() {
@@ -209,8 +223,8 @@ class CustomerListRepository_DataJpaTest
         private static final Sort BY_CITY_THEN_COUNTRY = Sort.by("city").and(Sort.by("country"));
 
         /**
-         * Asserts that the grouped select, with its {@code HAVING}, sorted as the exercise sorts, runs on the empty
-         * view and selects an empty page, with no cities in all.
+         * Asserts that the grouped select, with its {@code HAVING}, sorted as the exercise sorts,
+         * runs on the empty view and selects an empty page, with no cities in all.
          */
         @Test
         void _Empty_Empty() {
@@ -221,8 +235,9 @@ class CustomerListRepository_DataJpaTest
         }
 
         /**
-         * Asserts that a page past the first, which makes Spring Data run the count query, is empty too, with no
-         * cities in all; that runs the count query, with its correlated subqueries, on the H2.
+         * Asserts that a page past the first, which makes Spring Data run the count query, is empty
+         * too, with no cities in all; that runs the count query, with its correlated subqueries, on
+         * the H2.
          */
         @Test
         void _Empty_Paged() {
@@ -234,24 +249,28 @@ class CustomerListRepository_DataJpaTest
 
         /**
          * Asserts that a {@code null} pageable is rejected before any query runs: the package is
-         * {@code @NullMarked}, so Spring Data checks the arguments, and throws {@link IllegalArgumentException}.
+         * {@code @NullMarked}, so Spring Data checks the arguments, and throws
+         * {@link IllegalArgumentException}.
          */
         @Test
         void _IllegalArgumentException_NullPageable() {
-            assertThatThrownBy(() -> repositoryInstance().selectCitiesWithMoreCustomersThan(1L, null))
+            assertThatThrownBy(
+                    () -> repositoryInstance().selectCitiesWithMoreCustomersThan(1L, null))
                     .isInstanceOf(IllegalArgumentException.class);
         }
     }
 
     /**
-     * Tests {@link CustomerListRepository#selectTopThreeCountriesOfEachStore()} ({@code SAKILA_CUSTOMER_LIST_A_01}).
+     * Tests {@link CustomerListRepository#selectTopThreeCountriesOfEachStore()}
+     * ({@code SAKILA_CUSTOMER_LIST_A_01}).
      */
     @Nested
     class SelectTopThreeCountriesOfEachStore_Test {
 
         /**
-         * Asserts that the native query, a {@code ROW_NUMBER()} over the grouped counts, runs on the H2 too, over the
-         * table the slice generates for the view, and selects nothing from it.
+         * Asserts that the native query, a {@code ROW_NUMBER()} over the grouped counts, runs on
+         * the H2 too, over the table the slice generates for the view, and selects nothing from
+         * it.
          */
         @Test
         void _Empty_Empty() {

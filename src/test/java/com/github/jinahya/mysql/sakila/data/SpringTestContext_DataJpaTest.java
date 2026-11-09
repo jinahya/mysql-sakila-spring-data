@@ -13,11 +13,13 @@ import org.springframework.test.context.ActiveProfiles;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Tests {@link ___Spring_TestContext}, in the JPA slice over the embedded H2 of the {@code h2} profile.
+ * Tests {@link ___Spring_TestContext}, in the JPA slice over the embedded H2 of the {@code h2}
+ * profile.
  * <p>
- * Unlike {@link SpringTestContext_SpringBootTest}, this does reach a database: {@link _Repository_DataJpaTest_Configuration}
- * has Hibernate generate the schema of every entity into the H2, so a mapping the H2 dialect cannot express fails the
- * context, and the query below proves the generated tables answer.
+ * Unlike {@link SpringTestContext_SpringBootTest}, this does reach a database:
+ * {@link _Repository_DataJpaTest_Configuration} has Hibernate generate the schema of every entity
+ * into the H2, so a mapping the H2 dialect cannot express fails the context, and the query below
+ * proves the generated tables answer.
  *
  * @see ___Spring_TestContext
  * @see SpringTestContext_SpringBootTest
@@ -35,8 +37,8 @@ class SpringTestContext_DataJpaTest {
     class Schema_Test {
 
         /**
-         * Asserts that each entity's table exists and is empty: the H2 starts from nothing, and no test writes to it
-         * outside its own rolled-back transaction.
+         * Asserts that each entity's table exists and is empty: the H2 starts from nothing, and no
+         * test writes to it outside its own rolled-back transaction.
          */
         @Test
         void __() {

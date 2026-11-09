@@ -28,12 +28,13 @@ import static org.assertj.core.api.Assertions.tuple;
 import static org.assertj.core.api.Assumptions.assumeThat;
 
 /**
- * Tests {@link AddressRepository} against the Sakila database, through {@link _Repository_SpringBootIT}.
+ * Tests {@link AddressRepository} against the Sakila database, through
+ * {@link _Repository_SpringBootIT}.
  * <p>
- * See that class for the context and the transactions. The tests here only read: the fixture is a few addresses of the
- * sample data, selected once in {@link #__()}, and each test checks a query of the exercises against them, or against
- * the expected output upstream's {@code address/*.sql} shows. The base's own tests, such as its
- * {@code findById} round trips, run here too.
+ * See that class for the context and the transactions. The tests here only read: the fixture is a
+ * few addresses of the sample data, selected once in {@link #__()}, and each test checks a query of
+ * the exercises against them, or against the expected output upstream's {@code address/*.sql}
+ * shows. The base's own tests, such as its {@code findById} round trips, run here too.
  * <p>
  * Needs the database of {@code application.yaml} up, with Sakila loaded; see that file.
  *
@@ -46,8 +47,8 @@ class AddressRepository_SpringBootIT
     private static List<Address> entities;
 
     /**
-     * A sort by id; by the attribute's name, since the metamodel's {@code Address_.addressId} is filled in only once
-     * the context is up, after this class is loaded.
+     * A sort by id; by the attribute's name, since the metamodel's {@code Address_.addressId} is
+     * filled in only once the context is up, after this class is loaded.
      */
     private static final Sort BY_ADDRESS_ID = Sort.by(Sort.Direction.ASC, Address_.ADDRESS_ID);
 
@@ -65,10 +66,10 @@ class AddressRepository_SpringBootIT
     /**
      * Selects the first five addresses, by id, as the fixture for the parameterized tests.
      * <p>
-     * Ordered by id so that the rows are the ones the init scripts put there. Runs once per class, which
-     * {@link TestInstance.Lifecycle#PER_CLASS} allows to be an instance method; the result goes into a static field so
-     * that the static method sources of the nested classes can reach it. The addresses are loaded outside any
-     * transaction, so they are detached.
+     * Ordered by id so that the rows are the ones the init scripts put there. Runs once per class,
+     * which {@link TestInstance.Lifecycle#PER_CLASS} allows to be an instance method; the result
+     * goes into a static field so that the static method sources of the nested classes can reach
+     * it. The addresses are loaded outside any transaction, so they are detached.
      * <p>
      * An empty table aborts the tests of this class rather than failing them.
      */
@@ -85,8 +86,8 @@ class AddressRepository_SpringBootIT
     }
 
     /**
-     * Asserts that the specified page is consistent with itself: no more content than its size, and at least as many
-     * elements in all as in its content.
+     * Asserts that the specified page is consistent with itself: no more content than its size, and
+     * at least as many elements in all as in its content.
      *
      * @param page the page.
      * @param <T>  the type of the elements.
@@ -99,7 +100,8 @@ class AddressRepository_SpringBootIT
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * Tests {@link AddressRepository#findAllByAddress2IsNullOrderByAddressIdAsc()} ({@code SAKILA_ADDRESS_B_03}).
+     * Tests {@link AddressRepository#findAllByAddress2IsNullOrderByAddressIdAsc()}
+     * ({@code SAKILA_ADDRESS_B_03}).
      */
     @Nested
     class FindAllByAddress2IsNullOrderByAddressIdAsc_Test {
@@ -125,9 +127,11 @@ class AddressRepository_SpringBootIT
         }
 
         /**
-         * Asserts that a selected address is found exactly when its {@code address2} is {@code null}.
+         * Asserts that a selected address is found exactly when its {@code address2} is
+         * {@code null}.
          *
-         * @param address one of the addresses selected in {@link AddressRepository_SpringBootIT#__()}.
+         * @param address one of the addresses selected in
+         *                {@link AddressRepository_SpringBootIT#__()}.
          */
         @MethodSource("addresses")
         @ParameterizedTest
@@ -143,7 +147,8 @@ class AddressRepository_SpringBootIT
     }
 
     /**
-     * Tests {@link AddressRepository#findAllByDistrictOrderByAddressIdAsc(String)} ({@code SAKILA_ADDRESS_B_04}).
+     * Tests {@link AddressRepository#findAllByDistrictOrderByAddressIdAsc(String)}
+     * ({@code SAKILA_ADDRESS_B_04}).
      */
     @Nested
     class FindAllByDistrictOrderByAddressIdAsc_Test {
@@ -153,15 +158,16 @@ class AddressRepository_SpringBootIT
         }
 
         /**
-         * Asserts, in one transaction, that the exercise's empty district streams the three addresses of the
-         * exercise's expected output, by id.
+         * Asserts, in one transaction, that the exercise's empty district streams the three
+         * addresses of the exercise's expected output, by id.
          */
         @Test
         @Transactional
         void __Exercise() {
             try (var found = repositoryInstance().findAllByDistrictOrderByAddressIdAsc("")) {
                 assertThat(found.toList())
-                        .extracting(Address::getAddressId, Address::getPostalCode, Address::getPhone)
+                        .extracting(Address::getAddressId, Address::getPostalCode,
+                                    Address::getPhone)
                         .containsExactly(
                                 tuple(30, "58327", "998009777982"),
                                 tuple(386, "32716", "934352415130"),
@@ -171,10 +177,11 @@ class AddressRepository_SpringBootIT
         }
 
         /**
-         * Asserts, in one transaction, that the district of a selected address streams addresses of that district
-         * only, with the selected one among them, by id as the exercise sorts.
+         * Asserts, in one transaction, that the district of a selected address streams addresses of
+         * that district only, with the selected one among them, by id as the exercise sorts.
          *
-         * @param address one of the addresses selected in {@link AddressRepository_SpringBootIT#__()}.
+         * @param address one of the addresses selected in
+         *                {@link AddressRepository_SpringBootIT#__()}.
          */
         @MethodSource("addresses")
         @ParameterizedTest
@@ -184,22 +191,25 @@ class AddressRepository_SpringBootIT
             try (var found = repositoryInstance().findAllByDistrictOrderByAddressIdAsc(district)) {
                 assertThat(found.toList())
                         .contains(address)
-                        .allSatisfy(a -> assertThat(a.getDistrict()).isEqualToIgnoringCase(district))
+                        .allSatisfy(
+                                a -> assertThat(a.getDistrict()).isEqualToIgnoringCase(district))
                         .isSortedAccordingTo(Comparator.comparing(Address::getAddressId));
             }
         }
 
         /**
-         * Calls the method with no transaction around the test, and asserts that Spring Data refuses it, with
-         * {@link InvalidDataAccessApiUsageException}, before any query runs.
+         * Calls the method with no transaction around the test, and asserts that Spring Data
+         * refuses it, with {@link InvalidDataAccessApiUsageException}, before any query runs.
          *
-         * @param address one of the addresses selected in {@link AddressRepository_SpringBootIT#__()}.
+         * @param address one of the addresses selected in
+         *                {@link AddressRepository_SpringBootIT#__()}.
          */
         @MethodSource("addresses")
         @ParameterizedTest
         void _InvalidDataAccessApiUsageException_NoSurroundingTransaction(final Address address) {
             assertThatThrownBy(() -> {
-                try (var found = repositoryInstance().findAllByDistrictOrderByAddressIdAsc(address.getDistrict())) {
+                try (var found = repositoryInstance().findAllByDistrictOrderByAddressIdAsc(
+                        address.getDistrict())) {
                     found.forEach(a -> {
                     });
                 }
@@ -208,7 +218,8 @@ class AddressRepository_SpringBootIT
     }
 
     /**
-     * Tests {@link AddressRepository#listWithCityAndCountry(Pageable)} ({@code SAKILA_ADDRESS_I_01}).
+     * Tests {@link AddressRepository#listWithCityAndCountry(Pageable)}
+     * ({@code SAKILA_ADDRESS_I_01}).
      */
     @Nested
     class ListWithCityAndCountry_Test {
@@ -218,14 +229,17 @@ class AddressRepository_SpringBootIT
         }
 
         /**
-         * Asserts that the first page of five, by id, holds the five addresses of the exercise's expected output, with
-         * their cities and countries, read after the method returned, with no transaction: they were fetched.
+         * Asserts that the first page of five, by id, holds the five addresses of the exercise's
+         * expected output, with their cities and countries, read after the method returned, with no
+         * transaction: they were fetched.
          */
         @Test
         void __Exercise() {
-            final var page = repositoryInstance().listWithCityAndCountry(PageRequest.of(0, 5, BY_ADDRESS_ID));
+            final var page = repositoryInstance().listWithCityAndCountry(
+                    PageRequest.of(0, 5, BY_ADDRESS_ID));
             assertThat(page.getContent())
-                    .extracting(Address::getAddressId, Address::getAddress, a -> a.getCity().getCity(),
+                    .extracting(Address::getAddressId, Address::getAddress,
+                                a -> a.getCity().getCity(),
                                 a -> a.getCity().getCountry().getCountry())
                     .containsExactly(
                             tuple(1, "47 MySakila Drive", "Lethbridge", "Canada"),
@@ -237,36 +251,41 @@ class AddressRepository_SpringBootIT
         }
 
         /**
-         * Asserts that a selected address, one of the first five, is listed on the first page of five, by id, with a
-         * city and a country, and that the count query counts every address.
+         * Asserts that a selected address, one of the first five, is listed on the first page of
+         * five, by id, with a city and a country, and that the count query counts every address.
          *
-         * @param address one of the addresses selected in {@link AddressRepository_SpringBootIT#__()}.
+         * @param address one of the addresses selected in
+         *                {@link AddressRepository_SpringBootIT#__()}.
          */
         @MethodSource("addresses")
         @ParameterizedTest
         void __(final Address address) {
-            final var page = repositoryInstance().listWithCityAndCountry(PageRequest.of(0, 5, BY_ADDRESS_ID));
+            final var page = repositoryInstance().listWithCityAndCountry(
+                    PageRequest.of(0, 5, BY_ADDRESS_ID));
             assertPage(page);
             assertThat(page.getTotalElements()).isEqualTo(repositoryInstance().count());
-            assertThat(page.getContent()).filteredOn(a -> a.equals(address)).singleElement().satisfies(a -> {
-                assertThat(a.getCity().getCity()).isNotBlank();
-                assertThat(a.getCity().getCountry().getCountry()).isNotBlank();
-            });
+            assertThat(page.getContent()).filteredOn(a -> a.equals(address)).singleElement()
+                    .satisfies(a -> {
+                        assertThat(a.getCity().getCity()).isNotBlank();
+                        assertThat(a.getCity().getCountry().getCountry()).isNotBlank();
+                    });
         }
 
         /**
-         * Asserts that pages of the given size, by id, walk the first ten addresses in order, as one page of ten has
-         * them.
+         * Asserts that pages of the given size, by id, walk the first ten addresses in order, as
+         * one page of ten has them.
          *
          * @param size the size of a page.
          */
         @ValueSource(ints = {1, 3})
         @ParameterizedTest
         void __Paged(final int size) {
-            final var ten = repositoryInstance().listWithCityAndCountry(PageRequest.of(0, 10, BY_ADDRESS_ID))
+            final var ten = repositoryInstance().listWithCityAndCountry(
+                            PageRequest.of(0, 10, BY_ADDRESS_ID))
                     .getContent();
             final var walked = new ArrayList<Address>();
-            var page = repositoryInstance().listWithCityAndCountry(PageRequest.of(0, size, BY_ADDRESS_ID));
+            var page = repositoryInstance().listWithCityAndCountry(
+                    PageRequest.of(0, size, BY_ADDRESS_ID));
             while (walked.size() < ten.size()) {
                 walked.addAll(page.getContent());
                 page = repositoryInstance().listWithCityAndCountry(page.nextPageable());
@@ -276,7 +295,8 @@ class AddressRepository_SpringBootIT
     }
 
     /**
-     * Tests {@link AddressRepository#selectDistrictsInMoreCountriesThan(long, Pageable)} ({@code SAKILA_ADDRESS_I_02}).
+     * Tests {@link AddressRepository#selectDistrictsInMoreCountriesThan(long, Pageable)}
+     * ({@code SAKILA_ADDRESS_I_02}).
      */
     @Nested
     class SelectDistrictsInMoreCountriesThan_Test {
@@ -285,8 +305,8 @@ class AddressRepository_SpringBootIT
                 Sort.by(Sort.Direction.DESC, "countries").and(Sort.by("district"));
 
         /**
-         * Asserts that the exercise's threshold, one, selects the six districts of the exercise's expected output, in
-         * its order, six in all.
+         * Asserts that the exercise's threshold, one, selects the six districts of the exercise's
+         * expected output, in its order, six in all.
          */
         @Test
         void __Exercise() {
@@ -306,8 +326,9 @@ class AddressRepository_SpringBootIT
         }
 
         /**
-         * Asserts that every district selected is in more countries than the threshold, and that the page is ordered
-         * by the count and then by the name, as the database compares names, ignoring case.
+         * Asserts that every district selected is in more countries than the threshold, and that
+         * the page is ordered by the count and then by the name, as the database compares names,
+         * ignoring case.
          *
          * @param countries the threshold.
          */
@@ -325,7 +346,8 @@ class AddressRepository_SpringBootIT
                     })
                     .isSortedAccordingTo(
                             Comparator.comparing(column("countries", Long.class)).reversed()
-                                    .thenComparing(column("district", String.class), String.CASE_INSENSITIVE_ORDER));
+                                    .thenComparing(column("district", String.class),
+                                                   String.CASE_INSENSITIVE_ORDER));
         }
     }
 
@@ -340,8 +362,8 @@ class AddressRepository_SpringBootIT
         }
 
         /**
-         * Asserts that no address is listed, as the exercise's expected output shows: every address of the sample data
-         * belongs to a customer, a staff member or a store.
+         * Asserts that no address is listed, as the exercise's expected output shows: every address
+         * of the sample data belongs to a customer, a staff member or a store.
          */
         @Test
         void __Exercise() {
@@ -353,7 +375,8 @@ class AddressRepository_SpringBootIT
         /**
          * Asserts that a selected address is not listed, as one of the sample data's.
          *
-         * @param address one of the addresses selected in {@link AddressRepository_SpringBootIT#__()}.
+         * @param address one of the addresses selected in
+         *                {@link AddressRepository_SpringBootIT#__()}.
          */
         @MethodSource("addresses")
         @ParameterizedTest
@@ -364,12 +387,14 @@ class AddressRepository_SpringBootIT
     }
 
     /**
-     * Tests {@link AddressRepository#selectPairsSharingPostalCode(Pageable)} ({@code SAKILA_ADDRESS_A_02}).
+     * Tests {@link AddressRepository#selectPairsSharingPostalCode(Pageable)}
+     * ({@code SAKILA_ADDRESS_A_02}).
      */
     @Nested
     class SelectPairsSharingPostalCode_Test {
 
-        private static final Sort BY_ADDRESS_ID_THEN_OTHER = Sort.by("a1.addressId", "a2.addressId");
+        private static final Sort BY_ADDRESS_ID_THEN_OTHER =
+                Sort.by("a1.addressId", "a2.addressId");
 
         /**
          * Asserts that the pairs are the three of the exercise's expected output, by the two ids.
@@ -386,15 +411,17 @@ class AddressRepository_SpringBootIT
                                 column("address", Address.class, Address::getPostalCode))
                     .containsExactly(
                             tuple(221, "866 Shivapuri Manor", 595, "1074 Sanaa Parkway", "22474"),
-                            tuple(304, "1635 Kuwana Boulevard", 603, "1103 Quilmes Boulevard", "52137"),
-                            tuple(313, "1191 Sungai Petani Boulevard", 476, "270 Tambaram Parkway", "9668")
+                            tuple(304, "1635 Kuwana Boulevard", 603, "1103 Quilmes Boulevard",
+                                  "52137"),
+                            tuple(313, "1191 Sungai Petani Boulevard", 476, "270 Tambaram Parkway",
+                                  "9668")
                     );
             assertThat(page.getTotalElements()).isEqualTo(3L);
         }
 
         /**
-         * Asserts that each pair is of two addresses of the same postal code, the lower id first, and that a page of
-         * one walks the pairs in the same order.
+         * Asserts that each pair is of two addresses of the same postal code, the lower id first,
+         * and that a page of one walks the pairs in the same order.
          */
         @Test
         void __() {
@@ -412,7 +439,8 @@ class AddressRepository_SpringBootIT
             assertThat(page.getTotalElements()).isEqualTo(all.size());
             for (final var expected : all) {
                 assertThat(page.getContent()).singleElement().satisfies(p -> {
-                    assertThat(p.get("address", Address.class)).isEqualTo(expected.get("address", Address.class));
+                    assertThat(p.get("address", Address.class)).isEqualTo(
+                            expected.get("address", Address.class));
                     assertThat(p.get("otherAddress", Address.class))
                             .isEqualTo(expected.get("otherAddress", Address.class));
                 });
@@ -435,7 +463,8 @@ class AddressRepository_SpringBootIT
          */
         @Test
         void __Exercise() {
-            final var list = repositoryInstance().selectTopThreeDistrictsOfIndiaChinaAndUnitedStates();
+            final var list =
+                    repositoryInstance().selectTopThreeDistrictsOfIndiaChinaAndUnitedStates();
             assertThat(list)
                     .extracting(column("country", String.class), column("district", String.class),
                                 longColumn("addresses"))

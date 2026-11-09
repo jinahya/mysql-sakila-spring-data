@@ -28,12 +28,14 @@ import static org.assertj.core.api.Assertions.tuple;
 import static org.assertj.core.api.Assumptions.assumeThat;
 
 /**
- * Tests {@link ActorInfoRepository} against the Sakila database, through {@link _Repository_SpringBootIT}.
+ * Tests {@link ActorInfoRepository} against the Sakila database, through
+ * {@link _Repository_SpringBootIT}.
  * <p>
- * See that class for the context and the transactions. The tests here only read: the fixture is a few rows of the
- * view, selected once in {@link #__()}, and each test checks a query of the exercises against them, or against the
- * {@code actor} table the view is built on, read through {@link ActorRepository}. The base's own tests, such as its
- * {@code findById} round trips, run here too.
+ * See that class for the context and the transactions. The tests here only read: the fixture is a
+ * few rows of the view, selected once in {@link #__()}, and each test checks a query of the
+ * exercises against them, or against the {@code actor} table the view is built on, read through
+ * {@link ActorRepository}. The base's own tests, such as its {@code findById} round trips, run here
+ * too.
  * <p>
  * Needs the database of {@code application.yaml} up, with Sakila loaded; see that file.
  *
@@ -46,8 +48,8 @@ class ActorInfoRepository_SpringBootIT
     private static List<ActorInfo> entities;
 
     /**
-     * A sort by id; by the attribute's name, since the metamodel's {@code ActorInfo_.actorId} is filled in only once
-     * the context is up, after this class is loaded.
+     * A sort by id; by the attribute's name, since the metamodel's {@code ActorInfo_.actorId} is
+     * filled in only once the context is up, after this class is loaded.
      */
     private static final Sort BY_ACTOR_ID = Sort.by(Sort.Direction.ASC, ActorInfo_.ACTOR_ID);
 
@@ -70,13 +72,14 @@ class ActorInfoRepository_SpringBootIT
     /**
      * Selects the first five rows of the view, by id, as the fixture for the parameterized tests.
      * <p>
-     * Ordered by id so that the rows are the ones of the first actors the init scripts put there. Runs once per
-     * class, which {@link TestInstance.Lifecycle#PER_CLASS} allows to be an instance method, so the autowired
-     * repository is already there; the result goes into a static field so that the static method sources of the
-     * nested classes can reach it. The rows are loaded outside any transaction, so they are detached.
+     * Ordered by id so that the rows are the ones of the first actors the init scripts put there.
+     * Runs once per class, which {@link TestInstance.Lifecycle#PER_CLASS} allows to be an instance
+     * method, so the autowired repository is already there; the result goes into a static field so
+     * that the static method sources of the nested classes can reach it. The rows are loaded
+     * outside any transaction, so they are detached.
      * <p>
-     * An empty view aborts the tests of this class rather than failing them: it is the fixture that is missing, not
-     * the behaviour under test that is wrong.
+     * An empty view aborts the tests of this class rather than failing them: it is the fixture that
+     * is missing, not the behaviour under test that is wrong.
      */
     @BeforeAll
     void __() {
@@ -91,8 +94,8 @@ class ActorInfoRepository_SpringBootIT
     }
 
     /**
-     * Returns the first characters of the specified string, as many as the exercise shows, or the whole string if it
-     * is shorter.
+     * Returns the first characters of the specified string, as many as the exercise shows, or the
+     * whole string if it is shorter.
      *
      * @param filmInfo the string; may be {@code null}.
      * @return the head of {@code filmInfo}; {@code null} if {@code filmInfo} is {@code null}.
@@ -107,7 +110,8 @@ class ActorInfoRepository_SpringBootIT
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * Tests {@link ActorInfoRepository#selectFilmInfoHeadByActorId(int, int)} ({@code SAKILA_ACTOR_INFO_B_01}).
+     * Tests {@link ActorInfoRepository#selectFilmInfoHeadByActorId(int, int)}
+     * ({@code SAKILA_ACTOR_INFO_B_01}).
      */
     @Nested
     class SelectFilmInfoHeadByActorId_Test {
@@ -117,44 +121,51 @@ class ActorInfoRepository_SpringBootIT
         }
 
         /**
-         * Asserts, in one transaction, that the exercise's actor, {@code 1}, streams the one row of the exercise's
-         * expected output.
+         * Asserts, in one transaction, that the exercise's actor, {@code 1}, streams the one row of
+         * the exercise's expected output.
          */
         @Test
         @Transactional
         void __Exercise() {
-            try (var selected = repositoryInstance().selectFilmInfoHeadByActorId(1, FILM_INFO_LENGTH)) {
+            try (var selected = repositoryInstance().selectFilmInfoHeadByActorId(1,
+                                                                                 FILM_INFO_LENGTH)) {
                 assertThat(selected.toList()).singleElement().satisfies(h -> {
                     final var actorInfo = h.get("actorInfo", ActorInfo.class);
                     assertThat(actorInfo.getActorId()).isEqualTo(1);
                     assertThat(actorInfo.getFirstName()).isEqualTo("PENELOPE");
                     assertThat(actorInfo.getLastName()).isEqualTo("GUINESS");
                     assertThat(h.get("filmInfo", String.class)).isEqualTo(
-                            "Animation: ANACONDA CONFESSIONS; Children: LANGUAGE COWBOY; Classics: COLOR PHIL");
+                            "Animation: ANACONDA CONFESSIONS; Children: LANGUAGE COWBOY; " +
+                            "Classics: COLOR PHIL");
                 });
             }
         }
 
         /**
-         * Asserts, in one transaction, that the id of a selected row streams that row alone, the row itself, whose
-         * names are the names of the actor of that id in the {@code actor} table, with the first eighty characters of
-         * the row's {@code film_info} beside it.
+         * Asserts, in one transaction, that the id of a selected row streams that row alone, the
+         * row itself, whose names are the names of the actor of that id in the {@code actor} table,
+         * with the first eighty characters of the row's {@code film_info} beside it.
          *
-         * @param actorInfo one of the rows selected in {@link ActorInfoRepository_SpringBootIT#__()}.
+         * @param actorInfo one of the rows selected in
+         *                  {@link ActorInfoRepository_SpringBootIT#__()}.
          */
         @MethodSource("actorInfos")
         @ParameterizedTest
         @Transactional
         void __Transactional(final ActorInfo actorInfo) {
             final var actorId = actorInfo.getActorId();
-            try (var selected = repositoryInstance().selectFilmInfoHeadByActorId(actorId, FILM_INFO_LENGTH)) {
+            try (var selected = repositoryInstance().selectFilmInfoHeadByActorId(actorId,
+                                                                                 FILM_INFO_LENGTH)) {
                 assertThat(selected.toList()).singleElement().satisfies(h -> {
                     final var selectedInfo = h.get("actorInfo", ActorInfo.class);
                     assertThat(selectedInfo).isEqualTo(actorInfo);
-                    assertThat(h.get("filmInfo", String.class)).isEqualTo(head(actorInfo.getFilmInfo()));
+                    assertThat(h.get("filmInfo", String.class)).isEqualTo(
+                            head(actorInfo.getFilmInfo()));
                     final var actor = actorRepository.findById(actorId).orElseThrow();
-                    assertThat(selectedInfo.getFirstName()).isEqualToIgnoringCase(actor.getFirstName());
-                    assertThat(selectedInfo.getLastName()).isEqualToIgnoringCase(actor.getLastName());
+                    assertThat(selectedInfo.getFirstName()).isEqualToIgnoringCase(
+                            actor.getFirstName());
+                    assertThat(selectedInfo.getLastName()).isEqualToIgnoringCase(
+                            actor.getLastName());
                 });
             }
         }
@@ -170,20 +181,23 @@ class ActorInfoRepository_SpringBootIT
         @ParameterizedTest
         @Transactional
         void _Empty_Unknown(final int actorId) {
-            try (var selected = repositoryInstance().selectFilmInfoHeadByActorId(actorId, FILM_INFO_LENGTH)) {
+            try (var selected = repositoryInstance().selectFilmInfoHeadByActorId(actorId,
+                                                                                 FILM_INFO_LENGTH)) {
                 assertThat(selected).isEmpty();
             }
         }
 
         /**
-         * Calls the method with no transaction around the test, and asserts that Spring Data refuses it, with
-         * {@link InvalidDataAccessApiUsageException}, before any query runs.
+         * Calls the method with no transaction around the test, and asserts that Spring Data
+         * refuses it, with {@link InvalidDataAccessApiUsageException}, before any query runs.
          *
-         * @param actorInfo one of the rows selected in {@link ActorInfoRepository_SpringBootIT#__()}.
+         * @param actorInfo one of the rows selected in
+         *                  {@link ActorInfoRepository_SpringBootIT#__()}.
          */
         @MethodSource("actorInfos")
         @ParameterizedTest
-        void _InvalidDataAccessApiUsageException_NoSurroundingTransaction(final ActorInfo actorInfo) {
+        void _InvalidDataAccessApiUsageException_NoSurroundingTransaction(
+                final ActorInfo actorInfo) {
             assertThatThrownBy(() -> {
                 try (var selected = repositoryInstance().selectFilmInfoHeadByActorId(
                         actorInfo.getActorId(), FILM_INFO_LENGTH)) {
@@ -195,15 +209,17 @@ class ActorInfoRepository_SpringBootIT
     }
 
     /**
-     * Tests {@link ActorInfoRepository#countByFilmInfoCategory(String)} ({@code SAKILA_ACTOR_INFO_B_02}, not a pick).
+     * Tests {@link ActorInfoRepository#countByFilmInfoCategory(String)}
+     * ({@code SAKILA_ACTOR_INFO_B_02}, not a pick).
      */
     @Nested
     class CountByFilmInfoCategory_Test {
 
         /**
-         * Asserts that the count of a category is the number of rows of the view whose {@code film_info} names it,
-         * read as the whole view and filtered here, and that it is positive for {@code Horror}, which the exercise
-         * counts, and the other categories the sample data has.
+         * Asserts that the count of a category is the number of rows of the view whose
+         * {@code film_info} names it, read as the whole view and filtered here, and that it is
+         * positive for {@code Horror}, which the exercise counts, and the other categories the
+         * sample data has.
          *
          * @param category the name of the category.
          */
@@ -248,27 +264,30 @@ class ActorInfoRepository_SpringBootIT
         }
 
         /**
-         * Asserts that the exercise's title, {@code ACADEMY DINOSAUR}, finds the ten actors of the exercise's expected
-         * output, by id.
+         * Asserts that the exercise's title, {@code ACADEMY DINOSAUR}, finds the ten actors of the
+         * exercise's expected output, by id.
          */
         @Test
         void __Exercise() {
-            final var found = repositoryInstance().findAllByFilmInfoContainingOrderByActorIdAsc("ACADEMY DINOSAUR");
+            final var found = repositoryInstance().findAllByFilmInfoContainingOrderByActorIdAsc(
+                    "ACADEMY DINOSAUR");
             assertThat(found)
                     .extracting(ActorInfo::getActorId)
                     .containsExactly(1, 10, 20, 30, 40, 53, 108, 162, 188, 198);
         }
 
         /**
-         * Asserts that a title a selected row names finds rows whose {@code film_info} contains it, by id as the
-         * exercise sorts, and that each of those actors appears in a film of that title, by {@code film_actor}.
+         * Asserts that a title a selected row names finds rows whose {@code film_info} contains it,
+         * by id as the exercise sorts, and that each of those actors appears in a film of that
+         * title, by {@code film_actor}.
          *
          * @param title the first title the {@code film_info} of one of the selected rows names.
          */
         @MethodSource("titles")
         @ParameterizedTest
         void __(final String title) {
-            final var found = repositoryInstance().findAllByFilmInfoContainingOrderByActorIdAsc(title);
+            final var found =
+                    repositoryInstance().findAllByFilmInfoContainingOrderByActorIdAsc(title);
             assertThat(found)
                     .isNotEmpty()
                     .allSatisfy(i -> assertThat(i.getFilmInfo()).containsIgnoringCase(title))
@@ -277,7 +296,8 @@ class ActorInfoRepository_SpringBootIT
     }
 
     /**
-     * Tests {@link ActorInfoRepository#selectRowCounts(Pageable)} ({@code SAKILA_ACTOR_INFO_I_01}).
+     * Tests {@link ActorInfoRepository#selectRowCounts(Pageable)}
+     * ({@code SAKILA_ACTOR_INFO_I_01}).
      */
     @Nested
     class SelectRowCounts_Test {
@@ -287,7 +307,8 @@ class ActorInfoRepository_SpringBootIT
         }
 
         /**
-         * Asserts that the page holds the one row of the exercise's expected output, {@code 200} and {@code 200}.
+         * Asserts that the page holds the one row of the exercise's expected output, {@code 200}
+         * and {@code 200}.
          */
         @Test
         void __Exercise() {
@@ -299,24 +320,30 @@ class ActorInfoRepository_SpringBootIT
         }
 
         /**
-         * Asserts that the view has as many rows as the {@code actor} table, as the exercise checks, and that each
-         * count is what the view's own repository, and {@link ActorRepository}, count; and that the selected row's
-         * actor is in the table, which is what the equality says of every row.
+         * Asserts that the view has as many rows as the {@code actor} table, as the exercise
+         * checks, and that each count is what the view's own repository, and
+         * {@link ActorRepository}, count; and that the selected row's actor is in the table, which
+         * is what the equality says of every row.
          *
-         * @param actorInfo one of the rows selected in {@link ActorInfoRepository_SpringBootIT#__()}.
+         * @param actorInfo one of the rows selected in
+         *                  {@link ActorInfoRepository_SpringBootIT#__()}.
          */
         @MethodSource("actorInfos")
         @ParameterizedTest
         void __(final ActorInfo actorInfo) {
-            final var counts = repositoryInstance().selectRowCounts(Pageable.unpaged()).getContent().getFirst();
-            assertThat(counts.get("actorInfos", Long.class)).isPositive().isEqualTo(counts.get("actors", Long.class));
-            assertThat(counts.get("actorInfos", Long.class)).isEqualTo(repositoryInstance().count());
+            final var counts = repositoryInstance().selectRowCounts(Pageable.unpaged()).getContent()
+                    .getFirst();
+            assertThat(counts.get("actorInfos", Long.class)).isPositive()
+                    .isEqualTo(counts.get("actors", Long.class));
+            assertThat(counts.get("actorInfos", Long.class)).isEqualTo(
+                    repositoryInstance().count());
             assertThat(counts.get("actors", Long.class)).isEqualTo(actorRepository.count());
             assertThat(actorRepository.existsById(actorInfo.getActorId())).isTrue();
         }
 
         /**
-         * Asserts that a page of one holds the one row, one in all, and that the next page is empty.
+         * Asserts that a page of one holds the one row, one in all, and that the next page is
+         * empty.
          */
         @Test
         void __Paged() {
@@ -331,7 +358,8 @@ class ActorInfoRepository_SpringBootIT
     }
 
     /**
-     * Tests {@link ActorInfoRepository#listCoveringEveryCategory(Pageable)} ({@code SAKILA_ACTOR_INFO_I_02}).
+     * Tests {@link ActorInfoRepository#listCoveringEveryCategory(Pageable)}
+     * ({@code SAKILA_ACTOR_INFO_I_02}).
      */
     @Nested
     class ListCoveringEveryCategory_Test {
@@ -341,7 +369,8 @@ class ActorInfoRepository_SpringBootIT
          */
         @Test
         void __Exercise() {
-            final var page = repositoryInstance().listCoveringEveryCategory(Pageable.unpaged(BY_ACTOR_ID));
+            final var page =
+                    repositoryInstance().listCoveringEveryCategory(Pageable.unpaged(BY_ACTOR_ID));
             assertThat(page.getContent())
                     .extracting(ActorInfo::getActorId)
                     .containsExactly(13, 72, 95, 106, 107, 127, 139, 155, 161, 185, 197);
@@ -354,7 +383,8 @@ class ActorInfoRepository_SpringBootIT
         @Test
         void __() {
             final var categories = categoryRepository.count();
-            final var page = repositoryInstance().listCoveringEveryCategory(PageRequest.of(0, 5, BY_ACTOR_ID));
+            final var page = repositoryInstance().listCoveringEveryCategory(
+                    PageRequest.of(0, 5, BY_ACTOR_ID));
             assertThat(page.getContent())
                     .isNotEmpty()
                     .isSortedAccordingTo(Comparator.comparing(ActorInfo::getActorId))
@@ -362,15 +392,19 @@ class ActorInfoRepository_SpringBootIT
         }
 
         /**
-         * Asserts that pages of the given size, by id, walk the same rows as the whole list, as many in all.
+         * Asserts that pages of the given size, by id, walk the same rows as the whole list, as
+         * many in all.
          *
          * @param size the size of a page.
          */
         @ValueSource(ints = {1, 4})
         @ParameterizedTest
         void __Paged(final int size) {
-            final var all = repositoryInstance().listCoveringEveryCategory(Pageable.unpaged(BY_ACTOR_ID)).getContent();
-            var page = repositoryInstance().listCoveringEveryCategory(PageRequest.of(0, size, BY_ACTOR_ID));
+            final var all =
+                    repositoryInstance().listCoveringEveryCategory(Pageable.unpaged(BY_ACTOR_ID))
+                            .getContent();
+            var page = repositoryInstance().listCoveringEveryCategory(
+                    PageRequest.of(0, size, BY_ACTOR_ID));
             assertThat(page.getTotalElements()).isEqualTo(all.size());
             final var walked = new ArrayList<ActorInfo>(page.getContent());
             while (page.hasNext()) {
@@ -382,32 +416,36 @@ class ActorInfoRepository_SpringBootIT
     }
 
     /**
-     * Tests {@link ActorInfoRepository#selectActorCountsByCategoryCount()} ({@code SAKILA_ACTOR_INFO_I_03}).
+     * Tests {@link ActorInfoRepository#selectActorCountsByCategoryCount()}
+     * ({@code SAKILA_ACTOR_INFO_I_03}).
      */
     @Nested
     class SelectActorCountsByCategoryCount_Test {
 
         /**
-         * Asserts that the groups are the nine of the exercise's expected output, the most categories first.
+         * Asserts that the groups are the nine of the exercise's expected output, the most
+         * categories first.
          */
         @Test
         void __Exercise() {
             final var list = repositoryInstance().selectActorCountsByCategoryCount();
             assertThat(list)
                     .extracting(intColumn("categories"), longColumn("actors"))
-                    .containsExactly(tuple(16, 11L), tuple(15, 19L), tuple(14, 49L), tuple(13, 57L), tuple(12, 33L),
+                    .containsExactly(tuple(16, 11L), tuple(15, 19L), tuple(14, 49L), tuple(13, 57L),
+                                     tuple(12, 33L),
                                      tuple(11, 19L), tuple(10, 8L), tuple(9, 2L), tuple(8, 2L));
         }
 
         /**
-         * Asserts that the actors of the groups add up to the rows of the view, each row in one group, and that the
-         * group of every category holds the rows {@link ActorInfoRepository#listCoveringEveryCategory(Pageable)}
-         * lists.
+         * Asserts that the actors of the groups add up to the rows of the view, each row in one
+         * group, and that the group of every category holds the rows
+         * {@link ActorInfoRepository#listCoveringEveryCategory(Pageable)} lists.
          */
         @Test
         void __() {
             final var list = repositoryInstance().selectActorCountsByCategoryCount();
-            assertThat(list.stream().mapToLong(c -> c.get("actors", Number.class).longValue()).sum())
+            assertThat(
+                    list.stream().mapToLong(c -> c.get("actors", Number.class).longValue()).sum())
                     .isEqualTo(repositoryInstance().count());
             final var every = repositoryInstance().listCoveringEveryCategory(Pageable.unpaged());
             assertThat(list).filteredOn(c -> c.get("categories") != null
@@ -420,17 +458,20 @@ class ActorInfoRepository_SpringBootIT
     }
 
     /**
-     * Tests {@link ActorInfoRepository#listDisagreeingOnCategories(Pageable)} ({@code SAKILA_ACTOR_INFO_A_01}).
+     * Tests {@link ActorInfoRepository#listDisagreeingOnCategories(Pageable)}
+     * ({@code SAKILA_ACTOR_INFO_A_01}).
      */
     @Nested
     class ListDisagreeingOnCategories_Test {
 
         /**
-         * Asserts that no row is listed, as the exercise's expected output shows: the view agrees with the tables.
+         * Asserts that no row is listed, as the exercise's expected output shows: the view agrees
+         * with the tables.
          */
         @Test
         void __Exercise() {
-            final var page = repositoryInstance().listDisagreeingOnCategories(PageRequest.of(0, 5, BY_ACTOR_ID));
+            final var page = repositoryInstance().listDisagreeingOnCategories(
+                    PageRequest.of(0, 5, BY_ACTOR_ID));
             assertThat(page).isEmpty();
             assertThat(page.getTotalElements()).isZero();
         }

@@ -32,13 +32,15 @@ import static org.assertj.core.api.Assertions.tuple;
 import static org.assertj.core.api.Assumptions.assumeThat;
 
 /**
- * Tests {@link CityRepository} against the Sakila database, through {@link _Repository_SpringBootIT}.
+ * Tests {@link CityRepository} against the Sakila database, through
+ * {@link _Repository_SpringBootIT}.
  * <p>
- * See that class for the context and the transactions. The tests here only read: the fixture is a few cities of the
- * sample data, selected once in {@link #__()}, and each test checks a query of the exercises against them, or against
- * the rows the exercise's SQL gives on the installed data, or against counts taken again through the repositories of
- * the other tables. A city's country is lazy, so a test that reads it runs in a transaction, which is rolled back. The
- * base's own tests, such as its {@code findById} round trips, run here too.
+ * See that class for the context and the transactions. The tests here only read: the fixture is a
+ * few cities of the sample data, selected once in {@link #__()}, and each test checks a query of
+ * the exercises against them, or against the rows the exercise's SQL gives on the installed data,
+ * or against counts taken again through the repositories of the other tables. A city's country is
+ * lazy, so a test that reads it runs in a transaction, which is rolled back. The base's own tests,
+ * such as its {@code findById} round trips, run here too.
  * <p>
  * Needs the database of {@code application.yaml} up, with Sakila loaded; see that file.
  *
@@ -51,8 +53,8 @@ class CityRepository_SpringBootIT
     private static List<City> entities;
 
     /**
-     * A sort by id; by the attribute's name, since the metamodel's {@code City_.cityId} is filled in only once the
-     * context is up, after this class is loaded.
+     * A sort by id; by the attribute's name, since the metamodel's {@code City_.cityId} is filled
+     * in only once the context is up, after this class is loaded.
      */
     private static final Sort BY_CITY_ID = Sort.by(Sort.Direction.ASC, City_.CITY_ID);
 
@@ -70,13 +72,14 @@ class CityRepository_SpringBootIT
     /**
      * Selects the first five cities, by id, as the fixture for the parameterized tests.
      * <p>
-     * Ordered by id so that the rows are the ones the init scripts put there. Runs once per class, which
-     * {@link TestInstance.Lifecycle#PER_CLASS} allows to be an instance method, so the autowired repository is already
-     * there; the result goes into a static field so that the static method sources of the nested classes can reach it.
-     * The cities are loaded outside any transaction, so they are detached, their countries not loaded.
+     * Ordered by id so that the rows are the ones the init scripts put there. Runs once per class,
+     * which {@link TestInstance.Lifecycle#PER_CLASS} allows to be an instance method, so the
+     * autowired repository is already there; the result goes into a static field so that the static
+     * method sources of the nested classes can reach it. The cities are loaded outside any
+     * transaction, so they are detached, their countries not loaded.
      * <p>
-     * An empty table aborts the tests of this class rather than failing them: it is the fixture that is missing, not
-     * the behaviour under test that is wrong.
+     * An empty table aborts the tests of this class rather than failing them: it is the fixture
+     * that is missing, not the behaviour under test that is wrong.
      */
     @BeforeAll
     void __() {
@@ -91,20 +94,21 @@ class CityRepository_SpringBootIT
     }
 
     /**
-     * Counts the cities in the same country as the specified city, the city itself included, through a
-     * {@link Specification}.
+     * Counts the cities in the same country as the specified city, the city itself included,
+     * through a {@link Specification}.
      *
      * @param city the city, managed.
      * @return the number of cities in {@code city}'s country.
      */
     private long countCitiesOfCountryOf(final City city) {
-        final Specification<City> specification = (r, q, b) -> b.equal(r.get(City_.country), city.getCountry());
+        final Specification<City> specification =
+                (r, q, b) -> b.equal(r.get(City_.country), city.getCountry());
         return repositoryInstance().count(specification);
     }
 
     /**
-     * Counts the customers whose address is in the specified city, the active ones only if so specified, through
-     * {@link CustomerRepository}.
+     * Counts the customers whose address is in the specified city, the active ones only if so
+     * specified, through {@link CustomerRepository}.
      *
      * @param city       the city.
      * @param activeOnly {@code true} to count the active customers only.
@@ -119,8 +123,8 @@ class CityRepository_SpringBootIT
     }
 
     /**
-     * Returns the specified name with its accents stripped, as the case- and accent-insensitive collation of the
-     * Sakila database compares it.
+     * Returns the specified name with its accents stripped, as the case- and accent-insensitive
+     * collation of the Sakila database compares it.
      *
      * @param name the name.
      * @return {@code name} with its combining marks removed.
@@ -130,8 +134,8 @@ class CityRepository_SpringBootIT
     }
 
     /**
-     * Asserts that the specified page is consistent with itself: no more content than its size, and at least as many
-     * elements in all as in its content.
+     * Asserts that the specified page is consistent with itself: no more content than its size, and
+     * at least as many elements in all as in its content.
      *
      * @param page the page.
      * @param <T>  the type of the elements.
@@ -144,7 +148,8 @@ class CityRepository_SpringBootIT
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * Tests {@link CityRepository#findAllByCityStartingWithOrderByCityAsc(String)} ({@code SAKILA_CITY_B_01}).
+     * Tests {@link CityRepository#findAllByCityStartingWithOrderByCityAsc(String)}
+     * ({@code SAKILA_CITY_B_01}).
      */
     @Nested
     class FindAllByCityStartingWithOrderByCityAsc_Test {
@@ -154,7 +159,8 @@ class CityRepository_SpringBootIT
         }
 
         /**
-         * Asserts that the prefix of the exercise, {@code Q}, finds the four cities the exercise's SQL gives, by name.
+         * Asserts that the prefix of the exercise, {@code Q}, finds the four cities the exercise's
+         * SQL gives, by name.
          */
         @Test
         void __Q() {
@@ -169,11 +175,12 @@ class CityRepository_SpringBootIT
         }
 
         /**
-         * Asserts that the first letter of a selected city's name finds that city, among cities whose names start with
-         * that letter only.
+         * Asserts that the first letter of a selected city's name finds that city, among cities
+         * whose names start with that letter only.
          * <p>
-         * The column's collation ignores case and accents, so {@code A} finds {@code Águas Lindas de Goiás} too; the
-         * names are compared with their accents stripped, and ignoring case.
+         * The column's collation ignores case and accents, so {@code A} finds
+         * {@code Águas Lindas de Goiás} too; the names are compared with their accents stripped,
+         * and ignoring case.
          *
          * @param city one of the cities selected in {@link CityRepository_SpringBootIT#__()}.
          */
@@ -193,7 +200,8 @@ class CityRepository_SpringBootIT
          */
         @Test
         void _IllegalArgumentException_NullPrefix() {
-            assertThatThrownBy(() -> repositoryInstance().findAllByCityStartingWithOrderByCityAsc(null))
+            assertThatThrownBy(
+                    () -> repositoryInstance().findAllByCityStartingWithOrderByCityAsc(null))
                     .isInstanceOf(IllegalArgumentException.class);
         }
     }
@@ -211,12 +219,13 @@ class CityRepository_SpringBootIT
         }
 
         /**
-         * Asserts that the country of the exercise, {@code Canada}, lists the seven cities the exercise's SQL gives,
-         * by name, five on the first page and two on the next.
+         * Asserts that the country of the exercise, {@code Canada}, lists the seven cities the
+         * exercise's SQL gives, by name, five on the first page and two on the next.
          */
         @Test
         void __Canada() {
-            final var page0 = repositoryInstance().listByCountry("Canada", PageRequest.of(0, 5, BY_CITY));
+            final var page0 =
+                    repositoryInstance().listByCountry("Canada", PageRequest.of(0, 5, BY_CITY));
             assertPage(page0);
             assertThat(page0.getContent())
                     .extracting(City::getCityId)
@@ -230,8 +239,9 @@ class CityRepository_SpringBootIT
         }
 
         /**
-         * Asserts, in one transaction, that the name of a selected city's country lists that city, among cities of
-         * that country only, as many as a {@link Specification} on the country counts.
+         * Asserts, in one transaction, that the name of a selected city's country lists that city,
+         * among cities of that country only, as many as a {@link Specification} on the country
+         * counts.
          *
          * @param city one of the cities selected in {@link CityRepository_SpringBootIT#__()}.
          */
@@ -241,7 +251,8 @@ class CityRepository_SpringBootIT
         void __(final City city) {
             final var managed = repositoryInstance().findById(city.getCityId()).orElseThrow();
             final var country = managed.getCountry();
-            final var page = repositoryInstance().listByCountry(country.getCountry(), Pageable.unpaged(BY_CITY));
+            final var page = repositoryInstance().listByCountry(country.getCountry(),
+                                                                Pageable.unpaged(BY_CITY));
             assertThat(page.getContent())
                     .contains(managed)
                     .allSatisfy(c -> assertThat(c.getCountry()).isSameAs(country));
@@ -249,7 +260,8 @@ class CityRepository_SpringBootIT
         }
 
         /**
-         * Asserts that a {@code null} country or a {@code null} pageable is rejected before any query runs.
+         * Asserts that a {@code null} country or a {@code null} pageable is rejected before any
+         * query runs.
          */
         @Test
         void _IllegalArgumentException_Null() {
@@ -274,28 +286,32 @@ class CityRepository_SpringBootIT
         }
 
         /**
-         * Asserts that the first five, by {@code cities} descending, then by {@code co.country}, are the five the
-         * exercise's SQL gives, and that the groups in all are the countries that have a city.
+         * Asserts that the first five, by {@code cities} descending, then by {@code co.country},
+         * are the five the exercise's SQL gives, and that the groups in all are the countries that
+         * have a city.
          */
         @Test
         void __TopFive() {
-            final var page = repositoryInstance().selectCityCounts(PageRequest.of(0, 5, BY_CITIES_DESC_THEN_COUNTRY));
+            final var page = repositoryInstance().selectCityCounts(
+                    PageRequest.of(0, 5, BY_CITIES_DESC_THEN_COUNTRY));
             assertPage(page);
             assertThat(page.getContent())
-                    .extracting(column("country", Country.class, Country::getCountry), column("cities", Long.class))
+                    .extracting(column("country", Country.class, Country::getCountry),
+                                column("cities", Long.class))
                     .containsExactly(
                             tuple("India", 60L),
                             tuple("China", 53L),
                             tuple("United States", 35L),
                             tuple("Japan", 31L),
                             tuple("Mexico", 30L));
-            final Specification<Country> withCities = (r, q, b) -> b.isNotEmpty(r.get(Country_.cities));
+            final Specification<Country> withCities =
+                    (r, q, b) -> b.isNotEmpty(r.get(Country_.cities));
             assertThat(page.getTotalElements()).isEqualTo(countryRepository.count(withCities));
         }
 
         /**
-         * Asserts, in one transaction, that a selected city's country, the country itself, is among all groups, with as
-         * many cities as a {@link Specification} on the country counts.
+         * Asserts, in one transaction, that a selected city's country, the country itself, is among
+         * all groups, with as many cities as a {@link Specification} on the country counts.
          *
          * @param city one of the cities selected in {@link CityRepository_SpringBootIT#__()}.
          */
@@ -304,7 +320,8 @@ class CityRepository_SpringBootIT
         @ParameterizedTest
         void __(final City city) {
             final var managed = repositoryInstance().findById(city.getCityId()).orElseThrow();
-            final var all = repositoryInstance().selectCityCounts(Pageable.unpaged(BY_CITIES_DESC_THEN_COUNTRY));
+            final var all = repositoryInstance().selectCityCounts(
+                    Pageable.unpaged(BY_CITIES_DESC_THEN_COUNTRY));
             assertThat(all.getContent())
                     .extracting(column("country", Country.class), column("cities", Long.class))
                     .contains(tuple(managed.getCountry(), countCitiesOfCountryOf(managed)));
@@ -334,13 +351,14 @@ class CityRepository_SpringBootIT
         }
 
         /**
-         * Asserts that the first ten, by the country's name, then by id, are the ten the exercise's SQL gives, and
-         * that the cities in all are as many as the countries with exactly one city, which {@code SAKILA_COUNTRY_I_03}
-         * counts, forty-two.
+         * Asserts that the first ten, by the country's name, then by id, are the ten the exercise's
+         * SQL gives, and that the cities in all are as many as the countries with exactly one city,
+         * which {@code SAKILA_COUNTRY_I_03} counts, forty-two.
          */
         @Test
         void __FirstTen() {
-            final var page = repositoryInstance().listOnlyCityOfCountry(PageRequest.of(0, 10, BY_COUNTRY_THEN_CITY_ID));
+            final var page = repositoryInstance().listOnlyCityOfCountry(
+                    PageRequest.of(0, 10, BY_COUNTRY_THEN_CITY_ID));
             assertPage(page);
             assertThat(page.getContent())
                     .extracting(City::getCityId)
@@ -349,8 +367,8 @@ class CityRepository_SpringBootIT
         }
 
         /**
-         * Asserts, in one transaction, that a selected city is listed if, and only if, it is the only city of its
-         * country, as a {@link Specification} on the country counts.
+         * Asserts, in one transaction, that a selected city is listed if, and only if, it is the
+         * only city of its country, as a {@link Specification} on the country counts.
          *
          * @param city one of the cities selected in {@link CityRepository_SpringBootIT#__()}.
          */
@@ -359,7 +377,8 @@ class CityRepository_SpringBootIT
         @ParameterizedTest
         void __(final City city) {
             final var managed = repositoryInstance().findById(city.getCityId()).orElseThrow();
-            final var all = repositoryInstance().listOnlyCityOfCountry(Pageable.unpaged(BY_COUNTRY_THEN_CITY_ID));
+            final var all = repositoryInstance().listOnlyCityOfCountry(
+                    Pageable.unpaged(BY_COUNTRY_THEN_CITY_ID));
             if (countCitiesOfCountryOf(managed) == 1L) {
                 assertThat(all.getContent()).contains(managed);
             } else {
@@ -390,33 +409,40 @@ class CityRepository_SpringBootIT
         }
 
         /**
-         * Asserts that the cities, by name, then by id, are the fifteen the exercise's SQL gives, in its order, which
-         * is the database's collation of the names, and that pages of five walk them.
+         * Asserts that the cities, by name, then by id, are the fifteen the exercise's SQL gives,
+         * in its order, which is the database's collation of the names, and that pages of five walk
+         * them.
          */
         @Test
         void __() {
-            final var all = repositoryInstance().listAllCustomersInactive(Pageable.unpaged(BY_CITY_THEN_CITY_ID));
+            final var all = repositoryInstance().listAllCustomersInactive(
+                    Pageable.unpaged(BY_CITY_THEN_CITY_ID));
             assertThat(all.getContent())
                     .extracting(City::getCityId)
-                    .containsExactly(24, 57, 111, 125, 139, 259, 283, 281, 356, 407, 495, 512, 554, 577, 578);
-            final var page0 = repositoryInstance().listAllCustomersInactive(PageRequest.of(0, 5, BY_CITY_THEN_CITY_ID));
+                    .containsExactly(24, 57, 111, 125, 139, 259, 283, 281, 356, 407, 495, 512, 554,
+                                     577, 578);
+            final var page0 = repositoryInstance().listAllCustomersInactive(
+                    PageRequest.of(0, 5, BY_CITY_THEN_CITY_ID));
             assertPage(page0);
-            assertThat(page0.getContent()).containsExactlyElementsOf(all.getContent().subList(0, 5));
+            assertThat(page0.getContent()).containsExactlyElementsOf(
+                    all.getContent().subList(0, 5));
             assertThat(page0.getTotalElements()).isEqualTo(15L);
             assertThat(page0.getTotalPages()).isEqualTo(3);
         }
 
         /**
-         * Asserts that a selected city is listed if, and only if, it has a customer and no active one, as counted
-         * again through {@link CustomerRepository}.
+         * Asserts that a selected city is listed if, and only if, it has a customer and no active
+         * one, as counted again through {@link CustomerRepository}.
          *
          * @param city one of the cities selected in {@link CityRepository_SpringBootIT#__()}.
          */
         @MethodSource("cities")
         @ParameterizedTest
         void __(final City city) {
-            final var all = repositoryInstance().listAllCustomersInactive(Pageable.unpaged(BY_CITY_THEN_CITY_ID));
-            final var expected = countCustomersIn(city, false) > 0L && countCustomersIn(city, true) == 0L;
+            final var all = repositoryInstance().listAllCustomersInactive(
+                    Pageable.unpaged(BY_CITY_THEN_CITY_ID));
+            final var expected =
+                    countCustomersIn(city, false) > 0L && countCustomersIn(city, true) == 0L;
             if (expected) {
                 assertThat(all.getContent()).contains(city);
             } else {

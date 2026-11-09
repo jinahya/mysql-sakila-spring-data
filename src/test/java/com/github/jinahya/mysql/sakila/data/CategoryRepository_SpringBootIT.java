@@ -34,12 +34,13 @@ import static org.assertj.core.api.Assertions.tuple;
 import static org.assertj.core.api.Assumptions.assumeThat;
 
 /**
- * Tests {@link CategoryRepository} against the Sakila database, through {@link _Repository_SpringBootIT}.
+ * Tests {@link CategoryRepository} against the Sakila database, through
+ * {@link _Repository_SpringBootIT}.
  * <p>
- * See that class for the context and the transactions. The tests here only read: the fixture is a few categories of
- * the sample data, selected once in {@link #__()}, and each test checks a query of the exercises against them, or
- * against the expected output upstream's {@code category/*.sql} shows. The base's own tests, such as its
- * {@code findById} round trips, run here too.
+ * See that class for the context and the transactions. The tests here only read: the fixture is a
+ * few categories of the sample data, selected once in {@link #__()}, and each test checks a query
+ * of the exercises against them, or against the expected output upstream's {@code category/*.sql}
+ * shows. The base's own tests, such as its {@code findById} round trips, run here too.
  * <p>
  * Needs the database of {@code application.yaml} up, with Sakila loaded; see that file.
  *
@@ -52,8 +53,8 @@ class CategoryRepository_SpringBootIT
     private static List<Category> entities;
 
     /**
-     * A sort by id; by the attribute's name, since the metamodel's {@code Category_.categoryId} is filled in only once
-     * the context is up, after this class is loaded.
+     * A sort by id; by the attribute's name, since the metamodel's {@code Category_.categoryId} is
+     * filled in only once the context is up, after this class is loaded.
      */
     private static final Sort BY_CATEGORY_ID = Sort.by(Sort.Direction.ASC, Category_.CATEGORY_ID);
 
@@ -61,7 +62,8 @@ class CategoryRepository_SpringBootIT
      * The sixteen names of the categories of the sample data, by name.
      */
     private static final List<String> NAMES = List.of(
-            "Action", "Animation", "Children", "Classics", "Comedy", "Documentary", "Drama", "Family", "Foreign",
+            "Action", "Animation", "Children", "Classics", "Comedy", "Documentary", "Drama",
+            "Family", "Foreign",
             "Games", "Horror", "Music", "New", "Sci-Fi", "Sports", "Travel");
 
     // -----------------------------------------------------------------------------------------------------------------
@@ -78,10 +80,10 @@ class CategoryRepository_SpringBootIT
     /**
      * Selects the first five categories, by id, as the fixture for the parameterized tests.
      * <p>
-     * Ordered by id so that the rows are the ones the init scripts put there. Runs once per class, which
-     * {@link TestInstance.Lifecycle#PER_CLASS} allows to be an instance method; the result goes into a static field so
-     * that the static method sources of the nested classes can reach it. The categories are loaded outside any
-     * transaction, so they are detached.
+     * Ordered by id so that the rows are the ones the init scripts put there. Runs once per class,
+     * which {@link TestInstance.Lifecycle#PER_CLASS} allows to be an instance method; the result
+     * goes into a static field so that the static method sources of the nested classes can reach
+     * it. The categories are loaded outside any transaction, so they are detached.
      * <p>
      * An empty table aborts the tests of this class rather than failing them.
      */
@@ -98,10 +100,11 @@ class CategoryRepository_SpringBootIT
     }
 
     /**
-     * Counts the {@code film_category} links of the specified category, through {@link FilmCategoryRepository}.
+     * Counts the {@code film_category} links of the specified category, through
+     * {@link FilmCategoryRepository}.
      * <p>
-     * The category's own {@code filmCategories} is not public upstream, so the links are counted by a
-     * {@link Specification}.
+     * The category's own {@code filmCategories} is not public upstream, so the links are counted by
+     * a {@link Specification}.
      *
      * @param category the category.
      * @return the number of films of {@code category}.
@@ -113,8 +116,8 @@ class CategoryRepository_SpringBootIT
     }
 
     /**
-     * Asserts that the specified page is consistent with itself: no more content than its size, and at least as many
-     * elements in all as in its content.
+     * Asserts that the specified page is consistent with itself: no more content than its size, and
+     * at least as many elements in all as in its content.
      *
      * @param page the page.
      * @param <T>  the type of the elements.
@@ -137,7 +140,8 @@ class CategoryRepository_SpringBootIT
         }
 
         /**
-         * Asserts that the categories found are the sixteen of the exercise's expected output, by name.
+         * Asserts that the categories found are the sixteen of the exercise's expected output, by
+         * name.
          */
         @Test
         void __Exercise() {
@@ -149,7 +153,8 @@ class CategoryRepository_SpringBootIT
         /**
          * Asserts that a selected category is found.
          *
-         * @param category one of the categories selected in {@link CategoryRepository_SpringBootIT#__()}.
+         * @param category one of the categories selected in
+         *                 {@link CategoryRepository_SpringBootIT#__()}.
          */
         @MethodSource("categories")
         @ParameterizedTest
@@ -170,8 +175,8 @@ class CategoryRepository_SpringBootIT
         }
 
         /**
-         * Asserts, in one transaction, that the exercise's range, {@code D} to {@code H}, streams the five categories
-         * of the exercise's expected output, by name.
+         * Asserts, in one transaction, that the exercise's range, {@code D} to {@code H}, streams
+         * the five categories of the exercise's expected output, by name.
          */
         @Test
         @Transactional
@@ -190,9 +195,11 @@ class CategoryRepository_SpringBootIT
         }
 
         /**
-         * Asserts, in one transaction, that the range of a selected category's name to itself streams that category.
+         * Asserts, in one transaction, that the range of a selected category's name to itself
+         * streams that category.
          *
-         * @param category one of the categories selected in {@link CategoryRepository_SpringBootIT#__()}.
+         * @param category one of the categories selected in
+         *                 {@link CategoryRepository_SpringBootIT#__()}.
          */
         @MethodSource("categories")
         @ParameterizedTest
@@ -205,10 +212,11 @@ class CategoryRepository_SpringBootIT
         }
 
         /**
-         * Calls the method with no transaction around the test, and asserts that Spring Data refuses it, with
-         * {@link InvalidDataAccessApiUsageException}, before any query runs.
+         * Calls the method with no transaction around the test, and asserts that Spring Data
+         * refuses it, with {@link InvalidDataAccessApiUsageException}, before any query runs.
          *
-         * @param category one of the categories selected in {@link CategoryRepository_SpringBootIT#__()}.
+         * @param category one of the categories selected in
+         *                 {@link CategoryRepository_SpringBootIT#__()}.
          */
         @MethodSource("categories")
         @ParameterizedTest
@@ -233,14 +241,16 @@ class CategoryRepository_SpringBootIT
                 Sort.by(Sort.Direction.DESC, "films").and(Sort.by("c.name"));
 
         /**
-         * Asserts that the first page of five, the most films first, holds the five categories of the exercise's
-         * expected output, of sixteen in all.
+         * Asserts that the first page of five, the most films first, holds the five categories of
+         * the exercise's expected output, of sixteen in all.
          */
         @Test
         void __Exercise() {
-            final var page = repositoryInstance().selectFilmCounts(PageRequest.of(0, 5, BY_FILMS_DESC_THEN_NAME));
+            final var page = repositoryInstance().selectFilmCounts(
+                    PageRequest.of(0, 5, BY_FILMS_DESC_THEN_NAME));
             assertThat(page.getContent())
-                    .extracting(column("category", Category.class, Category::getName), column("films", Long.class))
+                    .extracting(column("category", Category.class, Category::getName),
+                                column("films", Long.class))
                     .containsExactly(
                             tuple("Sports", 74L),
                             tuple("Foreign", 73L),
@@ -252,41 +262,48 @@ class CategoryRepository_SpringBootIT
         }
 
         /**
-         * Asserts that a page of the given size is ordered as the exercise sorts, and that each count is the number of
-         * the selected category's {@code film_category} links.
+         * Asserts that a page of the given size is ordered as the exercise sorts, and that each
+         * count is the number of the selected category's {@code film_category} links.
          *
          * @param size the size of the page.
          */
         @ValueSource(ints = {1, 5, 16})
         @ParameterizedTest
         void __(final int size) {
-            final var page = repositoryInstance().selectFilmCounts(PageRequest.of(0, size, BY_FILMS_DESC_THEN_NAME));
+            final var page = repositoryInstance().selectFilmCounts(
+                    PageRequest.of(0, size, BY_FILMS_DESC_THEN_NAME));
             assertPage(page);
             assertThat(page.getContent())
                     .hasSize(size)
-                    .isSortedAccordingTo(Comparator.comparing(column("films", Long.class)).reversed()
-                                                 .thenComparing(column("category", Category.class, Category::getName)))
+                    .isSortedAccordingTo(
+                            Comparator.comparing(column("films", Long.class)).reversed()
+                                    .thenComparing(
+                                            column("category", Category.class, Category::getName)))
                     .allSatisfy(c -> {
-                        assertThat(filmsOf(c.get("category", Category.class))).isEqualTo(c.get("films", Long.class));
+                        assertThat(filmsOf(c.get("category", Category.class))).isEqualTo(
+                                c.get("films", Long.class));
                     });
         }
     }
 
     /**
-     * Tests {@link CategoryRepository#selectAverageLengths(Pageable)} ({@code SAKILA_CATEGORY_I_02}).
+     * Tests {@link CategoryRepository#selectAverageLengths(Pageable)}
+     * ({@code SAKILA_CATEGORY_I_02}).
      */
     @Nested
     class SelectAverageLengths_Test {
 
-        private static final Sort BY_AVERAGE_LENGTH_DESC = Sort.by(Sort.Direction.DESC, "averageLength");
+        private static final Sort BY_AVERAGE_LENGTH_DESC =
+                Sort.by(Sort.Direction.DESC, "averageLength");
 
         /**
-         * Asserts that the first page of one, the longest average first, holds {@code Sports}, with {@code 128.20}, as
-         * the exercise's expected output shows, of sixteen in all.
+         * Asserts that the first page of one, the longest average first, holds {@code Sports}, with
+         * {@code 128.20}, as the exercise's expected output shows, of sixteen in all.
          */
         @Test
         void __Exercise() {
-            final var page = repositoryInstance().selectAverageLengths(PageRequest.of(0, 1, BY_AVERAGE_LENGTH_DESC));
+            final var page = repositoryInstance().selectAverageLengths(
+                    PageRequest.of(0, 1, BY_AVERAGE_LENGTH_DESC));
             assertThat(page.getContent())
                     .extracting(column("category", Category.class, Category::getName),
                                 column("averageLength", Double.class))
@@ -295,8 +312,8 @@ class CategoryRepository_SpringBootIT
         }
 
         /**
-         * Asserts that pages of the given size, the longest average first, walk every category once, in descending
-         * order of the average.
+         * Asserts that pages of the given size, the longest average first, walk every category
+         * once, in descending order of the average.
          *
          * @param size the size of a page.
          */
@@ -321,7 +338,8 @@ class CategoryRepository_SpringBootIT
     }
 
     /**
-     * Tests {@link CategoryRepository#selectRunningFilmCounts(Pageable)} ({@code SAKILA_CATEGORY_A_01}).
+     * Tests {@link CategoryRepository#selectRunningFilmCounts(Pageable)}
+     * ({@code SAKILA_CATEGORY_A_01}).
      */
     @Nested
     class SelectRunningFilmCounts_Test {
@@ -330,16 +348,18 @@ class CategoryRepository_SpringBootIT
                 Sort.by(Sort.Direction.DESC, "films").and(Sort.by("c.name"));
 
         /**
-         * Asserts that the rows, the most films first and then by name, are the sixteen of the exercise's expected
-         * output.
+         * Asserts that the rows, the most films first and then by name, are the sixteen of the
+         * exercise's expected output.
          */
         @Test
         void __Exercise() {
             final var page = repositoryInstance().selectRunningFilmCounts(
                     PageRequest.of(0, 16, BY_FILMS_DESC_THEN_NAME));
             assertThat(page.getContent())
-                    .extracting(column("category", Category.class, Category::getName), column("films", Long.class),
-                                column("runningFilms", Long.class), column("runningPercent", Double.class))
+                    .extracting(column("category", Category.class, Category::getName),
+                                column("films", Long.class),
+                                column("runningFilms", Long.class),
+                                column("runningPercent", Double.class))
                     .containsExactly(
                             tuple("Sports", 74L, 74L, 7.4d),
                             tuple("Foreign", 73L, 147L, 14.7d),
@@ -362,21 +382,24 @@ class CategoryRepository_SpringBootIT
         }
 
         /**
-         * Asserts that the running total of each row is the one before it plus the row's own number of films, and that
-         * a page of the given size, the next pages with it, carries on from where the last left.
+         * Asserts that the running total of each row is the one before it plus the row's own number
+         * of films, and that a page of the given size, the next pages with it, carries on from
+         * where the last left.
          *
          * @param size the size of a page.
          */
         @ValueSource(ints = {1, 5})
         @ParameterizedTest
         void __Paged(final int size) {
-            var page = repositoryInstance().selectRunningFilmCounts(PageRequest.of(0, size, BY_FILMS_DESC_THEN_NAME));
+            var page = repositoryInstance().selectRunningFilmCounts(
+                    PageRequest.of(0, size, BY_FILMS_DESC_THEN_NAME));
             long running = 0L;
             while (true) {
                 for (final var row : page.getContent()) {
                     running += row.get("films", Long.class);
                     assertThat(row.get("runningFilms", Long.class))
-                            .as("running films of %s", row.get("category", Category.class).getName())
+                            .as("running films of %s",
+                                row.get("category", Category.class).getName())
                             .isEqualTo(running);
                 }
                 if (!page.hasNext()) {
@@ -389,7 +412,8 @@ class CategoryRepository_SpringBootIT
     }
 
     /**
-     * Tests {@link CategoryRepository#selectMostRentedFilms(Pageable)} ({@code SAKILA_CATEGORY_A_02}).
+     * Tests {@link CategoryRepository#selectMostRentedFilms(Pageable)}
+     * ({@code SAKILA_CATEGORY_A_02}).
      */
     @Nested
     class SelectMostRentedFilms_Test {
@@ -399,7 +423,8 @@ class CategoryRepository_SpringBootIT
          */
         @Test
         void __Exercise() {
-            final var page = repositoryInstance().selectMostRentedFilms(PageRequest.of(0, 16, Sort.by("c.name")));
+            final var page = repositoryInstance().selectMostRentedFilms(
+                    PageRequest.of(0, 16, Sort.by("c.name")));
             assertThat(page.getContent())
                     .extracting(column("category", Category.class, Category::getName),
                                 column("film", Film.class, Film::getTitle),
@@ -426,17 +451,21 @@ class CategoryRepository_SpringBootIT
         }
 
         /**
-         * Asserts that pages of five by name hold one row per category, five, five, five and one, sixteen in all.
+         * Asserts that pages of five by name hold one row per category, five, five, five and one,
+         * sixteen in all.
          */
         @Test
         void __Paged() {
             final var names = new ArrayList<String>();
-            var page = repositoryInstance().selectMostRentedFilms(PageRequest.of(0, 5, Sort.by("c.name")));
+            var page = repositoryInstance().selectMostRentedFilms(
+                    PageRequest.of(0, 5, Sort.by("c.name")));
             assertThat(page.getTotalElements()).isEqualTo(16L);
-            names.addAll(page.map(column("category", Category.class, Category::getName)).getContent());
+            names.addAll(
+                    page.map(column("category", Category.class, Category::getName)).getContent());
             while (page.hasNext()) {
                 page = repositoryInstance().selectMostRentedFilms(page.nextPageable());
-                names.addAll(page.map(column("category", Category.class, Category::getName)).getContent());
+                names.addAll(page.map(column("category", Category.class, Category::getName))
+                                     .getContent());
             }
             assertThat(names).containsExactlyElementsOf(NAMES);
         }

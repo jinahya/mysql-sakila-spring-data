@@ -18,13 +18,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Tests {@link ActorInfoRepository} in a JPA slice, over an embedded H2, through {@link _Repository_DataJpaTest}.
+ * Tests {@link ActorInfoRepository} in a JPA slice, over an embedded H2, through
+ * {@link _Repository_DataJpaTest}.
  * <p>
- * See that class for how the slice is configured. The slice generates {@code actor_info} as a table, from the entity,
- * but every column of it except the id is read-only ({@code insertable = false}), so no row can be persisted into it,
- * and the fixtures do not try. Each test here runs its query against the empty table, and asserts an empty result, or
- * a zero: that proves the JPQL, or the criteria query, is valid for Hibernate and runs on H2, which is what a slice
- * test of a view can prove. What the queries return on the sample data is for {@link ActorInfoRepository_SpringBootIT}.
+ * See that class for how the slice is configured. The slice generates {@code actor_info} as a
+ * table, from the entity, but every column of it except the id is read-only
+ * ({@code insertable = false}), so no row can be persisted into it, and the fixtures do not try.
+ * Each test here runs its query against the empty table, and asserts an empty result, or a zero:
+ * that proves the JPQL, or the criteria query, is valid for Hibernate and runs on H2, which is what
+ * a slice test of a view can prove. What the queries return on the sample data is for
+ * {@link ActorInfoRepository_SpringBootIT}.
  *
  * @see ActorInfoRepository_SpringBootIT
  */
@@ -32,8 +35,8 @@ class ActorInfoRepository_DataJpaTest
         extends _Repository_DataJpaTest<ActorInfoRepository, ActorInfo, Integer> {
 
     /**
-     * A sort by id; by the attribute's name, since the metamodel's {@code ActorInfo_.actorId} is filled in only once
-     * the context is up, after this class is loaded.
+     * A sort by id; by the attribute's name, since the metamodel's {@code ActorInfo_.actorId} is
+     * filled in only once the context is up, after this class is loaded.
      */
     private static final Sort BY_ACTOR_ID = Sort.by(Sort.Direction.ASC, ActorInfo_.ACTOR_ID);
 
@@ -55,7 +58,8 @@ class ActorInfoRepository_DataJpaTest
         /**
          * Asserts that finding by a random id returns an empty optional.
          * <p>
-         * The table is empty, so any id misses; the id is drawn from the whole {@code int} range all the same.
+         * The table is empty, so any id misses; the id is drawn from the whole {@code int} range
+         * all the same.
          */
         @Test
         void _Empty_Unknown() {
@@ -68,7 +72,8 @@ class ActorInfoRepository_DataJpaTest
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * Tests {@link ActorInfoRepository#selectFilmInfoHeadByActorId(int, int)} ({@code SAKILA_ACTOR_INFO_B_01}).
+     * Tests {@link ActorInfoRepository#selectFilmInfoHeadByActorId(int, int)}
+     * ({@code SAKILA_ACTOR_INFO_B_01}).
      */
     @Nested
     class SelectFilmInfoHeadByActorId_Test {
@@ -76,8 +81,8 @@ class ActorInfoRepository_DataJpaTest
         /**
          * Asserts that the id of the exercise, {@code 1}, streams nothing from the empty table.
          * <p>
-         * The query runs, with its {@code SUBSTRING} on the {@code film_info}, inside the test's transaction, and finds
-         * no row; that it runs is what the test proves.
+         * The query runs, with its {@code SUBSTRING} on the {@code film_info}, inside the test's
+         * transaction, and finds no row; that it runs is what the test proves.
          */
         @Test
         void _Empty_Unknown() {
@@ -87,8 +92,8 @@ class ActorInfoRepository_DataJpaTest
         }
 
         /**
-         * Runs the lookup with the test's transaction suspended, and asserts that Spring Data refuses it, with
-         * {@link InvalidDataAccessApiUsageException}, before any query runs.
+         * Runs the lookup with the test's transaction suspended, and asserts that Spring Data
+         * refuses it, with {@link InvalidDataAccessApiUsageException}, before any query runs.
          */
         @Transactional(propagation = Propagation.NOT_SUPPORTED)
         @Test
@@ -103,14 +108,15 @@ class ActorInfoRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link ActorInfoRepository#countByFilmInfoCategory(String)} ({@code SAKILA_ACTOR_INFO_B_02}).
+     * Tests {@link ActorInfoRepository#countByFilmInfoCategory(String)}
+     * ({@code SAKILA_ACTOR_INFO_B_02}).
      */
     @Nested
     class CountByFilmInfoCategory_Test {
 
         /**
-         * Asserts that the category of the exercise, {@code Horror}, counts zero on the empty table, as does a name no
-         * category has.
+         * Asserts that the category of the exercise, {@code Horror}, counts zero on the empty
+         * table, as does a name no category has.
          */
         @Test
         void _Zero_Empty() {
@@ -127,38 +133,43 @@ class ActorInfoRepository_DataJpaTest
     class FindAllByFilmInfoContainingOrderByActorIdAsc_Test {
 
         /**
-         * Asserts that the title of the exercise, {@code ACADEMY DINOSAUR}, finds nothing in the empty table, as does a
-         * title no film has.
+         * Asserts that the title of the exercise, {@code ACADEMY DINOSAUR}, finds nothing in the
+         * empty table, as does a title no film has.
          */
         @Test
         void _Empty_Unknown() {
-            assertThat(repositoryInstance().findAllByFilmInfoContainingOrderByActorIdAsc("ACADEMY DINOSAUR")).isEmpty();
-            assertThat(repositoryInstance().findAllByFilmInfoContainingOrderByActorIdAsc(randomName())).isEmpty();
+            assertThat(repositoryInstance().findAllByFilmInfoContainingOrderByActorIdAsc(
+                    "ACADEMY DINOSAUR")).isEmpty();
+            assertThat(repositoryInstance().findAllByFilmInfoContainingOrderByActorIdAsc(
+                    randomName())).isEmpty();
         }
 
         /**
-         * Asserts that a {@code null} title is refused with {@link IllegalArgumentException}, before any query runs.
+         * Asserts that a {@code null} title is refused with {@link IllegalArgumentException},
+         * before any query runs.
          */
         @Test
         @SuppressWarnings({"DataFlowIssue", "NullAway"})
         void _IllegalArgumentException_Null() {
-            assertThatThrownBy(() -> repositoryInstance().findAllByFilmInfoContainingOrderByActorIdAsc(null))
+            assertThatThrownBy(
+                    () -> repositoryInstance().findAllByFilmInfoContainingOrderByActorIdAsc(null))
                     .isInstanceOf(IllegalArgumentException.class);
         }
     }
 
     /**
-     * Tests {@link ActorInfoRepository#selectRowCounts(Pageable)} ({@code SAKILA_ACTOR_INFO_I_01}).
+     * Tests {@link ActorInfoRepository#selectRowCounts(Pageable)}
+     * ({@code SAKILA_ACTOR_INFO_I_01}).
      */
     @Nested
     class SelectRowCounts_Test {
 
         /**
-         * Asserts that the select has its one row even over the empty view, and that both counts are zero: the view
-         * is empty, and no actor is saved by this test.
+         * Asserts that the select has its one row even over the empty view, and that both counts
+         * are zero: the view is empty, and no actor is saved by this test.
          * <p>
-         * The second count is a subquery in the select, on {@code Actor}; the test proves that Hibernate accepts it
-         * there and that H2 runs it.
+         * The second count is a subquery in the select, on {@code Actor}; the test proves that
+         * Hibernate accepts it there and that H2 runs it.
          */
         @Test
         void _Zero_Empty() {
@@ -170,8 +181,8 @@ class ActorInfoRepository_DataJpaTest
         }
 
         /**
-         * Asserts that a page of one holds the one row, and that the count query, which runs because the page is
-         * full, counts one row in all, so there is no next page.
+         * Asserts that a page of one holds the one row, and that the count query, which runs
+         * because the page is full, counts one row in all, so there is no next page.
          */
         @Test
         void __Paged() {
@@ -183,7 +194,8 @@ class ActorInfoRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link ActorInfoRepository#listCoveringEveryCategory(Pageable)} ({@code SAKILA_ACTOR_INFO_I_02}).
+     * Tests {@link ActorInfoRepository#listCoveringEveryCategory(Pageable)}
+     * ({@code SAKILA_ACTOR_INFO_I_02}).
      */
     @Nested
     class ListCoveringEveryCategory_Test {
@@ -191,27 +203,32 @@ class ActorInfoRepository_DataJpaTest
         /**
          * Asserts that the empty table lists an empty page, with no elements in all.
          * <p>
-         * The criteria query runs, with its {@code LENGTH} and {@code REPLACE} on the {@code film_info} and its
-         * subquery on {@code Category}; that it runs is what the test proves.
+         * The criteria query runs, with its {@code LENGTH} and {@code REPLACE} on the
+         * {@code film_info} and its subquery on {@code Category}; that it runs is what the test
+         * proves.
          */
         @Test
         void _Empty_Empty() {
-            final var page = repositoryInstance().listCoveringEveryCategory(PageRequest.of(0, 5, BY_ACTOR_ID));
+            final var page = repositoryInstance().listCoveringEveryCategory(
+                    PageRequest.of(0, 5, BY_ACTOR_ID));
             assertThat(page).isEmpty();
             assertThat(page.getTotalElements()).isZero();
         }
     }
 
     /**
-     * Tests {@link ActorInfoRepository#selectActorCountsByCategoryCount()} ({@code SAKILA_ACTOR_INFO_I_03}).
+     * Tests {@link ActorInfoRepository#selectActorCountsByCategoryCount()}
+     * ({@code SAKILA_ACTOR_INFO_I_03}).
      */
     @Nested
     class SelectActorCountsByCategoryCount_Test {
 
         /**
-         * Asserts that the native query runs on H2 too, over the empty table, and selects no group.
+         * Asserts that the native query runs on H2 too, over the empty table, and selects no
+         * group.
          * <p>
-         * The SQL is not MySQL's own: H2 has {@code CHAR_LENGTH} and {@code REPLACE}, and groups by a select alias.
+         * The SQL is not MySQL's own: H2 has {@code CHAR_LENGTH} and {@code REPLACE}, and groups by
+         * a select alias.
          */
         @Test
         void _Empty_Empty() {
@@ -220,7 +237,8 @@ class ActorInfoRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link ActorInfoRepository#listDisagreeingOnCategories(Pageable)} ({@code SAKILA_ACTOR_INFO_A_01}).
+     * Tests {@link ActorInfoRepository#listDisagreeingOnCategories(Pageable)}
+     * ({@code SAKILA_ACTOR_INFO_A_01}).
      */
     @Nested
     class ListDisagreeingOnCategories_Test {
@@ -228,18 +246,20 @@ class ActorInfoRepository_DataJpaTest
         /**
          * Asserts that the empty table lists an empty page, with no elements in all.
          * <p>
-         * The criteria query runs, with its correlated subquery from {@code FilmActor} through {@code Film} to
-         * {@code FilmCategory}; that it runs is what the test proves.
+         * The criteria query runs, with its correlated subquery from {@code FilmActor} through
+         * {@code Film} to {@code FilmCategory}; that it runs is what the test proves.
          */
         @Test
         void _Empty_Empty() {
-            final var page = repositoryInstance().listDisagreeingOnCategories(PageRequest.of(0, 5, BY_ACTOR_ID));
+            final var page = repositoryInstance().listDisagreeingOnCategories(
+                    PageRequest.of(0, 5, BY_ACTOR_ID));
             assertThat(page).isEmpty();
             assertThat(page.getTotalElements()).isZero();
         }
 
         /**
-         * Asserts that a {@code null} pageable is refused with {@link IllegalArgumentException}, before any query runs.
+         * Asserts that a {@code null} pageable is refused with {@link IllegalArgumentException},
+         * before any query runs.
          */
         @Test
         @SuppressWarnings({"DataFlowIssue", "NullAway"})

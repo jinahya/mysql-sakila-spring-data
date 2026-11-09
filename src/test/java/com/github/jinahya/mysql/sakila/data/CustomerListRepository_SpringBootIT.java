@@ -35,12 +35,14 @@ import static org.assertj.core.api.Assertions.tuple;
 import static org.assertj.core.api.Assumptions.assumeThat;
 
 /**
- * Tests {@link CustomerListRepository} against the Sakila database, through {@link _Repository_SpringBootIT}.
+ * Tests {@link CustomerListRepository} against the Sakila database, through
+ * {@link _Repository_SpringBootIT}.
  * <p>
- * See that class for the context and the transactions. The tests here only read: the fixture is a few rows of the
- * view, selected once in {@link #__()}, and each test checks a query of the exercises against them, or against the
- * {@code customer} table the view is built on, read through {@link CustomerRepository}. The base's own tests, such as
- * its {@code findById} round trips, run here too.
+ * See that class for the context and the transactions. The tests here only read: the fixture is a
+ * few rows of the view, selected once in {@link #__()}, and each test checks a query of the
+ * exercises against them, or against the {@code customer} table the view is built on, read through
+ * {@link CustomerRepository}. The base's own tests, such as its {@code findById} round trips, run
+ * here too.
  * <p>
  * Needs the database of {@code application.yaml} up, with Sakila loaded; see that file.
  *
@@ -53,8 +55,8 @@ class CustomerListRepository_SpringBootIT
     private static List<CustomerList> entities;
 
     /**
-     * A sort by id; by the attribute's name, since the metamodel's {@code CustomerList_.id} is filled in only once the
-     * context is up, after this class is loaded.
+     * A sort by id; by the attribute's name, since the metamodel's {@code CustomerList_.id} is
+     * filled in only once the context is up, after this class is loaded.
      */
     private static final Sort BY_ID = Sort.by(Sort.Direction.ASC, CustomerList_.ID);
 
@@ -72,13 +74,14 @@ class CustomerListRepository_SpringBootIT
     /**
      * Selects the first five rows of the view, by id, as the fixture for the parameterized tests.
      * <p>
-     * Ordered by id so that the rows are the ones of the first customers the init scripts put there. Runs once per
-     * class, which {@link TestInstance.Lifecycle#PER_CLASS} allows to be an instance method, so the autowired
-     * repository is already there; the result goes into a static field so that the static method sources of the
-     * nested classes can reach it. The rows are loaded outside any transaction, so they are detached.
+     * Ordered by id so that the rows are the ones of the first customers the init scripts put
+     * there. Runs once per class, which {@link TestInstance.Lifecycle#PER_CLASS} allows to be an
+     * instance method, so the autowired repository is already there; the result goes into a static
+     * field so that the static method sources of the nested classes can reach it. The rows are
+     * loaded outside any transaction, so they are detached.
      * <p>
-     * An empty view aborts the tests of this class rather than failing them: it is the fixture that is missing, not
-     * the behaviour under test that is wrong.
+     * An empty view aborts the tests of this class rather than failing them: it is the fixture that
+     * is missing, not the behaviour under test that is wrong.
      */
     @BeforeAll
     void __() {
@@ -113,21 +116,22 @@ class CustomerListRepository_SpringBootIT
     }
 
     /**
-     * Counts the customers of the {@code customer} table whose address is in the specified country, through
-     * {@link CustomerRepository}, along the address chain the view joins.
+     * Counts the customers of the {@code customer} table whose address is in the specified country,
+     * through {@link CustomerRepository}, along the address chain the view joins.
      *
      * @param country the name of the country.
      * @return the number of customers in the country.
      */
     private long countCustomersInCountry(final String country) {
         final Specification<Customer> specification = (r, q, b) -> b.equal(
-                r.get(Customer_.address).get(Address_.city).get(City_.country).get(Country_.country), country);
+                r.get(Customer_.address).get(Address_.city).get(City_.country)
+                        .get(Country_.country), country);
         return customerRepository.count(specification);
     }
 
     /**
-     * Asserts that the specified page is consistent with itself: no more content than its size, and at least as many
-     * elements in all as in its content.
+     * Asserts that the specified page is consistent with itself: no more content than its size, and
+     * at least as many elements in all as in its content.
      *
      * @param page the page.
      * @param <T>  the type of the elements.
@@ -140,7 +144,8 @@ class CustomerListRepository_SpringBootIT
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * Tests {@link CustomerListRepository#findAllByCountryOrderByIdAsc(String)} ({@code SAKILA_CUSTOMER_LIST_B_01}).
+     * Tests {@link CustomerListRepository#findAllByCountryOrderByIdAsc(String)}
+     * ({@code SAKILA_CUSTOMER_LIST_B_01}).
      */
     @Nested
     class FindAllByCountryOrderByIdAsc_Test {
@@ -150,8 +155,9 @@ class CustomerListRepository_SpringBootIT
         }
 
         /**
-         * Asserts, in one transaction, that the country of the exercise, {@code Japan}, streams the thirty-one rows the
-         * exercise's SQL gives, by id, and that a name no country has streams none.
+         * Asserts, in one transaction, that the country of the exercise, {@code Japan}, streams the
+         * thirty-one rows the exercise's SQL gives, by id, and that a name no country has streams
+         * none.
          */
         @Transactional
         @Test
@@ -161,7 +167,8 @@ class CustomerListRepository_SpringBootIT
                 assertThat(list).hasSize(31);
                 assertThat(list)
                         .extracting(CustomerList::getId, CustomerList::getName)
-                        .startsWith(tuple(1, "MARY SMITH"), tuple(11, "LISA ANDERSON"), tuple(29, "ANGELA HERNANDEZ"))
+                        .startsWith(tuple(1, "MARY SMITH"), tuple(11, "LISA ANDERSON"),
+                                    tuple(29, "ANGELA HERNANDEZ"))
                         .endsWith(tuple(574, "JULIAN VEST"));
             }
             try (var nonesuch = repositoryInstance().findAllByCountryOrderByIdAsc("Nonesuch")) {
@@ -170,11 +177,12 @@ class CustomerListRepository_SpringBootIT
         }
 
         /**
-         * Asserts, in one transaction, that the country of a selected row streams rows of that country only, by id as
-         * the query orders them, the selected row among them, as many as the {@code customer} table has in that
-         * country along its address chain.
+         * Asserts, in one transaction, that the country of a selected row streams rows of that
+         * country only, by id as the query orders them, the selected row among them, as many as the
+         * {@code customer} table has in that country along its address chain.
          *
-         * @param country the country of one of the rows selected in {@link CustomerListRepository_SpringBootIT#__()}.
+         * @param country the country of one of the rows selected in
+         *                {@link CustomerListRepository_SpringBootIT#__()}.
          */
         @Transactional
         @MethodSource("countries")
@@ -193,13 +201,15 @@ class CustomerListRepository_SpringBootIT
         }
 
         /**
-         * Calls the method with no transaction around the test, and asserts that Spring Data refuses it.
+         * Calls the method with no transaction around the test, and asserts that Spring Data
+         * refuses it.
          * <p>
-         * A stream has to be consumed inside a transaction the caller opened. The repository would open one of its own,
-         * but that one ends when the method returns, so the check runs before the query, and throws
-         * {@link InvalidDataAccessApiUsageException}.
+         * A stream has to be consumed inside a transaction the caller opened. The repository would
+         * open one of its own, but that one ends when the method returns, so the check runs before
+         * the query, and throws {@link InvalidDataAccessApiUsageException}.
          *
-         * @param country the country of one of the rows selected in {@link CustomerListRepository_SpringBootIT#__()}.
+         * @param country the country of one of the rows selected in
+         *                {@link CustomerListRepository_SpringBootIT#__()}.
          */
         @MethodSource("countries")
         @ParameterizedTest
@@ -228,7 +238,8 @@ class CustomerListRepository_SpringBootIT
     }
 
     /**
-     * Tests {@link CustomerListRepository#selectCustomerCountsBySid(Pageable)} ({@code SAKILA_CUSTOMER_LIST_B_02}).
+     * Tests {@link CustomerListRepository#selectCustomerCountsBySid(Pageable)}
+     * ({@code SAKILA_CUSTOMER_LIST_B_02}).
      */
     @Nested
     class SelectCustomerCountsBySid_Test {
@@ -240,16 +251,17 @@ class CustomerListRepository_SpringBootIT
         }
 
         /**
-         * Asserts that a page of the given size, by {@code sid} as the exercise sorts, is ordered so, that each count
-         * is the number of customers of that store in the {@code customer} table, and that the groups are as many as
-         * the distinct {@code SID}s of the view.
+         * Asserts that a page of the given size, by {@code sid} as the exercise sorts, is ordered
+         * so, that each count is the number of customers of that store in the {@code customer}
+         * table, and that the groups are as many as the distinct {@code SID}s of the view.
          *
          * @param size the size of the page.
          */
         @ValueSource(ints = {1, 2, 5})
         @ParameterizedTest
         void __(final int size) {
-            final var page = repositoryInstance().selectCustomerCountsBySid(PageRequest.of(0, size, BY_SID));
+            final var page =
+                    repositoryInstance().selectCustomerCountsBySid(PageRequest.of(0, size, BY_SID));
             assertPage(page);
             assertThat(page.getContent())
                     .isNotEmpty()
@@ -267,14 +279,17 @@ class CustomerListRepository_SpringBootIT
         }
 
         /**
-         * Asserts that the store of a selected row is one of the groups, with as many customers as the store has.
+         * Asserts that the store of a selected row is one of the groups, with as many customers as
+         * the store has.
          *
-         * @param sid the {@code SID} of one of the rows selected in {@link CustomerListRepository_SpringBootIT#__()}.
+         * @param sid the {@code SID} of one of the rows selected in
+         *            {@link CustomerListRepository_SpringBootIT#__()}.
          */
         @MethodSource("sids")
         @ParameterizedTest
         void __Selected(final int sid) {
-            final var all = repositoryInstance().selectCustomerCountsBySid(Pageable.unpaged(BY_SID));
+            final var all =
+                    repositoryInstance().selectCustomerCountsBySid(Pageable.unpaged(BY_SID));
             assertThat(all.getContent())
                     .extracting(column("sid", Integer.class), column("customers", Long.class))
                     .contains(tuple(sid, countCustomersOfStore(sid)));
@@ -282,15 +297,16 @@ class CustomerListRepository_SpringBootIT
     }
 
     /**
-     * Tests {@link CustomerListRepository#selectNotesCounts()} ({@code SAKILA_CUSTOMER_LIST_B_03}).
+     * Tests {@link CustomerListRepository#selectNotesCounts()}
+     * ({@code SAKILA_CUSTOMER_LIST_B_03}).
      */
     @Nested
     class SelectNotesCounts_Test {
 
         /**
-         * Asserts that the list holds the two rows the exercise's SQL gives, the empty notes first, as the query
-         * orders them, that the {@code active} count is the number of active customers of the {@code customer} table,
-         * and that the two add up to the rows of the view.
+         * Asserts that the list holds the two rows the exercise's SQL gives, the empty notes first,
+         * as the query orders them, that the {@code active} count is the number of active customers
+         * of the {@code customer} table, and that the two add up to the rows of the view.
          */
         @Test
         void __() {
@@ -299,14 +315,16 @@ class CustomerListRepository_SpringBootIT
                     .extracting(column("notes", String.class), column("customers", Long.class))
                     .containsExactly(tuple("", 15L), tuple("active", 584L));
             final Specification<Customer> active = (r, q, b) -> b.isTrue(r.get(Customer_.active));
-            assertThat(list.getLast().get("customers", Long.class)).isEqualTo(customerRepository.count(active));
+            assertThat(list.getLast().get("customers", Long.class)).isEqualTo(
+                    customerRepository.count(active));
             assertThat(list.stream().mapToLong(c -> c.get("customers", Long.class)).sum())
                     .isEqualTo(repositoryInstance().count());
         }
     }
 
     /**
-     * Tests {@link CustomerListRepository#selectRowCounts(Pageable)} ({@code SAKILA_CUSTOMER_LIST_I_01}).
+     * Tests {@link CustomerListRepository#selectRowCounts(Pageable)}
+     * ({@code SAKILA_CUSTOMER_LIST_I_01}).
      */
     @Nested
     class SelectRowCounts_Test {
@@ -318,38 +336,46 @@ class CustomerListRepository_SpringBootIT
         }
 
         /**
-         * Asserts that the one row holds the two counts the exercise's SQL gives, equal, as the exercise checks, and
-         * that a page past it is empty, with the one row in all, which the count query says.
+         * Asserts that the one row holds the two counts the exercise's SQL gives, equal, as the
+         * exercise checks, and that a page past it is empty, with the one row in all, which the
+         * count query says.
          */
         @Test
         void __() {
-            final var page = repositoryInstance().selectRowCounts(PageRequest.of(0, 1, BY_CUSTOMERS));
+            final var page =
+                    repositoryInstance().selectRowCounts(PageRequest.of(0, 1, BY_CUSTOMERS));
             assertPage(page);
             assertThat(page.getContent())
-                    .extracting(column("customerLists", Long.class), column("customers", Long.class))
+                    .extracting(column("customerLists", Long.class),
+                                column("customers", Long.class))
                     .containsExactly(tuple(599L, 599L));
-            final var next = repositoryInstance().selectRowCounts(PageRequest.of(1, 1, BY_CUSTOMERS));
+            final var next =
+                    repositoryInstance().selectRowCounts(PageRequest.of(1, 1, BY_CUSTOMERS));
             assertThat(next.getContent()).isEmpty();
             assertThat(next.getTotalElements()).isEqualTo(1L);
         }
 
         /**
-         * Asserts that the view has as many rows as the {@code customer} table, as the exercise checks, that each
-         * count is what the view's own repository, and {@link CustomerRepository}, count, and that the customers the
-         * view puts in a selected row's store are as many as the table has there.
+         * Asserts that the view has as many rows as the {@code customer} table, as the exercise
+         * checks, that each count is what the view's own repository, and
+         * {@link CustomerRepository}, count, and that the customers the view puts in a selected
+         * row's store are as many as the table has there.
          *
-         * @param sid the {@code SID} of one of the rows selected in {@link CustomerListRepository_SpringBootIT#__()}.
+         * @param sid the {@code SID} of one of the rows selected in
+         *            {@link CustomerListRepository_SpringBootIT#__()}.
          */
         @MethodSource("sids")
         @ParameterizedTest
         void __(final int sid) {
-            final var counts = repositoryInstance().selectRowCounts(Pageable.unpaged()).getContent().getFirst();
+            final var counts = repositoryInstance().selectRowCounts(Pageable.unpaged()).getContent()
+                    .getFirst();
             final var customerLists = counts.get("customerLists", Long.class);
             final var customers = counts.get("customers", Long.class);
             assertThat(customerLists).isPositive().isEqualTo(customers);
             assertThat(customerLists).isEqualTo(repositoryInstance().count());
             assertThat(customers).isEqualTo(customerRepository.count());
-            final Specification<CustomerList> ofStore = (r, q, b) -> b.equal(r.get(CustomerList_.sid), sid);
+            final Specification<CustomerList> ofStore =
+                    (r, q, b) -> b.equal(r.get(CustomerList_.sid), sid);
             assertThat(repositoryInstance().count(ofStore)).isEqualTo(countCustomersOfStore(sid));
         }
 
@@ -373,9 +399,9 @@ class CustomerListRepository_SpringBootIT
         private static final Sort BY_CITY_THEN_COUNTRY = Sort.by("city").and(Sort.by("country"));
 
         /**
-         * Asserts that more than one customer, by {@code city}, then by {@code country}, as the exercise sorts, selects
-         * the two cities the exercise's SQL gives, and that each count is what a {@link Specification} on the city and
-         * the country counts in the view.
+         * Asserts that more than one customer, by {@code city}, then by {@code country}, as the
+         * exercise sorts, selects the two cities the exercise's SQL gives, and that each count is
+         * what a {@link Specification} on the city and the country counts in the view.
          */
         @Test
         void __() {
@@ -391,22 +417,26 @@ class CustomerListRepository_SpringBootIT
                 final Specification<CustomerList> in = (r, q, b) -> b.and(
                         b.equal(r.get(CustomerList_.city), c.get("city", String.class)),
                         b.equal(r.get(CustomerList_.country), c.get("country", String.class)));
-                assertThat(repositoryInstance().count(in)).isEqualTo(c.get("customers", Long.class));
+                assertThat(repositoryInstance().count(in)).isEqualTo(
+                        c.get("customers", Long.class));
             });
         }
 
         /**
-         * Asserts that pages of one walk the same two cities, two in all, which the count query says, and that no city
-         * has more than two customers.
+         * Asserts that pages of one walk the same two cities, two in all, which the count query
+         * says, and that no city has more than two customers.
          */
         @Test
         void __Paged() {
             final var page0 = repositoryInstance().selectCitiesWithMoreCustomersThan(
                     1L, PageRequest.of(0, 1, BY_CITY_THEN_COUNTRY));
-            assertThat(page0.getContent()).extracting(column("city", String.class)).containsExactly("Aurora");
+            assertThat(page0.getContent()).extracting(column("city", String.class))
+                    .containsExactly("Aurora");
             assertThat(page0.getTotalElements()).isEqualTo(2L);
-            final var page1 = repositoryInstance().selectCitiesWithMoreCustomersThan(1L, page0.nextPageable());
-            assertThat(page1.getContent()).extracting(column("city", String.class)).containsExactly("London");
+            final var page1 = repositoryInstance().selectCitiesWithMoreCustomersThan(1L,
+                                                                                     page0.nextPageable());
+            assertThat(page1.getContent()).extracting(column("city", String.class))
+                    .containsExactly("London");
             assertThat(page1.hasNext()).isFalse();
             final var none = repositoryInstance().selectCitiesWithMoreCustomersThan(
                     2L, PageRequest.of(0, 1, BY_CITY_THEN_COUNTRY));
@@ -419,26 +449,30 @@ class CustomerListRepository_SpringBootIT
          */
         @Test
         void _IllegalArgumentException_NullPageable() {
-            assertThatThrownBy(() -> repositoryInstance().selectCitiesWithMoreCustomersThan(1L, null))
+            assertThatThrownBy(
+                    () -> repositoryInstance().selectCitiesWithMoreCustomersThan(1L, null))
                     .isInstanceOf(IllegalArgumentException.class);
         }
     }
 
     /**
-     * Tests {@link CustomerListRepository#selectTopThreeCountriesOfEachStore()} ({@code SAKILA_CUSTOMER_LIST_A_01}).
+     * Tests {@link CustomerListRepository#selectTopThreeCountriesOfEachStore()}
+     * ({@code SAKILA_CUSTOMER_LIST_A_01}).
      */
     @Nested
     class SelectTopThreeCountriesOfEachStore_Test {
 
         /**
-         * Asserts that the native query gives the six rows the exercise's SQL gives, in its order, and that each count
-         * is what a {@link Specification} on the store and the country counts in the view.
+         * Asserts that the native query gives the six rows the exercise's SQL gives, in its order,
+         * and that each count is what a {@link Specification} on the store and the country counts
+         * in the view.
          */
         @Test
         void __() {
             final var list = repositoryInstance().selectTopThreeCountriesOfEachStore();
             assertThat(list)
-                    .extracting(intColumn("sid"), column("country", String.class), longColumn("customers"))
+                    .extracting(intColumn("sid"), column("country", String.class),
+                                longColumn("customers"))
                     .containsExactly(
                             tuple(1, "India", 37L),
                             tuple(1, "China", 26L),
@@ -450,7 +484,8 @@ class CustomerListRepository_SpringBootIT
                 final Specification<CustomerList> in = (r, q, b) -> b.and(
                         b.equal(r.get(CustomerList_.sid), c.get("sid", Number.class).intValue()),
                         b.equal(r.get(CustomerList_.country), c.get("country", String.class)));
-                assertThat(repositoryInstance().count(in)).isEqualTo(c.get("customers", Number.class).longValue());
+                assertThat(repositoryInstance().count(in)).isEqualTo(
+                        c.get("customers", Number.class).longValue());
             });
         }
     }

@@ -18,27 +18,29 @@ import java.util.Optional;
 import java.util.function.LongSupplier;
 
 /**
- * The {@link NicerButSlowerFilmListRepository}, over a {@link org.springframework.jdbc.core.simple.JdbcClient}.
+ * The {@link NicerButSlowerFilmListRepository}, over a
+ * {@link org.springframework.jdbc.core.simple.JdbcClient}.
  * <p>
- * A {@code public}, {@code @Repository} bean of its own, not part of any Spring Data repository; see
- * {@link _NonEntityRepository} for how it gets registered, and {@link _NonEntityRepositoryImpl} for the client and the
- * exception translation.
+ * A {@code public}, {@code @Repository} bean of its own, not part of any Spring Data repository;
+ * see {@link _NonEntityRepository} for how it gets registered, and {@link _NonEntityRepositoryImpl}
+ * for the client and the exception translation.
  * <p>
- * A row maps into a {@link NicerButSlowerFilmList} through its public constructor, but by an explicit
- * {@link RowMapper} rather than by parameter name, for the reason {@link FilmListRepositoryImpl} gives: the
- * {@link NicerButSlowerFilmList#COLUMN_NAME_RATING rating} column holds the text of MySQL's {@code ENUM}, which is not
- * the name of the {@link Film.Rating} constant, so the mapper converts it by
- * {@link Film.Rating#valueOfColumnValue(String)}.
+ * A row maps into a {@link NicerButSlowerFilmList} through its public constructor, but by an
+ * explicit {@link RowMapper} rather than by parameter name, for the reason
+ * {@link FilmListRepositoryImpl} gives: the
+ * {@link NicerButSlowerFilmList#COLUMN_NAME_RATING rating} column holds the text of MySQL's
+ * {@code ENUM}, which is not the name of the {@link Film.Rating} constant, so the mapper converts
+ * it by {@link Film.Rating#valueOfColumnValue(String)}.
  * <p>
  * The exercise methods read their statements from {@code .sql} resources beside this class, named
  * {@code NICER_BUT_SLOWER_FILM_LIST_<METHOD>.sql} after the method
- * ({@code NICER_BUT_SLOWER_FILM_LIST_COUNT_DIFFERING_FROM_FILM_LIST.sql}, ...), each exercise's statement as
- * {@code EXERCISES.asciidoc} has it; the exercises that select whole rows map them by {@link #ROW_MAPPER} too.
- * {@link #listAll(Pageable)} writes its own statement in place. A page is selected as
- * {@link FilmListRepositoryImpl} selects one: an {@code ORDER BY} built from the {@link Pageable}'s {@link Sort}
- * through {@link #COLUMNS}, with {@code FID} last, {@code LIMIT ... OFFSET ...} from the page unless the
- * {@code Pageable} is unpaged, and a {@code COUNT(*)} of the same {@code WHERE} for the total, run only when the page
- * needs it.
+ * ({@code NICER_BUT_SLOWER_FILM_LIST_COUNT_DIFFERING_FROM_FILM_LIST.sql}, ...), each exercise's
+ * statement as {@code EXERCISES.asciidoc} has it; the exercises that select whole rows map them by
+ * {@link #ROW_MAPPER} too. {@link #listAll(Pageable)} writes its own statement in place. A page is
+ * selected as {@link FilmListRepositoryImpl} selects one: an {@code ORDER BY} built from the
+ * {@link Pageable}'s {@link Sort} through {@link #COLUMNS}, with {@code FID} last,
+ * {@code LIMIT ... OFFSET ...} from the page unless the {@code Pageable} is unpaged, and a
+ * {@code COUNT(*)} of the same {@code WHERE} for the total, run only when the page needs it.
  *
  * @see NicerButSlowerFilmListRepository
  * @see FilmListRepositoryImpl
@@ -49,30 +51,34 @@ public class NicerButSlowerFilmListRepositoryImpl
         implements NicerButSlowerFilmListRepository {
 
     /**
-     * Maps a row into a {@link NicerButSlowerFilmList}, column by column, converting the rating by its column value.
+     * Maps a row into a {@link NicerButSlowerFilmList}, column by column, converting the rating by
+     * its column value.
      */
-    static final RowMapper<NicerButSlowerFilmList> ROW_MAPPER = (rs, rowNum) -> new NicerButSlowerFilmList(
-            rs.getObject(NicerButSlowerFilmList.COLUMN_NAME_FID, Integer.class),
-            rs.getString(NicerButSlowerFilmList.COLUMN_NAME_TITLE),
-            rs.getString(NicerButSlowerFilmList.COLUMN_NAME_DESCRIPTION),
-            rs.getString(NicerButSlowerFilmList.COLUMN_NAME_CATEGORY),
-            rs.getBigDecimal(NicerButSlowerFilmList.COLUMN_NAME_PRICE),
-            rs.getObject(NicerButSlowerFilmList.COLUMN_NAME_LENGTH, Integer.class),
-            Optional.ofNullable(rs.getString(NicerButSlowerFilmList.COLUMN_NAME_RATING))
-                    .map(Film.Rating::valueOfColumnValue)
-                    .orElse(null),
-            rs.getString(NicerButSlowerFilmList.COLUMN_NAME_ACTORS)
-    );
+    static final RowMapper<NicerButSlowerFilmList> ROW_MAPPER =
+            (rs, rowNum) -> new NicerButSlowerFilmList(
+                    rs.getObject(NicerButSlowerFilmList.COLUMN_NAME_FID, Integer.class),
+                    rs.getString(NicerButSlowerFilmList.COLUMN_NAME_TITLE),
+                    rs.getString(NicerButSlowerFilmList.COLUMN_NAME_DESCRIPTION),
+                    rs.getString(NicerButSlowerFilmList.COLUMN_NAME_CATEGORY),
+                    rs.getBigDecimal(NicerButSlowerFilmList.COLUMN_NAME_PRICE),
+                    rs.getObject(NicerButSlowerFilmList.COLUMN_NAME_LENGTH, Integer.class),
+                    Optional.ofNullable(rs.getString(NicerButSlowerFilmList.COLUMN_NAME_RATING))
+                            .map(Film.Rating::valueOfColumnValue)
+                            .orElse(null),
+                    rs.getString(NicerButSlowerFilmList.COLUMN_NAME_ACTORS)
+            );
 
     /**
-     * The columns of the view, by the attribute of {@link NicerButSlowerFilmList} each maps to; what a {@link Sort}
-     * may name.
+     * The columns of the view, by the attribute of {@link NicerButSlowerFilmList} each maps to;
+     * what a {@link Sort} may name.
      */
     static final Map<String, String> COLUMNS = Map.of(
             NicerButSlowerFilmList.ATTRIBUTE_NAME_FID, NicerButSlowerFilmList.COLUMN_NAME_FID,
             NicerButSlowerFilmList.ATTRIBUTE_NAME_TITLE, NicerButSlowerFilmList.COLUMN_NAME_TITLE,
-            NicerButSlowerFilmList.ATTRIBUTE_NAME_DESCRIPTION, NicerButSlowerFilmList.COLUMN_NAME_DESCRIPTION,
-            NicerButSlowerFilmList.ATTRIBUTE_NAME_CATEGORY, NicerButSlowerFilmList.COLUMN_NAME_CATEGORY,
+            NicerButSlowerFilmList.ATTRIBUTE_NAME_DESCRIPTION,
+            NicerButSlowerFilmList.COLUMN_NAME_DESCRIPTION,
+            NicerButSlowerFilmList.ATTRIBUTE_NAME_CATEGORY,
+            NicerButSlowerFilmList.COLUMN_NAME_CATEGORY,
             NicerButSlowerFilmList.ATTRIBUTE_NAME_PRICE, NicerButSlowerFilmList.COLUMN_NAME_PRICE,
             NicerButSlowerFilmList.ATTRIBUTE_NAME_LENGTH, NicerButSlowerFilmList.COLUMN_NAME_LENGTH,
             NicerButSlowerFilmList.ATTRIBUTE_NAME_RATING, NicerButSlowerFilmList.COLUMN_NAME_RATING,
@@ -94,64 +100,78 @@ public class NicerButSlowerFilmListRepositoryImpl
                                          + " FROM " + NicerButSlowerFilmList.TABLE_NAME;
 
     /**
-     * The statement of {@link #listActorsOfFilmOne()}, {@code SAKILA_NICER_BUT_SLOWER_FILM_LIST_B_01}.
+     * The statement of {@link #listActorsOfFilmOne()},
+     * {@code SAKILA_NICER_BUT_SLOWER_FILM_LIST_B_01}.
      */
     private static final String SQL_LIST_ACTORS_OF_FILM_ONE =
-            sql(NicerButSlowerFilmListRepositoryImpl.class, "NICER_BUT_SLOWER_FILM_LIST_LIST_ACTORS_OF_FILM_ONE.sql");
+            sql(NicerButSlowerFilmListRepositoryImpl.class,
+                "NICER_BUT_SLOWER_FILM_LIST_LIST_ACTORS_OF_FILM_ONE.sql");
 
     /**
-     * The statement of {@link #countFilmsOfPenelopeGuiness()}, {@code SAKILA_NICER_BUT_SLOWER_FILM_LIST_B_02}.
+     * The statement of {@link #countFilmsOfPenelopeGuiness()},
+     * {@code SAKILA_NICER_BUT_SLOWER_FILM_LIST_B_02}.
      */
     private static final String SQL_COUNT_FILMS_OF_PENELOPE_GUINESS =
             sql(NicerButSlowerFilmListRepositoryImpl.class,
                 "NICER_BUT_SLOWER_FILM_LIST_COUNT_FILMS_OF_PENELOPE_GUINESS.sql");
 
     /**
-     * The statement of {@link #listFilmsWithNoActor()}, {@code SAKILA_NICER_BUT_SLOWER_FILM_LIST_B_03}.
+     * The statement of {@link #listFilmsWithNoActor()},
+     * {@code SAKILA_NICER_BUT_SLOWER_FILM_LIST_B_03}.
      */
     private static final String SQL_LIST_FILMS_WITH_NO_ACTOR =
-            sql(NicerButSlowerFilmListRepositoryImpl.class, "NICER_BUT_SLOWER_FILM_LIST_LIST_FILMS_WITH_NO_ACTOR.sql");
+            sql(NicerButSlowerFilmListRepositoryImpl.class,
+                "NICER_BUT_SLOWER_FILM_LIST_LIST_FILMS_WITH_NO_ACTOR.sql");
 
     /**
-     * The statement of {@link #listFiveLongestCategoriesOnAverage()}, {@code SAKILA_NICER_BUT_SLOWER_FILM_LIST_I_01}.
+     * The statement of {@link #listFiveLongestCategoriesOnAverage()},
+     * {@code SAKILA_NICER_BUT_SLOWER_FILM_LIST_I_01}.
      */
     private static final String SQL_LIST_FIVE_LONGEST_CATEGORIES_ON_AVERAGE =
             sql(NicerButSlowerFilmListRepositoryImpl.class,
                 "NICER_BUT_SLOWER_FILM_LIST_LIST_FIVE_LONGEST_CATEGORIES_ON_AVERAGE.sql");
 
     /**
-     * The statement of {@link #countFilmsByLengthBand()}, {@code SAKILA_NICER_BUT_SLOWER_FILM_LIST_I_02}.
+     * The statement of {@link #countFilmsByLengthBand()},
+     * {@code SAKILA_NICER_BUT_SLOWER_FILM_LIST_I_02}.
      */
     private static final String SQL_COUNT_FILMS_BY_LENGTH_BAND =
             sql(NicerButSlowerFilmListRepositoryImpl.class,
                 "NICER_BUT_SLOWER_FILM_LIST_COUNT_FILMS_BY_LENGTH_BAND.sql");
 
     /**
-     * The statement of {@link #countDifferingFromFilmList()}, {@code SAKILA_NICER_BUT_SLOWER_FILM_LIST_A_01}.
+     * The statement of {@link #countDifferingFromFilmList()},
+     * {@code SAKILA_NICER_BUT_SLOWER_FILM_LIST_A_01}.
      */
     private static final String SQL_COUNT_DIFFERING_FROM_FILM_LIST =
             sql(NicerButSlowerFilmListRepositoryImpl.class,
                 "NICER_BUT_SLOWER_FILM_LIST_COUNT_DIFFERING_FROM_FILM_LIST.sql");
 
     /**
-     * The statement of {@link #listLongestByCategory()}, {@code SAKILA_NICER_BUT_SLOWER_FILM_LIST_A_02}.
+     * The statement of {@link #listLongestByCategory()},
+     * {@code SAKILA_NICER_BUT_SLOWER_FILM_LIST_A_02}.
      */
     private static final String SQL_LIST_LONGEST_BY_CATEGORY =
-            sql(NicerButSlowerFilmListRepositoryImpl.class, "NICER_BUT_SLOWER_FILM_LIST_LIST_LONGEST_BY_CATEGORY.sql");
+            sql(NicerButSlowerFilmListRepositoryImpl.class,
+                "NICER_BUT_SLOWER_FILM_LIST_LIST_LONGEST_BY_CATEGORY.sql");
 
     /**
-     * The statement of {@link #countMismatchedActors()}, {@code SAKILA_NICER_BUT_SLOWER_FILM_LIST_A_03}.
+     * The statement of {@link #countMismatchedActors()},
+     * {@code SAKILA_NICER_BUT_SLOWER_FILM_LIST_A_03}.
      */
     private static final String SQL_COUNT_MISMATCHED_ACTORS =
-            sql(NicerButSlowerFilmListRepositoryImpl.class, "NICER_BUT_SLOWER_FILM_LIST_COUNT_MISMATCHED_ACTORS.sql");
+            sql(NicerButSlowerFilmListRepositoryImpl.class,
+                "NICER_BUT_SLOWER_FILM_LIST_COUNT_MISMATCHED_ACTORS.sql");
 
     /**
-     * Builds the {@code ORDER BY} clause of the specified sort, with {@code FID} appended as the last key unless the
-     * sort names it already, so that the order is total and the pages are stable.
+     * Builds the {@code ORDER BY} clause of the specified sort, with {@code FID} appended as the
+     * last key unless the sort names it already, so that the order is total and the pages are
+     * stable.
      *
      * @param sort the sort, whose properties are attributes of {@link NicerButSlowerFilmList}.
      * @return the clause, with its leading space.
-     * @throws IllegalArgumentException if {@code sort} names a property the view has no column for.
+     * @throws IllegalArgumentException if {@code sort} names a property the view has no column
+     *                                  for.
      */
     private static String orderBy(final Sort sort) {
         final var keys = new ArrayList<String>();
@@ -182,8 +202,8 @@ public class NicerButSlowerFilmListRepositoryImpl
     /**
      * Counts the rows that satisfy the specified condition.
      *
-     * @param where  the condition, as the body of a {@code WHERE} clause, with named parameters; {@code null} for every
-     *               row.
+     * @param where  the condition, as the body of a {@code WHERE} clause, with named parameters;
+     *               {@code null} for every row.
      * @param params the values of the named parameters.
      * @return the number of rows.
      */
@@ -199,23 +219,26 @@ public class NicerButSlowerFilmListRepositoryImpl
     /**
      * Selects the page of the rows that satisfy the specified condition.
      *
-     * @param where    the condition, as the body of a {@code WHERE} clause, with named parameters; {@code null} for
-     *                 every row.
+     * @param where    the condition, as the body of a {@code WHERE} clause, with named parameters;
+     *                 {@code null} for every row.
      * @param params   the values of the named parameters.
      * @param pageable the page to return, and its sort.
      * @param total    counts the rows that satisfy the condition, when the page needs the total.
      * @return the page.
      */
-    private Page<NicerButSlowerFilmList> select(final @Nullable String where, final Map<String, ?> params,
+    private Page<NicerButSlowerFilmList> select(final @Nullable String where,
+                                                final Map<String, ?> params,
                                                 final Pageable pageable, final LongSupplier total) {
-        var statement = SELECT + (where == null ? "" : " WHERE " + where) + orderBy(pageable.getSort());
+        var statement =
+                SELECT + (where == null ? "" : " WHERE " + where) + orderBy(pageable.getSort());
         if (pageable.isPaged()) {
             requirePage(pageable.getOffset(), pageable.getPageSize());
             statement += " LIMIT :limit OFFSET :offset";
         }
         var spec = jdbcClient().sql(statement).params(params);
         if (pageable.isPaged()) {
-            spec = spec.param("limit", pageable.getPageSize()).param("offset", pageable.getOffset());
+            spec = spec.param("limit", pageable.getPageSize())
+                    .param("offset", pageable.getOffset());
         }
         final var content = spec.query(ROW_MAPPER).list();
         return PageableExecutionUtils.getPage(content, pageable, total);

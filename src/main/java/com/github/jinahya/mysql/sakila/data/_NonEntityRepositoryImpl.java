@@ -17,19 +17,21 @@ import java.util.Objects;
 /**
  * The base of the implementations of {@link _NonEntityRepository}, over a {@link JdbcClient}.
  * <p>
- * A subclass is a {@code public}, {@code @Repository} bean of its own, not part of any Spring Data repository; see
- * {@link _NonEntityRepository} for how it gets registered. {@code @Repository} also has Spring translate its exceptions,
- * an {@link IllegalArgumentException} included, into {@code DataAccessException}s, once a
- * {@code PersistenceExceptionTranslationPostProcessor} is in the context, as Boot puts one.
+ * A subclass is a {@code public}, {@code @Repository} bean of its own, not part of any Spring Data
+ * repository; see {@link _NonEntityRepository} for how it gets registered. {@code @Repository} also
+ * has Spring translate its exceptions, an {@link IllegalArgumentException} included, into
+ * {@code DataAccessException}s, once a {@code PersistenceExceptionTranslationPostProcessor} is in
+ * the context, as Boot puts one.
  * <p>
- * A statement is written either in place, as a text block passed to {@link #jdbcClient()}, or in a {@code .sql}
- * resource beside the subclass, read once through {@link #sql(Class, String)}, and named after the view and the query,
- * as {@code FILM_LIST_COUNT_ALL.sql}.
+ * A statement is written either in place, as a text block passed to {@link #jdbcClient()}, or in a
+ * {@code .sql} resource beside the subclass, read once through {@link #sql(Class, String)}, and
+ * named after the view and the query, as {@code FILM_LIST_COUNT_ALL.sql}.
  * <p>
- * {@link JdbcClient} comes with what is already there: {@code spring-jdbc} through {@code spring-data-jpa} and
- * {@code spring-orm}, and the bean from Boot's auto-configuration on the single {@code DataSource}. A consumer without
- * Boot declares {@code JdbcClient.create(dataSource)} itself. Inside a transaction it shares JPA's connection but sees
- * only what JPA has flushed.
+ * {@link JdbcClient} comes with what is already there: {@code spring-jdbc} through
+ * {@code spring-data-jpa} and {@code spring-orm}, and the bean from Boot's auto-configuration on
+ * the single {@code DataSource}. A consumer without Boot declares
+ * {@code JdbcClient.create(dataSource)} itself. Inside a transaction it shares JPA's connection but
+ * sees only what JPA has flushed.
  *
  * @param <T> the type of the class the view is mapped to.
  * @see _NonEntityRepository
@@ -38,10 +40,12 @@ public abstract class _NonEntityRepositoryImpl<T>
         implements _NonEntityRepository<T> {
 
     /**
-     * Reads the statement of the specified resource, which lives in the package of the specified class.
+     * Reads the statement of the specified resource, which lives in the package of the specified
+     * class.
      * <p>
-     * A trailing {@code ;} is dropped. Called from a {@code static final} initializer, a missing resource fails the
-     * loading of the subclass, and with it the context, rather than the first call.
+     * A trailing {@code ;} is dropped. Called from a {@code static final} initializer, a missing
+     * resource fails the loading of the subclass, and with it the context, rather than the first
+     * call.
      *
      * @param clazz the class whose package the resource lives in.
      * @param name  the name of the resource, relative to that package.
@@ -52,7 +56,8 @@ public abstract class _NonEntityRepositoryImpl<T>
         Objects.requireNonNull(name, "name is null");
         final var resource = new ClassPathResource(name, clazz);
         try {
-            return resource.getContentAsString(StandardCharsets.UTF_8).strip().replaceFirst(";$", "");
+            return resource.getContentAsString(StandardCharsets.UTF_8).strip()
+                    .replaceFirst(";$", "");
         } catch (final IOException ioe) {
             throw new UncheckedIOException("failed to read " + resource, ioe);
         }
@@ -63,7 +68,8 @@ public abstract class _NonEntityRepositoryImpl<T>
      *
      * @param offset the number of rows to skip.
      * @param limit  the maximum number of rows to return.
-     * @throws IllegalArgumentException if {@code offset} is negative, or {@code limit} is not positive.
+     * @throws IllegalArgumentException if {@code offset} is negative, or {@code limit} is not
+     *                                  positive.
      */
     protected static void requirePage(final long offset, final int limit) {
         if (offset < 0L) {
@@ -89,8 +95,8 @@ public abstract class _NonEntityRepositoryImpl<T>
     // -----------------------------------------------------------------------------------------------------------------
 
     /**
-     * The class the view is mapped to, which a row of the view maps into through its single {@code public} constructor,
-     * by parameter name.
+     * The class the view is mapped to, which a row of the view maps into through its single
+     * {@code public} constructor, by parameter name.
      */
     protected final Class<T> targetClass;
 
@@ -103,9 +109,9 @@ public abstract class _NonEntityRepositoryImpl<T>
     private JdbcClient jdbcClient;
 
     /**
-     * The shared, transaction-bound entity manager proxy, for the rare statement that is better as a native query of
-     * the persistence unit; {@code @PersistenceContext}, as {@code @Autowired} would see two {@code EntityManager}
-     * beans.
+     * The shared, transaction-bound entity manager proxy, for the rare statement that is better as
+     * a native query of the persistence unit; {@code @PersistenceContext}, as {@code @Autowired}
+     * would see two {@code EntityManager} beans.
      */
     @PersistenceContext
     @Accessors(fluent = true)

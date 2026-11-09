@@ -13,14 +13,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Tests {@link StaffListRepository} in a JPA slice, over an embedded H2, through {@link _Repository_DataJpaTest}.
+ * Tests {@link StaffListRepository} in a JPA slice, over an embedded H2, through
+ * {@link _Repository_DataJpaTest}.
  * <p>
- * See that class for how the slice is configured. The slice generates {@code staff_list} as a table, from the entity,
- * but every column of it except the id is read-only ({@code insertable = false}), so no row can be persisted into it,
- * and the fixtures do not try; nor can a staff member, who needs a store. Each test here runs its query against the
- * empty table, and asserts an empty list or page, or a zero: that proves the JPQL, or the criteria query, is valid for
- * Hibernate and runs on H2, which is what a slice test of a view can prove. What the queries return on the sample
- * data is for {@link StaffListRepository_SpringBootIT}.
+ * See that class for how the slice is configured. The slice generates {@code staff_list} as a
+ * table, from the entity, but every column of it except the id is read-only
+ * ({@code insertable = false}), so no row can be persisted into it, and the fixtures do not try;
+ * nor can a staff member, who needs a store. Each test here runs its query against the empty table,
+ * and asserts an empty list or page, or a zero: that proves the JPQL, or the criteria query, is
+ * valid for Hibernate and runs on H2, which is what a slice test of a view can prove. What the
+ * queries return on the sample data is for {@link StaffListRepository_SpringBootIT}.
  *
  * @see StaffListRepository_SpringBootIT
  */
@@ -45,7 +47,8 @@ class StaffListRepository_DataJpaTest
         /**
          * Asserts that finding by a random id returns an empty optional.
          * <p>
-         * The table is empty, so any id misses; the id is drawn from the whole {@code int} range all the same.
+         * The table is empty, so any id misses; the id is drawn from the whole {@code int} range
+         * all the same.
          */
         @Test
         void _Empty_Unknown() {
@@ -64,8 +67,8 @@ class StaffListRepository_DataJpaTest
     class FindAllByOrderByIdAsc_Test {
 
         /**
-         * Asserts that the derived query, ordered by id as the exercise orders, runs on the empty table and finds an
-         * empty list.
+         * Asserts that the derived query, ordered by id as the exercise orders, runs on the empty
+         * table and finds an empty list.
          */
         @Test
         void _Empty_Empty() {
@@ -81,11 +84,11 @@ class StaffListRepository_DataJpaTest
     class SelectRowCounts_Test {
 
         /**
-         * Asserts that the select has its one row even over the empty view, and that both counts are zero: the view
-         * is empty, and no staff member can be saved into the slice.
+         * Asserts that the select has its one row even over the empty view, and that both counts
+         * are zero: the view is empty, and no staff member can be saved into the slice.
          * <p>
-         * The second count is a subquery in the select, on {@code Staff}; the test proves that Hibernate accepts it
-         * there and that H2 runs it.
+         * The second count is a subquery in the select, on {@code Staff}; the test proves that
+         * Hibernate accepts it there and that H2 runs it.
          */
         @Test
         void _Zero_Empty() {
@@ -103,14 +106,15 @@ class StaffListRepository_DataJpaTest
     class SelectCities_Test {
 
         /**
-         * A sort by the id, through the identification variable {@code l} of the row, as the exercise sorts.
+         * A sort by the id, through the identification variable {@code l} of the row, as the
+         * exercise sorts.
          */
         private static final Sort BY_ID = Sort.by("l.id");
 
         /**
-         * Asserts that the select over two roots, the view and {@code Store}, joined by the store's id, and its count
-         * query, sorted by the id as the exercise sorts, run on the empty tables and select an empty page, with no
-         * rows in all.
+         * Asserts that the select over two roots, the view and {@code Store}, joined by the store's
+         * id, and its count query, sorted by the id as the exercise sorts, run on the empty tables
+         * and select an empty page, with no rows in all.
          */
         @Test
         void _Empty_Empty() {

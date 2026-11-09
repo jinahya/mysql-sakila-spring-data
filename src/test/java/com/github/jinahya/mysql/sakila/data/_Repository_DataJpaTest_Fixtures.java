@@ -16,13 +16,15 @@ import org.springframework.boot.test.context.TestComponent;
 import java.util.UUID;
 
 /**
- * Persists the fixtures a {@code @DataJpaTest} needs, through the repositories, never through the entity manager.
+ * Persists the fixtures a {@code @DataJpaTest} needs, through the repositories, never through the
+ * entity manager.
  * <p>
- * Each method randomizes an entity with the upstream randomizer, gives it whatever it refers to (persisted the same
- * way, or passed in), and saves it through that entity's repository. Only the entities that can be persisted into an
- * empty H2 are here: a store and its manager refer to each other, both {@code NOT NULL}, so neither a store nor a
- * staff member can be saved first, nor anything that needs a store (a customer, a copy, a rental, a payment); and
- * {@code film_text} is read-only. The tests of those repositories run their queries against empty tables.
+ * Each method randomizes an entity with the upstream randomizer, gives it whatever it refers to
+ * (persisted the same way, or passed in), and saves it through that entity's repository. Only the
+ * entities that can be persisted into an empty H2 are here: a store and its manager refer to each
+ * other, both {@code NOT NULL}, so neither a store nor a staff member can be saved first, nor
+ * anything that needs a store (a customer, a copy, a rental, a payment); and {@code film_text} is
+ * read-only. The tests of those repositories run their queries against empty tables.
  * <p>
  * {@link _Repository_DataJpaTest} imports it; a slice test reaches it as {@code fixtures()}.
  */
@@ -30,7 +32,8 @@ import java.util.UUID;
 class _Repository_DataJpaTest_Fixtures {
 
     /**
-     * Returns a randomized instance of the specified class, through its upstream {@code <Entity>_Randomizer}.
+     * Returns a randomized instance of the specified class, through its upstream
+     * {@code <Entity>_Randomizer}.
      *
      * @param clazz the class to randomize.
      * @param <T>   the type of the class.
@@ -41,7 +44,8 @@ class _Repository_DataJpaTest_Fixtures {
     }
 
     /**
-     * Returns a name no other test uses: a random UUID, 36 characters, within the 45 of the name columns.
+     * Returns a name no other test uses: a random UUID, 36 characters, within the 45 of the name
+     * columns.
      *
      * @return a random name.
      */
@@ -109,7 +113,8 @@ class _Repository_DataJpaTest_Fixtures {
      *
      * @param actor the actor.
      * @param film  the film.
-     * @return the saved link; the id is derived from the two, so what comes back may be a merged copy.
+     * @return the saved link; the id is derived from the two, so what comes back may be a merged
+     *         copy.
      */
     FilmActor filmActor(final Actor actor, final Film film) {
         return filmActorRepository.save(FilmActor.of(actor, film));
@@ -120,7 +125,8 @@ class _Repository_DataJpaTest_Fixtures {
      *
      * @param film     the film.
      * @param category the category.
-     * @return the saved link; the id is derived from the two, so what comes back may be a merged copy.
+     * @return the saved link; the id is derived from the two, so what comes back may be a merged
+     *         copy.
      */
     FilmCategory filmCategory(final Film film, final Category category) {
         return filmCategoryRepository.save(FilmCategory.of(film, category));

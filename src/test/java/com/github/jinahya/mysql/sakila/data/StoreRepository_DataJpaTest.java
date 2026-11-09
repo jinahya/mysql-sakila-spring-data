@@ -14,13 +14,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Tests {@link StoreRepository} in a JPA slice, over an embedded H2, through {@link _Repository_DataJpaTest}.
+ * Tests {@link StoreRepository} in a JPA slice, over an embedded H2, through
+ * {@link _Repository_DataJpaTest}.
  * <p>
- * See that class for how the slice is configured. No store can be persisted into the H2: a store names its manager, a
- * staff member, who works at a store, both {@code NOT NULL}, so neither of the two can be saved first (see
- * {@link _Repository_DataJpaTest_Fixtures}). Each test here runs its query against an empty {@code store} table, and
- * asserts an empty list or page; that still proves that the derived query, the JPQL, or the criteria query, is valid
- * and runs on the H2, with the sort the exercise asks for.
+ * See that class for how the slice is configured. No store can be persisted into the H2: a store
+ * names its manager, a staff member, who works at a store, both {@code NOT NULL}, so neither of the
+ * two can be saved first (see {@link _Repository_DataJpaTest_Fixtures}). Each test here runs its
+ * query against an empty {@code store} table, and asserts an empty list or page; that still proves
+ * that the derived query, the JPQL, or the criteria query, is valid and runs on the H2, with the
+ * sort the exercise asks for.
  *
  * @see StoreRepository_SpringBootIT
  */
@@ -28,8 +30,8 @@ class StoreRepository_DataJpaTest
         extends _Repository_DataJpaTest<StoreRepository, Store, Integer> {
 
     /**
-     * A sort by id; by the attribute's name, since the metamodel's {@code Store_.storeId} is filled in only once the
-     * context is up, after this class is loaded.
+     * A sort by id; by the attribute's name, since the metamodel's {@code Store_.storeId} is filled
+     * in only once the context is up, after this class is loaded.
      */
     private static final Sort BY_STORE_ID = Sort.by(Sort.Direction.ASC, Store_.STORE_ID);
 
@@ -70,8 +72,8 @@ class StoreRepository_DataJpaTest
     class FindAllByOrderByStoreIdAsc_Test {
 
         /**
-         * Asserts that the derived query, ordered by id as the exercise orders, runs on the empty table and finds an
-         * empty list.
+         * Asserts that the derived query, ordered by id as the exercise orders, runs on the empty
+         * table and finds an empty list.
          */
         @Test
         void _Empty_NoStores() {
@@ -87,14 +89,16 @@ class StoreRepository_DataJpaTest
     class ListWithManagerAndCity_Test {
 
         /**
-         * Asserts that the criteria query with its three fetches, sorted by id as the exercise sorts, runs on the
-         * empty tables and lists an empty page, with no stores in all.
+         * Asserts that the criteria query with its three fetches, sorted by id as the exercise
+         * sorts, runs on the empty tables and lists an empty page, with no stores in all.
          * <p>
-         * The page runs two queries, the select with the fetches and the count without them; both have to be valid.
+         * The page runs two queries, the select with the fetches and the count without them; both
+         * have to be valid.
          */
         @Test
         void _Empty_NoStores() {
-            final var page = repositoryInstance().listWithManagerAndCity(PageRequest.of(0, 5, BY_STORE_ID));
+            final var page =
+                    repositoryInstance().listWithManagerAndCity(PageRequest.of(0, 5, BY_STORE_ID));
             assertThat(page).isEmpty();
             assertThat(page.getTotalElements()).isZero();
         }
@@ -102,8 +106,9 @@ class StoreRepository_DataJpaTest
         /**
          * Asserts that a {@code null} pageable is rejected before the method builds its query.
          * <p>
-         * The package is {@code @NullMarked}, so Spring Data checks the argument even of a {@code default} method, and
-         * throws {@link IllegalArgumentException} before the method's own {@code requireNonNull} is reached.
+         * The package is {@code @NullMarked}, so Spring Data checks the argument even of a
+         * {@code default} method, and throws {@link IllegalArgumentException} before the method's
+         * own {@code requireNonNull} is reached.
          */
         @SuppressWarnings({"DataFlowIssue", "NullAway"})
         @Test
@@ -122,8 +127,9 @@ class StoreRepository_DataJpaTest
         private static final Sort BY_STORE_ID = Sort.by("st.storeId");
 
         /**
-         * Asserts that the select with its three scalar subqueries, sorted by the id as the exercise sorts, runs on
-         * the empty tables and selects an empty page, with no stores in all.
+         * Asserts that the select with its three scalar subqueries, sorted by the id as the
+         * exercise sorts, runs on the empty tables and selects an empty page, with no stores in
+         * all.
          */
         @Test
         void _Empty_NoStores() {
@@ -133,8 +139,8 @@ class StoreRepository_DataJpaTest
         }
 
         /**
-         * Asserts that the select sorted by one of the subquery columns, which is an alias of the select and not a
-         * path of the entity, runs on the empty tables too.
+         * Asserts that the select sorted by one of the subquery columns, which is an alias of the
+         * select and not a path of the entity, runs on the empty tables too.
          */
         @Test
         void _Empty_SortedByCustomers() {
@@ -167,12 +173,14 @@ class StoreRepository_DataJpaTest
         private static final Sort BY_STORE_ID = Sort.by("st.storeId");
 
         /**
-         * Asserts that the joined and grouped select, with its {@code CASE} on a correlated {@code NOT EXISTS}, sorted
-         * by the id as the exercise sorts, runs on the empty tables and selects an empty page, with no stores in all.
+         * Asserts that the joined and grouped select, with its {@code CASE} on a correlated
+         * {@code NOT EXISTS}, sorted by the id as the exercise sorts, runs on the empty tables and
+         * selects an empty page, with no stores in all.
          */
         @Test
         void _Empty_NoStores() {
-            final var page = repositoryInstance().selectFilmCounts(PageRequest.of(0, 5, BY_STORE_ID));
+            final var page =
+                    repositoryInstance().selectFilmCounts(PageRequest.of(0, 5, BY_STORE_ID));
             assertThat(page).isEmpty();
             assertThat(page.getTotalElements()).isZero();
         }
@@ -192,17 +200,19 @@ class StoreRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link StoreRepository#selectMonthlyRentalShares(Pageable)} ({@code SAKILA_STORE_A_02}).
+     * Tests {@link StoreRepository#selectMonthlyRentalShares(Pageable)}
+     * ({@code SAKILA_STORE_A_02}).
      */
     @Nested
     class SelectMonthlyRentalShares_Test {
 
-        private static final Sort BY_MONTH_THEN_STORE_ID = Sort.by("rentalYear", "rentalMonth", "st.storeId");
+        private static final Sort BY_MONTH_THEN_STORE_ID =
+                Sort.by("rentalYear", "rentalMonth", "st.storeId");
 
         /**
-         * Asserts that the grouped select, with its window function over the groups, and its count query, sorted by
-         * the month and then the store as the exercise sorts, run on the empty tables and select an empty page, with
-         * no months in all.
+         * Asserts that the grouped select, with its window function over the groups, and its count
+         * query, sorted by the month and then the store as the exercise sorts, run on the empty
+         * tables and select an empty page, with no months in all.
          */
         @Test
         void _Empty_NoRentals() {

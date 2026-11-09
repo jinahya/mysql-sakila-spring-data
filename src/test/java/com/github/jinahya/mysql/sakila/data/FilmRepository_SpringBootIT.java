@@ -35,12 +35,13 @@ import static org.assertj.core.api.Assertions.tuple;
 import static org.assertj.core.api.Assumptions.assumeThat;
 
 /**
- * Tests {@link FilmRepository} against the Sakila database, through {@link _Repository_SpringBootIT}.
+ * Tests {@link FilmRepository} against the Sakila database, through
+ * {@link _Repository_SpringBootIT}.
  * <p>
- * See that class for the context and the transactions. The tests here only read: the fixture is a few films of the
- * sample data, selected once in {@link #__()}, and each test checks a query of the exercises against them, or against
- * the counts of the other repositories. The base's own tests, such as its {@code findById} round trips, run here
- * too.
+ * See that class for the context and the transactions. The tests here only read: the fixture is a
+ * few films of the sample data, selected once in {@link #__()}, and each test checks a query of the
+ * exercises against them, or against the counts of the other repositories. The base's own tests,
+ * such as its {@code findById} round trips, run here too.
  * <p>
  * Needs the database of {@code application.yaml} up, with Sakila loaded; see that file.
  *
@@ -53,8 +54,8 @@ class FilmRepository_SpringBootIT
     private static List<Film> entities;
 
     /**
-     * A sort by id; by the attribute's name, since the metamodel's {@code Film_.filmId} is filled in only once the
-     * context is up, after this class is loaded.
+     * A sort by id; by the attribute's name, since the metamodel's {@code Film_.filmId} is filled
+     * in only once the context is up, after this class is loaded.
      */
     private static final Sort BY_FILM_ID = Sort.by(Sort.Direction.ASC, Film_.FILM_ID);
 
@@ -72,13 +73,14 @@ class FilmRepository_SpringBootIT
     /**
      * Selects the first five films, by id, as the fixture for the parameterized tests.
      * <p>
-     * Ordered by id so that the rows are the ones the init scripts put there. Runs once per class, which
-     * {@link TestInstance.Lifecycle#PER_CLASS} allows to be an instance method, so the autowired repository is already
-     * there; the result goes into a static field so that the static method sources of the nested classes can reach it.
-     * The films are loaded outside any transaction, so they are detached.
+     * Ordered by id so that the rows are the ones the init scripts put there. Runs once per class,
+     * which {@link TestInstance.Lifecycle#PER_CLASS} allows to be an instance method, so the
+     * autowired repository is already there; the result goes into a static field so that the static
+     * method sources of the nested classes can reach it. The films are loaded outside any
+     * transaction, so they are detached.
      * <p>
-     * An empty table aborts the tests of this class rather than failing them: it is the fixture that is missing, not
-     * the behaviour under test that is wrong.
+     * An empty table aborts the tests of this class rather than failing them: it is the fixture
+     * that is missing, not the behaviour under test that is wrong.
      */
     @BeforeAll
     void __() {
@@ -104,25 +106,27 @@ class FilmRepository_SpringBootIT
     }
 
     /**
-     * Counts the rentals of the copies of the film of the specified id, through {@link RentalRepository}.
+     * Counts the rentals of the copies of the film of the specified id, through
+     * {@link RentalRepository}.
      * <p>
-     * The film's own {@code inventories}, and each copy's {@code rentals}, are not public upstream, so the rentals are
-     * counted by a {@link Specification} over the rental's copy's film.
+     * The film's own {@code inventories}, and each copy's {@code rentals}, are not public upstream,
+     * so the rentals are counted by a {@link Specification} over the rental's copy's film.
      *
      * @param filmId the id of the film.
      * @return the number of rentals of the film.
      */
     private long countRentalsOf(final Integer filmId) {
         final Specification<Rental> specification =
-                (r, q, b) -> b.equal(r.get(Rental_.inventory).get(Inventory_.film).get(Film_.filmId), filmId);
+                (r, q, b) -> b.equal(
+                        r.get(Rental_.inventory).get(Inventory_.film).get(Film_.filmId), filmId);
         return rentalRepository.count(specification);
     }
 
     /**
      * Counts the copies of the film of the specified id, through {@link InventoryRepository}.
      * <p>
-     * The film's own {@code inventories} is not public upstream, so the copies are counted by a {@link Specification}
-     * over the copy's film.
+     * The film's own {@code inventories} is not public upstream, so the copies are counted by a
+     * {@link Specification} over the copy's film.
      *
      * @param filmId the id of the film.
      * @return the number of copies of the film.
@@ -134,8 +138,8 @@ class FilmRepository_SpringBootIT
     }
 
     /**
-     * Asserts that the specified page is consistent with itself: no more content than its size, and at least as many
-     * elements in all as in its content.
+     * Asserts that the specified page is consistent with itself: no more content than its size, and
+     * at least as many elements in all as in its content.
      *
      * @param page the page.
      * @param <T>  the type of the elements.
@@ -158,8 +162,9 @@ class FilmRepository_SpringBootIT
         }
 
         /**
-         * Asserts that the list is the exercise's output, every rating with its count, in the order of the
-         * {@code ENUM}'s values, which is the order of {@link Film.Rating}'s constants, not the alphabetical one.
+         * Asserts that the list is the exercise's output, every rating with its count, in the order
+         * of the {@code ENUM}'s values, which is the order of {@link Film.Rating}'s constants, not
+         * the alphabetical one.
          */
         @Test
         void __() {
@@ -176,8 +181,8 @@ class FilmRepository_SpringBootIT
         }
 
         /**
-         * Asserts that the list is ordered by rating, and that each count is the number of films of that rating,
-         * counted through a {@link Specification}.
+         * Asserts that the list is ordered by rating, and that each count is the number of films of
+         * that rating, counted through a {@link Specification}.
          */
         @Test
         void __Ordered() {
@@ -186,7 +191,8 @@ class FilmRepository_SpringBootIT
                     .isNotEmpty()
                     .isSortedAccordingTo(Comparator.comparing(column("rating", Film.Rating.class)))
                     .allSatisfy(c -> {
-                        assertThat(c.get("films", Long.class)).as("films rated %s", c.get("rating", Film.Rating.class))
+                        assertThat(c.get("films", Long.class)).as("films rated %s", c.get("rating",
+                                                                                          Film.Rating.class))
                                 .isEqualTo(countByRating(c.get("rating", Film.Rating.class)));
                     });
         }
@@ -208,30 +214,35 @@ class FilmRepository_SpringBootIT
     }
 
     /**
-     * Tests {@link FilmRepository#listLongerThan(int, Pageable)} ({@code SAKILA_FILM_B_02}, not a pick).
+     * Tests {@link FilmRepository#listLongerThan(int, Pageable)} ({@code SAKILA_FILM_B_02}, not a
+     * pick).
      */
     @Nested
     class ListLongerThan_Test {
 
         /**
-         * Asserts that a page of five above the given threshold, the longest first and ties by title as the exercise
-         * sorts, holds films longer than the threshold only, in that order, and that it is the first five of a page
-         * of ten.
+         * Asserts that a page of five above the given threshold, the longest first and ties by
+         * title as the exercise sorts, holds films longer than the threshold only, in that order,
+         * and that it is the first five of a page of ten.
          *
          * @param length the threshold, in minutes; the exercise asks for {@code 180}.
          */
         @ValueSource(ints = {120, 180})
         @ParameterizedTest
         void __(final int length) {
-            final var sort = JpaSort.of(Sort.Direction.DESC, Film_.length).and(JpaSort.of(Film_.title));
-            final var page = repositoryInstance().listLongerThan(length, PageRequest.of(0, 5, sort));
+            final var sort =
+                    JpaSort.of(Sort.Direction.DESC, Film_.length).and(JpaSort.of(Film_.title));
+            final var page =
+                    repositoryInstance().listLongerThan(length, PageRequest.of(0, 5, sort));
             assertPage(page);
             assertThat(page.getContent())
                     .isNotEmpty()
                     .allSatisfy(f -> assertThat(f.getLength()).isGreaterThan(length))
                     .isSortedAccordingTo(Comparator.comparing(Film::getLength).reversed()
-                                                 .thenComparing(Film::getTitle, String.CASE_INSENSITIVE_ORDER));
-            final var ten = repositoryInstance().listLongerThan(length, PageRequest.of(0, 10, sort));
+                                                 .thenComparing(Film::getTitle,
+                                                                String.CASE_INSENSITIVE_ORDER));
+            final var ten =
+                    repositoryInstance().listLongerThan(length, PageRequest.of(0, 10, sort));
             assertThat(ten.getTotalElements()).isEqualTo(page.getTotalElements());
             assertThat(ten.getContent()).startsWith(page.getContent().toArray(new Film[0]));
         }
@@ -241,7 +252,8 @@ class FilmRepository_SpringBootIT
          */
         @Test
         void __Expected() {
-            final var sort = JpaSort.of(Sort.Direction.DESC, Film_.length).and(JpaSort.of(Film_.title));
+            final var sort =
+                    JpaSort.of(Sort.Direction.DESC, Film_.length).and(JpaSort.of(Film_.title));
             final var page = repositoryInstance().listLongerThan(180, PageRequest.of(0, 5, sort));
             assertThat(page.getContent())
                     .extracting(Film::getFilmId)
@@ -256,11 +268,12 @@ class FilmRepository_SpringBootIT
     class SelectAverageRentalRates_Test {
 
         /**
-         * Calls the method with no transaction around the test, and asserts that Spring Data refuses it.
+         * Calls the method with no transaction around the test, and asserts that Spring Data
+         * refuses it.
          * <p>
-         * A stream has to be consumed inside a transaction the caller opened. The repository would open one of its own,
-         * but that one ends when the method returns, so the check runs before the query, and throws
-         * {@link InvalidDataAccessApiUsageException}.
+         * A stream has to be consumed inside a transaction the caller opened. The repository would
+         * open one of its own, but that one ends when the method returns, so the check runs before
+         * the query, and throws {@link InvalidDataAccessApiUsageException}.
          */
         @Test
         void _InvalidDataAccessApiUsageException_NoSurroundingTransaction() {
@@ -273,15 +286,17 @@ class FilmRepository_SpringBootIT
         }
 
         /**
-         * Asserts, in one transaction, that the stream yields the exercise's output, every rating with the average
-         * rental rate of its films rounded to two places, in the order of the {@code ENUM}'s values.
+         * Asserts, in one transaction, that the stream yields the exercise's output, every rating
+         * with the average rental rate of its films rounded to two places, in the order of the
+         * {@code ENUM}'s values.
          */
         @Test
         @Transactional
         void __Transactional() {
             try (var stream = repositoryInstance().selectAverageRentalRates()) {
                 assertThat(stream.toList())
-                        .extracting(column("rating", Film.Rating.class), column("averageRentalRate", Double.class))
+                        .extracting(column("rating", Film.Rating.class),
+                                    column("averageRentalRate", Double.class))
                         .containsExactly(
                                 tuple(Film.Rating.G, 2.89d),
                                 tuple(Film.Rating.PG, 3.05d),
@@ -304,23 +319,25 @@ class FilmRepository_SpringBootIT
         }
 
         /**
-         * Asserts that a page of the given size, by id, is ordered so, that its total is the exercise's count,
-         * {@code 42}, whatever the size, and that no film listed has a copy, counted through
-         * {@link InventoryRepository}.
+         * Asserts that a page of the given size, by id, is ordered so, that its total is the
+         * exercise's count, {@code 42}, whatever the size, and that no film listed has a copy,
+         * counted through {@link InventoryRepository}.
          *
          * @param size the size of the page.
          */
         @ValueSource(ints = {1, 5, 50})
         @ParameterizedTest
         void __(final int size) {
-            final var page = repositoryInstance().listWithoutInventory(PageRequest.of(0, size, BY_FILM_ID));
+            final var page =
+                    repositoryInstance().listWithoutInventory(PageRequest.of(0, size, BY_FILM_ID));
             assertPage(page);
             assertThat(page.getTotalElements()).isEqualTo(42L);
             assertThat(page.getContent())
                     .isNotEmpty()
                     .isSortedAccordingTo(Comparator.comparing(Film::getFilmId))
                     .allSatisfy(f -> {
-                        assertThat(countCopiesOf(f.getFilmId())).as("copies of film %d", f.getFilmId()).isZero();
+                        assertThat(countCopiesOf(f.getFilmId())).as("copies of film %d",
+                                                                    f.getFilmId()).isZero();
                     });
         }
 
@@ -351,15 +368,16 @@ class FilmRepository_SpringBootIT
                 Sort.by(Sort.Direction.DESC, "rentals").and(Sort.by("f.filmId"));
 
         /**
-         * Asserts that the first five, the most rented first and then by id as the exercise sorts, are the exercise's
-         * output.
+         * Asserts that the first five, the most rented first and then by id as the exercise sorts,
+         * are the exercise's output.
          */
         @Test
         void __Expected() {
             final var page = repositoryInstance().selectRentalCounts(
                     PageRequest.of(0, 5, BY_RENTALS_DESC_THEN_FILM_ID));
             assertThat(page.getContent())
-                    .extracting(column("film", Film.class, Film::getFilmId), column("film", Film.class, Film::getTitle),
+                    .extracting(column("film", Film.class, Film::getFilmId),
+                                column("film", Film.class, Film::getTitle),
                                 column("rentals", Long.class))
                     .containsExactly(
                             tuple(103, "BUCKET BROTHERHOOD", 34L),
@@ -371,9 +389,9 @@ class FilmRepository_SpringBootIT
         }
 
         /**
-         * Asserts that a page of the given size, the most rented first as the exercise sorts, is ordered so, that
-         * each film is the one of its id, and that each count is the number of rentals of the film's copies, counted
-         * through {@link RentalRepository}.
+         * Asserts that a page of the given size, the most rented first as the exercise sorts, is
+         * ordered so, that each film is the one of its id, and that each count is the number of
+         * rentals of the film's copies, counted through {@link RentalRepository}.
          *
          * @param size the size of the page.
          */
@@ -385,8 +403,9 @@ class FilmRepository_SpringBootIT
             assertPage(page);
             assertThat(page.getContent())
                     .isNotEmpty()
-                    .isSortedAccordingTo(Comparator.comparing(column("rentals", Long.class)).reversed()
-                                                 .thenComparing(column("film", Film.class, Film::getFilmId)))
+                    .isSortedAccordingTo(
+                            Comparator.comparing(column("rentals", Long.class)).reversed()
+                                    .thenComparing(column("film", Film.class, Film::getFilmId)))
                     .allSatisfy(c -> {
                         final var film = c.get("film", Film.class);
                         assertThat(repositoryInstance().findById(film.getFilmId())).hasValue(film);
@@ -399,7 +418,8 @@ class FilmRepository_SpringBootIT
     }
 
     /**
-     * Tests {@link FilmRepository#selectRatingCountsOfLongerThanRatingAverage(Pageable)} ({@code SAKILA_FILM_A_01}).
+     * Tests {@link FilmRepository#selectRatingCountsOfLongerThanRatingAverage(Pageable)}
+     * ({@code SAKILA_FILM_A_01}).
      */
     @Nested
     class SelectRatingCountsOfLongerThanRatingAverage_Test {
@@ -407,7 +427,8 @@ class FilmRepository_SpringBootIT
         private static final Sort BY_RATING = Sort.by("rating");
 
         /**
-         * Asserts that all the ratings, by rating as the exercise sorts, are the exercise's output.
+         * Asserts that all the ratings, by rating as the exercise sorts, are the exercise's
+         * output.
          */
         @Test
         void __Expected() {
@@ -425,8 +446,9 @@ class FilmRepository_SpringBootIT
         }
 
         /**
-         * Asserts that pages of the given size, by rating, walk the ratings of the unpaged list in the same order,
-         * with the same total, and that each count is less than all films of the rating.
+         * Asserts that pages of the given size, by rating, walk the ratings of the unpaged list in
+         * the same order, with the same total, and that each count is less than all films of the
+         * rating.
          *
          * @param size the size of the page.
          */
@@ -449,9 +471,11 @@ class FilmRepository_SpringBootIT
                 if (!page.hasNext()) {
                     break;
                 }
-                page = repositoryInstance().selectRatingCountsOfLongerThanRatingAverage(page.nextPageable());
+                page = repositoryInstance().selectRatingCountsOfLongerThanRatingAverage(
+                        page.nextPageable());
             }
-            assertThat(walked).containsExactlyElementsOf(all.map(column("rating", Film.Rating.class)).toList());
+            assertThat(walked).containsExactlyElementsOf(
+                    all.map(column("rating", Film.Rating.class)).toList());
         }
     }
 

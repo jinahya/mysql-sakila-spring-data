@@ -18,12 +18,13 @@ import static org.assertj.core.api.Assertions.tuple;
 import static org.assertj.core.api.Assertions.within;
 
 /**
- * Tests {@link FilmActorRepository} in a JPA slice, over an embedded H2, through {@link _Repository_DataJpaTest}.
+ * Tests {@link FilmActorRepository} in a JPA slice, over an embedded H2, through
+ * {@link _Repository_DataJpaTest}.
  * <p>
- * See that class for how the slice is configured. Each test persists the films, actors and links it needs, through
- * the fixtures, and the slice rolls them back when it ends, so a test starts over empty tables and can count what it
- * finds. The ids of the actors and of the films ascend in the order they are saved, which is what the pair
- * exercises order by.
+ * See that class for how the slice is configured. Each test persists the films, actors and links it
+ * needs, through the fixtures, and the slice rolls them back when it ends, so a test starts over
+ * empty tables and can count what it finds. The ids of the actors and of the films ascend in the
+ * order they are saved, which is what the pair exercises order by.
  *
  * @see FilmActorRepository_SpringBootIT
  */
@@ -60,12 +61,12 @@ class FilmActorRepository_DataJpaTest
     class FindById_Test {
 
         /**
-         * Saves a link of an actor and a film, deletes it, and asserts that finding it by its id returns an empty
-         * optional.
+         * Saves a link of an actor and a film, deletes it, and asserts that finding it by its id
+         * returns an empty optional.
          * <p>
-         * An id that is known to be unknown has to come from a link that was saved: a {@link FilmActorId} cannot be
-         * built outside its package, and a link has no id until it is saved. The delete is flushed before the find
-         * goes to the database.
+         * An id that is known to be unknown has to come from a link that was saved: a
+         * {@link FilmActorId} cannot be built outside its package, and a link has no id until it is
+         * saved. The delete is flushed before the find goes to the database.
          */
         @Test
         void _Empty_Deleted() {
@@ -77,11 +78,11 @@ class FilmActorRepository_DataJpaTest
         }
 
         /**
-         * Saves a link of an actor and a film, and asserts that finding it by its id returns an equal link, of that
-         * actor and that film.
+         * Saves a link of an actor and a film, and asserts that finding it by its id returns an
+         * equal link, of that actor and that film.
          * <p>
-         * The id of a link is derived from the two, so {@code save} merges rather than persists, and what comes back
-         * may be a copy of what was passed; hence equal, not the same.
+         * The id of a link is derived from the two, so {@code save} merges rather than persists,
+         * and what comes back may be a copy of what was passed; hence equal, not the same.
          */
         @Test
         void _NotEmpty_Known() {
@@ -100,7 +101,8 @@ class FilmActorRepository_DataJpaTest
     // ----------------------------------------------------------------------------------------------------- exercises
 
     /**
-     * Tests {@link FilmActorRepository#selectActorCounts(Pageable)} ({@code SAKILA_FILM_ACTOR_I_01}).
+     * Tests {@link FilmActorRepository#selectActorCounts(Pageable)}
+     * ({@code SAKILA_FILM_ACTOR_I_01}).
      */
     @Nested
     class SelectActorCounts_Test {
@@ -121,9 +123,9 @@ class FilmActorRepository_DataJpaTest
         }
 
         /**
-         * Saves films of three, one and no actors, and asserts that a page of five, the most cast first as the
-         * exercise sorts, holds the first two films themselves with their counts, two in all, and that a page of one
-         * holds the most cast alone, still two in all.
+         * Saves films of three, one and no actors, and asserts that a page of five, the most cast
+         * first as the exercise sorts, holds the first two films themselves with their counts, two
+         * in all, and that a page of one holds the most cast alone, still two in all.
          */
         @Test
         void __() {
@@ -153,8 +155,9 @@ class FilmActorRepository_DataJpaTest
         /**
          * Asserts that a {@code null} page is refused, before any query runs.
          * <p>
-         * The package is {@code @NullMarked}, so Spring Data checks the arguments of every repository method, a
-         * {@code default} one included, and throws {@link IllegalArgumentException} before the method runs.
+         * The package is {@code @NullMarked}, so Spring Data checks the arguments of every
+         * repository method, a {@code default} one included, and throws
+         * {@link IllegalArgumentException} before the method runs.
          */
         @Test
         void _IllegalArgumentException_NullPageable() {
@@ -172,8 +175,8 @@ class FilmActorRepository_DataJpaTest
         /**
          * Asserts that, with no link, the average is empty.
          * <p>
-         * Zero links over zero films would be a division of zero by zero, which the query turns into a division by
-         * {@code NULL}, whose result is {@code NULL}.
+         * Zero links over zero films would be a division of zero by zero, which the query turns
+         * into a division by {@code NULL}, whose result is {@code NULL}.
          */
         @Test
         void _Empty_NoLink() {
@@ -181,8 +184,9 @@ class FilmActorRepository_DataJpaTest
         }
 
         /**
-         * Saves films of three actors and of one, and a film with none, and asserts that the average is two: four
-         * links over the two films that have one, the film with none not counted.
+         * Saves films of three actors and of one, and a film with none, and asserts that the
+         * average is two: four links over the two films that have one, the film with none not
+         * counted.
          */
         @Test
         void __() {
@@ -198,8 +202,9 @@ class FilmActorRepository_DataJpaTest
         }
 
         /**
-         * Saves films of two actors, of one and of one, and asserts that the average, four links over three films,
-         * {@code 1.333...}, is rounded to two decimal places, {@code 1.33}, as the exercise does.
+         * Saves films of two actors, of one and of one, and asserts that the average, four links
+         * over three films, {@code 1.333...}, is rounded to two decimal places, {@code 1.33}, as
+         * the exercise does.
          */
         @Test
         void __Rounded() {
@@ -214,15 +219,18 @@ class FilmActorRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link FilmActorRepository#selectFilmCountsByActors()} ({@code SAKILA_FILM_ACTOR_I_04}).
+     * Tests {@link FilmActorRepository#selectFilmCountsByActors()}
+     * ({@code SAKILA_FILM_ACTOR_I_04}).
      * <p>
-     * The SQL of the native query is plain, a {@code GROUP BY} over a derived table, so it runs on the H2 too.
+     * The SQL of the native query is plain, a {@code GROUP BY} over a derived table, so it runs on
+     * the H2 too.
      */
     @Nested
     class SelectFilmCountsByActors_Test {
 
         /**
-         * Saves a film with no actor, and asserts that the list is empty: a film with no link is not counted.
+         * Saves a film with no actor, and asserts that the list is empty: a film with no link is
+         * not counted.
          */
         @Test
         void _Empty_NoLink() {
@@ -231,8 +239,9 @@ class FilmActorRepository_DataJpaTest
         }
 
         /**
-         * Saves two films of two actors, one of one actor and one of none, and asserts that the list holds one film
-         * of one actor and two of two, by the number of actors as the exercise orders.
+         * Saves two films of two actors, one of one actor and one of none, and asserts that the
+         * list holds one film of one actor and two of two, by the number of actors as the exercise
+         * orders.
          */
         @Test
         void __() {
@@ -248,7 +257,8 @@ class FilmActorRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link FilmActorRepository#selectCoStarCounts(Pageable)} ({@code SAKILA_FILM_ACTOR_A_01}).
+     * Tests {@link FilmActorRepository#selectCoStarCounts(Pageable)}
+     * ({@code SAKILA_FILM_ACTOR_A_01}).
      */
     @Nested
     class SelectCoStarCounts_Test {
@@ -257,8 +267,8 @@ class FilmActorRepository_DataJpaTest
                 Sort.by(Sort.Direction.DESC, "films").and(Sort.by("a1.actorId", "a2.actorId"));
 
         /**
-         * Saves a film with one actor, and asserts that the page is empty, with no elements in all: one actor makes
-         * no pair.
+         * Saves a film with one actor, and asserts that the page is empty, with no elements in all:
+         * one actor makes no pair.
          */
         @Test
         void _Empty_NoPair() {
@@ -270,10 +280,11 @@ class FilmActorRepository_DataJpaTest
         }
 
         /**
-         * Saves three actors, a film of all three and a film of the first two, and asserts that the page holds the
-         * three pairs, the first two actors together in two films first, then the other two pairs by their ids as
-         * the exercise sorts, each pair once with the smaller id first, three in all; and that a page of one holds
-         * the first pair alone, still three in all.
+         * Saves three actors, a film of all three and a film of the first two, and asserts that the
+         * page holds the three pairs, the first two actors together in two films first, then the
+         * other two pairs by their ids as the exercise sorts, each pair once with the smaller id
+         * first, three in all; and that a page of one holds the first pair alone, still three in
+         * all.
          * <p>
          * The actors are saved in order, so their ids ascend in that order.
          */
@@ -309,8 +320,9 @@ class FilmActorRepository_DataJpaTest
         /**
          * Asserts that a {@code null} page is refused, before any query runs.
          * <p>
-         * The package is {@code @NullMarked}, so Spring Data checks the arguments of every repository method, a
-         * {@code default} one included, and throws {@link IllegalArgumentException} before the method runs.
+         * The package is {@code @NullMarked}, so Spring Data checks the arguments of every
+         * repository method, a {@code default} one included, and throws
+         * {@link IllegalArgumentException} before the method runs.
          */
         @Test
         void _IllegalArgumentException_NullPageable() {
@@ -320,7 +332,8 @@ class FilmActorRepository_DataJpaTest
     }
 
     /**
-     * Tests {@link FilmActorRepository#selectFilmPairsWithSameActors(Pageable)} ({@code SAKILA_FILM_ACTOR_A_03}).
+     * Tests {@link FilmActorRepository#selectFilmPairsWithSameActors(Pageable)}
+     * ({@code SAKILA_FILM_ACTOR_A_03}).
      */
     @Nested
     class SelectFilmPairsWithSameActors_Test {
@@ -328,8 +341,8 @@ class FilmActorRepository_DataJpaTest
         private static final Sort BY_FILM_IDS = Sort.by("f1.filmId", "f2.filmId");
 
         /**
-         * Saves a film of two actors and a film of one of them, and asserts that the page is empty, with no elements
-         * in all: the two films share an actor, but not all of them.
+         * Saves a film of two actors and a film of one of them, and asserts that the page is empty,
+         * with no elements in all: the two films share an actor, but not all of them.
          */
         @Test
         void _Empty_NoSameActors() {
@@ -337,17 +350,18 @@ class FilmActorRepository_DataJpaTest
             final var b = fixtures().actor();
             cast(fixtures().film(), a, b);
             cast(fixtures().film(), a);
-            final var page = repositoryInstance().selectFilmPairsWithSameActors(PageRequest.of(0, 5, BY_FILM_IDS));
+            final var page = repositoryInstance().selectFilmPairsWithSameActors(
+                    PageRequest.of(0, 5, BY_FILM_IDS));
             assertThat(page).isEmpty();
             assertThat(page.getTotalElements()).isZero();
         }
 
         /**
-         * Saves two films of the actors {@code a} and {@code b}, two films of {@code a} alone, a film of {@code a},
-         * {@code b} and {@code c}, and a film of {@code c} alone, and asserts that the page holds the two pairs of
-         * films with the same actors, with their numbers of actors, by the films' ids as the exercise orders, each
-         * pair once with the smaller id first, two in all; and that a page of one holds the first pair alone, still
-         * two in all.
+         * Saves two films of the actors {@code a} and {@code b}, two films of {@code a} alone, a
+         * film of {@code a}, {@code b} and {@code c}, and a film of {@code c} alone, and asserts
+         * that the page holds the two pairs of films with the same actors, with their numbers of
+         * actors, by the films' ids as the exercise orders, each pair once with the smaller id
+         * first, two in all; and that a page of one holds the first pair alone, still two in all.
          * <p>
          * The films are saved in order, so their ids ascend in that order.
          */
@@ -368,7 +382,8 @@ class FilmActorRepository_DataJpaTest
             cast(abc, a, b, c);
             cast(a2, a);
             cast(c1, c);
-            final var page = repositoryInstance().selectFilmPairsWithSameActors(PageRequest.of(0, 5, BY_FILM_IDS));
+            final var page = repositoryInstance().selectFilmPairsWithSameActors(
+                    PageRequest.of(0, 5, BY_FILM_IDS));
             assertThat(page.getContent())
                     .extracting(column("film1", Film.class), column("film2", Film.class),
                                 column("actors", Long.class))
@@ -377,7 +392,8 @@ class FilmActorRepository_DataJpaTest
                             tuple(a1, a2, 1L)
                     );
             assertThat(page.getTotalElements()).isEqualTo(2L);
-            final var first = repositoryInstance().selectFilmPairsWithSameActors(PageRequest.of(0, 1, BY_FILM_IDS));
+            final var first = repositoryInstance().selectFilmPairsWithSameActors(
+                    PageRequest.of(0, 1, BY_FILM_IDS));
             assertThat(first.getContent())
                     .extracting(column("film1", Film.class), column("film2", Film.class))
                     .containsExactly(tuple(ab1, ab2));
@@ -388,8 +404,9 @@ class FilmActorRepository_DataJpaTest
         /**
          * Asserts that a {@code null} page is refused, before any query runs.
          * <p>
-         * The package is {@code @NullMarked}, so Spring Data checks the arguments of every repository method, a
-         * {@code default} one included, and throws {@link IllegalArgumentException} before the method runs.
+         * The package is {@code @NullMarked}, so Spring Data checks the arguments of every
+         * repository method, a {@code default} one included, and throws
+         * {@link IllegalArgumentException} before the method runs.
          */
         @Test
         void _IllegalArgumentException_NullPageable() {
